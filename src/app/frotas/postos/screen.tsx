@@ -1,8 +1,10 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
 import { deletePosto, updatePostoStatus } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
+import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
 import {
   Building2,
@@ -60,6 +62,7 @@ type PageProps = {
   searchParams: Promise<{
     prefeitura?: string;
     q?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -70,11 +73,16 @@ export default async function PostosPage({ searchParams, loading = false }: Page
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "postos", params);
   const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getPostosCredenciadosData({
-    prefeituraId,
+    ids: databasePage.ids,
+    lightweight: true,
+    contextOnly: true,
+    prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
   });
   const hasActiveFilters = Boolean(params.q?.trim());
+  const stationPage = { ...databasePage, items: orderPageItems(data.postos, databasePage) };
 
   return (
     <FrotasShell
@@ -150,8 +158,8 @@ export default async function PostosPage({ searchParams, loading = false }: Page
       selectedPrefeituraId={data.selectedPrefeituraId}
       title="Postos de Combustível"
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-3 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -165,12 +173,12 @@ export default async function PostosPage({ searchParams, loading = false }: Page
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Total", value: data.postos.length },
+                  { label: "Total", value: databasePage.total },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || data.postos.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -186,7 +194,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={5} /> : data.postos.map((posto) => (
+                    {loading ? <TableLoadingRows columns={5} /> : stationPage.items.map((posto) => (
                       <TableRow key={posto.id}>
                         <TableCell>
                           <div className="font-medium">{posto.nome}</div>
@@ -238,6 +246,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                 </p>
               </div>
             )}
+            {!loading && <ListPagination page={stationPage.page} pageCount={stationPage.pageCount} pathname="/frotas/postos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>
         </Card>
       </main>

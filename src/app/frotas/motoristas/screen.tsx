@@ -1,8 +1,10 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
 import { deleteMotorista } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
+import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -71,6 +73,7 @@ type PageProps = {
     prefeitura?: string;
     q?: string;
     status?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -93,12 +96,16 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "motoristas", params);
   const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getMotoristasData({
-    prefeituraId,
+    ids: databasePage.ids,
+    lightweight: true,
+    prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
     status: params.status,
   });
   const searchTerm = params.q?.trim();
+  const driverPage = { ...databasePage, items: orderPageItems(data.motoristas, databasePage) };
   const buildFilterHref = (values: {
     prefeitura?: string | null;
     status?: string | null;
@@ -146,8 +153,8 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
       selectedPrefeituraId={data.selectedPrefeituraId}
       title="Motoristas"
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-3 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -161,14 +168,14 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Ativos", value: data.metricas.ativos, tone: "success" },
-                  { label: "Em uso", value: data.metricas.emUso, tone: "inUse" },
-                  { label: "Total", value: data.metricas.total },
+                  { label: "Ativos", value: (databasePage.statuses.active ?? 0), tone: "success" },
+                  { label: "Em uso", value: databasePage.inUse, tone: "inUse" },
+                  { label: "Total", value: databasePage.total },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || data.motoristas.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -185,7 +192,7 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={6} /> : data.motoristas.map((motorista) => (
+                    {loading ? <TableLoadingRows columns={6} /> : driverPage.items.map((motorista) => (
                       <TableRow key={motorista.id}>
                         <TableCell>
                           <div className="min-w-[190px]">
@@ -249,6 +256,7 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
                 showPrefeituraField={profile.role === "bdl_admin"}
               />
             )}
+            {!loading && <ListPagination page={driverPage.page} pageCount={driverPage.pageCount} pathname="/frotas/motoristas" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
           </CardContent>
         </Card>
       </main>

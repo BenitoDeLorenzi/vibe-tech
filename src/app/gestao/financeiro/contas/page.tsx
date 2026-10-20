@@ -87,9 +87,10 @@ export default async function ContasPage() {
             description={`Controle iniciado em ${dataBR(fin.inicio)}. Fechamentos anteriores à ativação não alteram estes saldos.`}
             icon={Landmark}
           >
+            <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-muted/50">
                   <TableHead>Conta</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Saldo</TableHead>
@@ -144,6 +145,7 @@ export default async function ContasPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {[
                 { acao: "transferir", label: "Registrar transferência" },

@@ -1,9 +1,11 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CancellationDetails } from "@/components/cancellation-details";
 import { CancelFrotaDialog } from "@/components/cancel-frota-dialog";
 import { DeleteAbastecimentoButton } from "./delete-abastecimento-button";
 import { ListStatusActionButton } from "@/components/list-status-action-button";
+import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import {
@@ -75,6 +77,7 @@ type PageProps = {
     q?: string;
     ordem?: string;
     status?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -95,12 +98,16 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "abastecimento", params);
   const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getAbastecimentosData({
-    prefeituraId,
+    ids: databasePage.ids,
+    lightweight: true,
+    prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
     status: params.status,
   });
   const searchTerm = params.q?.trim();
+  const fuelPage = { ...databasePage, items: orderPageItems(data.abastecimentos, databasePage) };
   const buildFilterHref = (values: {
     prefeitura?: string | null;
     status?: string | null;
@@ -147,8 +154,8 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
       selectedPrefeituraId={data.selectedPrefeituraId}
       title="Abastecimento"
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-3 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -162,12 +169,12 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Total", value: data.abastecimentos.length },
+                  { label: "Total", value: databasePage.total },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || data.abastecimentos.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -187,7 +194,7 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={9} /> : data.abastecimentos.map((abastecimento) => (
+                    {loading ? <TableLoadingRows columns={9} /> : fuelPage.items.map((abastecimento) => (
                       <TableRow key={abastecimento.id}>
                         <TableCell className="font-medium">
                           {abastecimento.numero_ordem}
@@ -246,6 +253,7 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
                 veiculos={data.veiculos}
               />
             )}
+            {!loading && data.abastecimentos.length > 0 && <ListPagination page={fuelPage.page} pageCount={fuelPage.pageCount} pathname="/frotas/abastecimento" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
           </CardContent>
         </Card>
       </main>

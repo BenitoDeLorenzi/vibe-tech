@@ -71,6 +71,7 @@ type RelatorioRow = {
 };
 
 export async function getRelatorios(params?: {
+  ids?: string[];
   prefeituraId?: string;
   query?: string;
   status?: string;
@@ -96,6 +97,7 @@ export async function getRelatorios(params?: {
     query = query.eq("status", params.status);
   }
 
+  if (params?.ids) query = query.in("id", params.ids);
   const { data, error } = await query;
 
   if (error) {
@@ -108,7 +110,7 @@ export async function getRelatorios(params?: {
 
   let rows = ((data ?? []) as unknown as RelatorioRow[]).map(mapRelatorioRow);
 
-  if (params?.query) {
+  if (params?.query && !params.ids) {
     const normalized = normalize(params.query);
     rows = rows.filter((relatorio) =>
       normalize(

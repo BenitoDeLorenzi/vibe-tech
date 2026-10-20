@@ -40,6 +40,8 @@ type UsoMotoristaRow = {
 };
 
 export async function getMotoristasData(params?: {
+  ids?: string[];
+  lightweight?: boolean;
   prefeituraId?: string;
   query?: string;
   status?: string;
@@ -47,6 +49,8 @@ export async function getMotoristasData(params?: {
   const supabase = createSupabaseServerClient();
   const frotasData = await getFrotasData({
     prefeituraId: params?.prefeituraId,
+    lightweight: params?.lightweight,
+    contextOnly: params?.lightweight,
   });
   const selectedPrefeituraId =
     params?.prefeituraId ?? frotasData.selectedPrefeituraId;
@@ -71,6 +75,7 @@ export async function getMotoristasData(params?: {
     motoristasQuery = motoristasQuery.eq("status", params.status);
   }
 
+  if (params?.ids) motoristasQuery = motoristasQuery.in("id", params.ids);
   const { data, error } = await motoristasQuery;
 
   if (error) {
@@ -98,7 +103,12 @@ export async function getMotoristasData(params?: {
     }
   >();
 
-  if (motoristaIds.length) {
+  if (motoristaIds.length && params?.ids) {
+    const { data: summaries, error } = await supabase.rpc("frota_motoristas_resumo", { p_ids: motoristaIds });
+    if (error) throw new Error(error.message);
+    for (const id of motoristaIds) if (summaries[id]) usageByMotorista.set(id, summaries[id]);
+  }
+  if (motoristaIds.length && !params?.ids) {
     const usosResult = await supabase
       .from("frota_uso_veiculos")
       .select("motorista_id,status,data_saida,frota_veiculos(modelo,placa)")
@@ -155,7 +165,7 @@ export async function getMotoristasData(params?: {
     };
   });
 
-  if (params?.query) {
+  if (params?.query && !params.ids) {
     const normalizedQuery = normalizeSearch(params.query);
     motoristas = motoristas.filter((motorista) =>
       normalizeSearch(

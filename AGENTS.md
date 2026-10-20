@@ -32,3 +32,11 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Financeiro do Vibe Gestão é exclusivo do Master (`bdl_admin`): páginas, menus, indicadores financeiros novos, ações e RLS. Administradores/Usuários não recebem acesso financeiro por terem `gestao.manage`; a integração automática do fechamento continua funcionando sem expor o financeiro. Consulte `docs/gestao-financeiro.md`.
 
 - Botões de excluir/remover nas listas: usar `variant="destructive"` (com fundo vermelho) e `size="icon-sm"`. A exclusão deve ser sempre a última ação, na extrema direita do grupo de ações.
+
+## Padrão de telas de listagem
+
+- Referência: `/frotas/veiculos`. Reutilizar `ListPanelHeader` e `ListMetrics` / `ListMetric` para o título com ícone e os indicadores no canto direito do cartão. No Vibe Gestão, `Panel` e `MetricBadge` compõem esses mesmos componentes.
+- Manter os indicadores no cartão da lista, sem duplicá-los na barra superior. Reservar a barra para busca, filtros e ações de cadastro.
+- Tabelas de listas usam contorno `overflow-hidden rounded-lg border`, cabeçalho `bg-muted/50` e ações alinhadas à direita. Preservar informações operacionais, estados vazios, carregamento, filtros e permissões.
+
+- Modais de formulário e confirmação do painel Vibe Tech devem oferecer `FormDialogCancel` no `DialogFooter`, antes da ação principal. Passar o estado pendente em `disabled`; cancelar apenas fecha o modal, sem enviar o formulário.

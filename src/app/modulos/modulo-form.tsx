@@ -1,5 +1,7 @@
 "use client";
 
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import {
   startTransition,
   useActionState,
@@ -242,6 +244,7 @@ export function ModuloForm({ modulo }: ModuloFormProps) {
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />

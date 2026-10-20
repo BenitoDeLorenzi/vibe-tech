@@ -1,5 +1,7 @@
 "use client";
 
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
@@ -52,13 +54,14 @@ export function LicencaPagamentoForm({ pagamento }: LicencaPagamentoFormProps) {
     registerLicencaPagamento,
     {}
   );
+  const requestId = useRef<string | null>(null);
   const form = useForm<LicencaPagamentoFormValues>({
     defaultValues: {
       documento: pagamento.documento ?? "",
       forma_pagamento: pagamento.forma_pagamento ?? "pix",
       observacoes: pagamento.observacoes ?? "",
-      pago_em: pagamento.pago_em ?? getTodayIsoDate(),
-      valor_pago: pagamento.valor_pago ?? pagamento.valor,
+      pago_em: getTodayIsoDate(),
+      valor_pago: Math.max(0, pagamento.valor - Number(pagamento.valor_pago ?? 0)),
     },
   });
 
@@ -73,6 +76,8 @@ export function LicencaPagamentoForm({ pagamento }: LicencaPagamentoFormProps) {
   function submitForm(values: LicencaPagamentoFormValues) {
     const formData = new FormData();
 
+    requestId.current ??= crypto.randomUUID();
+    formData.set("request_id", requestId.current);
     formData.set("id", pagamento.id);
     formData.set("pago_em", values.pago_em);
     formData.set("valor_pago", String(values.valor_pago ?? ""));
@@ -89,7 +94,7 @@ export function LicencaPagamentoForm({ pagamento }: LicencaPagamentoFormProps) {
     <form
       ref={formRef}
       className="space-y-4"
-      onSubmit={form.handleSubmit(submitForm)}
+      onSubmit={event => { void form.handleSubmit(submitForm)(event); }}
       noValidate
     >
       {state.error ? (
@@ -125,9 +130,9 @@ export function LicencaPagamentoForm({ pagamento }: LicencaPagamentoFormProps) {
               name="valor_pago"
               rules={{
                 validate: (value) =>
-                  value !== null && value > 0
+                  value !== null && value > 0 && value <= Math.round((pagamento.valor - Number(pagamento.valor_pago ?? 0)) * 100) / 100
                     ? true
-                    : "Informe o valor pago.",
+                    : "Informe um valor positivo até o saldo pendente.",
               }}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
@@ -224,6 +229,7 @@ export function LicencaPagamentoForm({ pagamento }: LicencaPagamentoFormProps) {
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />

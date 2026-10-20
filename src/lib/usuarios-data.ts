@@ -97,7 +97,7 @@ export async function getUsuarios(params?: {
       }
 
       return mapUsuariosRows(
-        (fallbackResult.data ?? []) as unknown as UsuarioRow[]
+        (fallbackResult.data ?? []) as unknown as UsuarioRow[],
       );
     }
 
@@ -123,19 +123,21 @@ export async function getUsuarios(params?: {
     ]
       .join(" ")
       .toLowerCase()
-      .includes(normalizedQuery)
+      .includes(normalizedQuery),
   );
 }
 
 function buildUsuariosQuery(
   supabase: ReturnType<typeof createSupabaseServerClient>,
-  params: {
-    prefeituraId?: string;
-    query?: string;
-    role?: string;
-    status?: string;
-  } | undefined,
-  includeAccessFields: boolean
+  params:
+    | {
+        prefeituraId?: string;
+        query?: string;
+        role?: string;
+        status?: string;
+      }
+    | undefined,
+  includeAccessFields: boolean,
 ) {
   const select = includeAccessFields
     ? "id,nome,email,username,cpf,role,prefeitura_id,ativo,created_at,prefeituras:empresas!perfis_prefeitura_id_fkey(nome)"
@@ -201,7 +203,7 @@ export async function getUsuariosAccessMap(usuarios: Usuario[]) {
     municipalUsers.map(async (usuario) => [
       usuario.id,
       await getUsuarioAccessOptions(usuario),
-    ])
+    ]),
   );
 
   return Object.fromEntries(entries) as Record<string, UsuarioModuloAcesso[]>;
@@ -221,7 +223,10 @@ export async function getUsuarioAccessOptions(usuario: Usuario) {
         .eq("prefeitura_id", usuario.prefeitura_id)
         .eq("status", "active")
         .order("created_at", { ascending: false }),
-      supabase.from("usuario_modulos").select("modulo_id").eq("usuario_id", usuario.id),
+      supabase
+        .from("usuario_modulos")
+        .select("modulo_id")
+        .eq("usuario_id", usuario.id),
       supabase
         .from("usuario_permissoes")
         .select("permissao_id")
@@ -252,8 +257,12 @@ export async function getUsuarioAccessOptions(usuario: Usuario) {
     throw new Error(usuarioPermissoesResult.error.message);
   }
 
-  const licensedIds = new Set((await getEmpresaLicensedModules(usuario.prefeitura_id)).map(m=>m.id));
-  const licencas = ((licencasResult.data ?? []) as unknown as LicencaModuloRow[]).filter(l=>licensedIds.has(l.modulo_id));
+  const licensedIds = new Set(
+    (await getEmpresaLicensedModules(usuario.prefeitura_id)).map((m) => m.id),
+  );
+  const licencas = (
+    (licencasResult.data ?? []) as unknown as LicencaModuloRow[]
+  ).filter((l) => licensedIds.has(l.modulo_id));
   const moduloIds = licencas
     .map((licenca) => licenca.modulo_id)
     .filter((id): id is string => Boolean(id));
@@ -278,13 +287,13 @@ export async function getUsuarioAccessOptions(usuario: Usuario) {
 
   const selectedModuloIds = new Set(
     ((usuarioModulosResult.data ?? []) as UsuarioModuloRow[]).map(
-      (item) => item.modulo_id
-    )
+      (item) => item.modulo_id,
+    ),
   );
   const selectedPermissaoIds = new Set(
     ((usuarioPermissoesResult.data ?? []) as UsuarioPermissaoRow[]).map(
-      (item) => item.permissao_id
-    )
+      (item) => item.permissao_id,
+    ),
   );
   const permissoes = (permissoesResult.data ?? []) as PermissaoRow[];
   const allowedPermissionKeys = getAllowedPermissionKeys(usuario.role);
@@ -334,6 +343,8 @@ function getAllowedPermissionKeys(role: UsuarioRole) {
       "fuel_stations.read",
       "drivers.manage",
       "drivers.read",
+      "departments.read",
+      "departments.manage",
       "workshops.read",
       "workshops.manage",
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { AdaptiveListSize } from "@/components/adaptive-list-size";
 import { createContext, useContext, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -14,8 +15,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { TableLoadingRows } from "@/components/table-loading";
+import { PaginationControl } from "@/components/pagination-control";
 import { cn } from "@/lib/utils";
 import { useSupportLive } from "./support-live";
 
@@ -79,32 +82,34 @@ export function SupportCenter({ master = false, userId }: { master?: boolean; us
   const params = useSearchParams();
   const selected = params.get("conversa");
   const { newOpen, setNewOpen, setPage, search, status, page, loading, setLoading } = useSupportWorkspace();
+  const [size, setSize] = useState(10);
+  const resize = useCallback((next: number) => { setSize(next); setPage(1); setLoading(true); }, [setPage, setLoading]);
   const [data, setData] = useState<{ items: Ticket[]; total: number }>({ items: [], total: 0 });
   const [error, setError] = useState("");
   useEffect(() => {
     if (selected) return;
     const controller = new AbortController();
-    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page) })}`, { cache: "no-store", signal: controller.signal })
+    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page), size: String(size) })}`, { cache: "no-store", signal: controller.signal })
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
-      .then(result => { setData(result); setError(""); setLoading(false); })
+      .then(result => { setPage(result.page); setData(result); setError(""); setLoading(false); })
       .catch(error => { if (!controller.signal.aborted) { setError(error.message); setLoading(false); } });
     return () => controller.abort();
-  }, [base, search, status, page, revision, selected, setLoading]);
+  }, [base, search, status, page, size, revision, selected, setLoading, setPage]);
   const open = (id: string | null) => {
     const current = new URL(window.location.href);
     if (id) current.searchParams.set("conversa", id); else current.searchParams.delete("conversa");
     window.history.pushState(null, "", `${current.pathname}${current.search}`);
   };
 
-  return <main className={cn("flex min-h-0 flex-1 flex-col gap-3 p-4", selected && "h-full overflow-hidden")}>
+  return <main className={cn("flex min-h-full flex-col gap-3 p-4", selected && "h-full overflow-hidden")}>
     {selected ? <TicketChat key={selected} id={selected} master={master} userId={userId} onBack={() => open(null)} /> : <>
-      <Card><CardHeader><div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40"><Headset className="size-5 text-muted-foreground" /></div><CardTitle>{master ? "Atendimentos" : "Meus chamados"}</CardTitle></div><div className="flex flex-wrap items-center gap-3"><ListMetrics loading={loading} items={[{ label: "Total", value: data.total }, { label: "Mensagens novas", value: unread, tone: "warning" }]} /><LiveStatus connected={connected} /></div></div></CardHeader>
-        <CardContent className="space-y-3">
+      <Card className="flex flex-1 flex-col"><ListPanelHeader title={master ? "Atendimentos" : "Meus chamados"} icon={Headset} metrics={<><ListMetrics loading={loading} items={[{ label: "Total", value: data.total }, { label: "Mensagens novas", value: unread, tone: "warning" }]} /><LiveStatus connected={connected} /></>} />
+        <CardContent className="flex flex-1 flex-col space-y-3">
           {error && <ErrorNotice message={error} retry={refresh} />}
           <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Assunto</TableHead>{master && <><TableHead>Empresa</TableHead><TableHead>Usuário</TableHead></>}<TableHead>Última atividade</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>
             {loading ? <TableLoadingRows columns={master ? 6 : 4} /> : data.items.length ? data.items.map(ticket => <TableRow key={ticket.id} className={cn(ticket.novas > 0 && "bg-blue-500/5")}><TableCell><div className="flex items-center gap-2"><MessageCircle className="size-4 shrink-0 text-muted-foreground" /><span className="max-w-80 truncate font-medium">{ticket.assunto}</span>{ticket.novas > 0 && <Badge className="bg-red-600 text-white">{ticket.novas}</Badge>}</div></TableCell>{master && <><TableCell>{ticket.empresa}</TableCell><TableCell>{ticket.usuario}</TableCell></>}<TableCell className="whitespace-nowrap tabular-nums">{date(ticket.updated_at)}</TableCell><TableCell><StatusBadge status={ticket.status} /></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => open(ticket.id)}><MessageCircle />Abrir chat</Button></TableCell></TableRow>) : <TableRow><TableCell colSpan={master ? 6 : 4} className="h-40 text-center text-muted-foreground"><Headset className="mx-auto mb-3 size-7" />{search || status ? "Nenhum chamado encontrado." : master ? "Nenhum chamado por enquanto." : "Precisa de ajuda? Abra um chamado para a equipe Vibe Tech."}</TableCell></TableRow>}
           </TableBody></Table></div>
-          <div className="flex items-center justify-between gap-3 text-sm text-muted-foreground"><span>Página {page} · {data.total} registros</span><div className="flex gap-2"><Button variant="outline" size="sm" disabled={page === 1 || loading} onClick={() => { setPage(value => value - 1); setLoading(true); }}>Anterior</Button><Button variant="outline" size="sm" disabled={page * 25 >= data.total || loading} onClick={() => { setPage(value => value + 1); setLoading(true); }}>Próxima</Button></div></div>
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"><AdaptiveListSize size={size} onSizeChange={resize} maximum={25} loading={loading} /><span>{data.total} registros</span><PaginationControl page={page} pageCount={Math.max(1, Math.ceil(data.total / size))} disabled={loading} onPageChange={next => { setPage(next); setLoading(true); }} /></div>
         </CardContent>
       </Card>
     </>}

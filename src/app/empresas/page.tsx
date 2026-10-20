@@ -1,3 +1,5 @@
+import { ListPanelHeader } from "@/components/list-panel-header";
+import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import {
@@ -19,9 +21,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -106,7 +105,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
       profile={profile}
       title="Empresas"
       actions={
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+        <div className="flex w-full min-w-0 items-center justify-end gap-2">
           <form className="flex min-w-0 shrink-0 justify-end gap-2">
             <div className="relative min-w-0 w-[320px]">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -165,21 +164,6 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
 
           <Separator orientation="vertical" className="hidden h-5 xl:block" />
 
-          <div className="hidden shrink-0 items-center gap-1.5 xl:flex">
-            <Badge
-              variant="outline"
-              className="h-7 border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
-            >
-              {prefeituras.length} total
-            </Badge>
-            <Badge
-              variant="outline"
-              className="h-7 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-            >
-              {activeCount} ativas
-            </Badge>
-          </div>
-
           <Dialog>
             <DialogTrigger
               className={buttonVariants({
@@ -189,7 +173,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
               <Plus className="size-4" />
               Nova empresa
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Nova empresa</DialogTitle>
               </DialogHeader>
@@ -207,22 +191,14 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
       />
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
         <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40">
-                  <Building2 className="size-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <CardTitle>Lista de empresas</CardTitle>
-                  <CardDescription>
-                    Empresas e órgãos públicos cadastrados no portal Vibe Tech.
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge variant="outline">{prefeituras.length} registro(s)</Badge>
-            </div>
-          </CardHeader>
+          <ListPanelHeader
+              title="Empresas cadastradas"
+              icon={Building2}
+              metrics={<ListMetrics items={[
+                { label: "Ativas", value: activeCount, tone: "success" },
+                { label: "Total", value: prefeituras.length },
+              ]} />}
+            />
           <CardContent>
             {prefeituras.length ? (
               <div className="overflow-hidden rounded-lg border">
@@ -347,7 +323,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                               >
                                 <Pencil className="size-4" />
                               </DialogTrigger>
-                              <DialogContent className="sm:max-w-lg">
+                              <DialogContent className="sm:max-w-2xl">
                                 <DialogHeader>
                                   <DialogTitle>Editar empresa</DialogTitle>
                                 </DialogHeader>
@@ -405,7 +381,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                     <Plus className="size-4" />
                     Cadastrar empresa
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-lg">
+                  <DialogContent className="sm:max-w-2xl">
                     <DialogHeader>
                       <DialogTitle>Nova empresa</DialogTitle>
                     </DialogHeader>

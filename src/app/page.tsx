@@ -114,7 +114,7 @@ export default async function Home() {
       (licenca.status === "active" && licenca.dias_restantes < 0)
   );
   const receitaAnual = activeLicencas.reduce(
-    (total, licenca) => total + Number(licenca.valor_anual ?? 0),
+    (total, licenca) => total + licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0),
     0
   );
   const usuariosAtivos = usuarios.filter((usuario) => usuario.ativo).length;
@@ -188,8 +188,8 @@ export default async function Home() {
           />
           <MetricCard
             icon={CircleDollarSign}
-            label="Receita anual"
-            note="Base em licenças ativas"
+            label="Total contratado"
+            note="Contratos atuais das licenças ativas"
             value={formatCurrency(receitaAnual)}
           />
           <MetricCard
@@ -463,7 +463,7 @@ function LicencaRow({ licenca }: { licenca: Licenca }) {
       </div>
       <div className="text-right">
         <div className="text-sm font-semibold">
-          {formatCurrency(Number(licenca.valor_anual ?? 0))}
+          {formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}
         </div>
         <Badge
           className={

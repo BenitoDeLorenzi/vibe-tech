@@ -99,67 +99,72 @@ type UsuarioPermissaoRow = {
   } | null;
 };
 
-export const getFrotasPermissionAccess = cache(async function getFrotasPermissionAccess(
-  profile: CurrentUserProfile,
-): Promise<FrotasPermissionAccess> {
-  if (!(await hasModuleAccess(profile, "frotas-publicas")))
-    return limitedAccess;
-  if (profile.role === "bdl_admin" || profile.role === "municipal_admin") {
-    return { ...fullAccess, canDeleteVeiculos: profile.role === "bdl_admin" };
-  }
+export const getFrotasPermissionAccess = cache(
+  async function getFrotasPermissionAccess(
+    profile: CurrentUserProfile,
+  ): Promise<FrotasPermissionAccess> {
+    if (!(await hasModuleAccess(profile, "frotas-publicas")))
+      return limitedAccess;
+    if (profile.role === "bdl_admin" || profile.role === "municipal_admin") {
+      return { ...fullAccess, canDeleteVeiculos: profile.role === "bdl_admin" };
+    }
 
-  if (!profile.prefeitura_id) {
-    return limitedAccess;
-  }
+    if (!profile.prefeitura_id) {
+      return limitedAccess;
+    }
 
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("usuario_permissoes")
-    .select("permissoes(chave)")
-    .eq("usuario_id", profile.id);
+    const supabase = createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from("usuario_permissoes")
+      .select("permissoes(chave)")
+      .eq("usuario_id", profile.id);
 
-  if (error) {
-    return limitedAccess;
-  }
+    if (error) {
+      return limitedAccess;
+    }
 
-  const keys = new Set(
-    ((data ?? []) as unknown as UsuarioPermissaoRow[])
-      .map((item) => item.permissoes?.chave)
-      .filter((key): key is string => Boolean(key)),
-  );
+    const keys = new Set(
+      ((data ?? []) as unknown as UsuarioPermissaoRow[])
+        .map((item) => item.permissoes?.chave)
+        .filter((key): key is string => Boolean(key)),
+    );
 
-  return {
-    canCreateVeiculos: keys.has("vehicles.create"),
-    canDeleteVeiculos: false,
-    canCancelAbastecimento: keys.has("fuel.cancel"),
-    canCompleteAbastecimento: keys.has("fuel.complete"),
-    canCreateAbastecimento: keys.has("fuel.create"),
-    canCreateManutencao: keys.has("maintenance.create"),
-    canCancelManutencao: keys.has("maintenance.cancel"),
-    canCompleteManutencao: keys.has("maintenance.complete"),
-    canManageAbastecimento: keys.has("fuel.manage"),
-    canManageManutencao:
-      keys.has("maintenance.complete") || keys.has("maintenance.cancel"),
-    canManageMotoristas: keys.has("drivers.manage"),
-    canManageVencimentos: keys.has("expirations.manage"),
-    canManageCadastros:
-      keys.has("fuel_stations.manage") || keys.has("drivers.manage") || keys.has("workshops.manage"),
-    canManageVeiculos: keys.has("vehicles.manage"),
-    canCancelUsoVeiculo: keys.has("vehicle_usage.cancel"),
-    canCreateUsoVeiculo: keys.has("vehicle_usage.create"),
-    canReturnUsoVeiculo: keys.has("vehicle_usage.return"),
-    canUpdateManutencao: keys.has("maintenance.update"),
-    canUpdateVeiculos: keys.has("vehicles.update"),
-    canViewAbastecimento: hasAnyPrefix(keys, "fuel."),
-    canViewManutencao: hasAnyPrefix(keys, "maintenance."),
-    canViewMotoristas: hasAnyPrefix(keys, "drivers."),
-    canViewRelatorios: keys.has("reports.read"),
-    canViewUsoVeiculo: hasAnyPrefix(keys, "vehicle_usage."),
-    canViewVeiculos: hasAnyPrefix(keys, "vehicles."),
-    isFullAccess: false,
-    keys: Array.from(keys),
-  };
-});
+    return {
+      canCreateVeiculos: keys.has("vehicles.create"),
+      canDeleteVeiculos: false,
+      canCancelAbastecimento: keys.has("fuel.cancel"),
+      canCompleteAbastecimento: keys.has("fuel.complete"),
+      canCreateAbastecimento: keys.has("fuel.create"),
+      canCreateManutencao: keys.has("maintenance.create"),
+      canCancelManutencao: keys.has("maintenance.cancel"),
+      canCompleteManutencao: keys.has("maintenance.complete"),
+      canManageAbastecimento: keys.has("fuel.manage"),
+      canManageManutencao:
+        keys.has("maintenance.complete") || keys.has("maintenance.cancel"),
+      canManageMotoristas: keys.has("drivers.manage"),
+      canManageVencimentos: keys.has("expirations.manage"),
+      canManageCadastros:
+        keys.has("fuel_stations.manage") ||
+        keys.has("drivers.manage") ||
+        keys.has("workshops.manage") ||
+        keys.has("departments.manage"),
+      canManageVeiculos: keys.has("vehicles.manage"),
+      canCancelUsoVeiculo: keys.has("vehicle_usage.cancel"),
+      canCreateUsoVeiculo: keys.has("vehicle_usage.create"),
+      canReturnUsoVeiculo: keys.has("vehicle_usage.return"),
+      canUpdateManutencao: keys.has("maintenance.update"),
+      canUpdateVeiculos: keys.has("vehicles.update"),
+      canViewAbastecimento: hasAnyPrefix(keys, "fuel."),
+      canViewManutencao: hasAnyPrefix(keys, "maintenance."),
+      canViewMotoristas: hasAnyPrefix(keys, "drivers."),
+      canViewRelatorios: keys.has("reports.read"),
+      canViewUsoVeiculo: hasAnyPrefix(keys, "vehicle_usage."),
+      canViewVeiculos: hasAnyPrefix(keys, "vehicles."),
+      isFullAccess: false,
+      keys: Array.from(keys),
+    };
+  },
+);
 
 function hasAnyPrefix(keys: Set<string>, prefix: string) {
   return Array.from(keys).some((key) => key.startsWith(prefix));

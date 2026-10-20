@@ -1,3 +1,5 @@
+import { ListPanelHeader } from "@/components/list-panel-header";
+import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import {
@@ -9,7 +11,7 @@ import {
   Pencil,
   Plus,
   Search,
-  Trash2,
+  RefreshCw,
   X,
 } from "lucide-react";
 
@@ -18,9 +20,6 @@ import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -51,7 +50,7 @@ import {
   type LicencaVigenciaStatus,
 } from "@/lib/licencas-data";
 import { requireRole } from "@/lib/auth-data";
-import { DeleteLicencaForm } from "./delete-licenca-form";
+import { LicencaRenewForm } from "./licenca-renew-form";
 import { LicencaForm } from "./licenca-form";
 import { LicencasToasts } from "./licencas-toasts";
 
@@ -115,7 +114,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
       profile={profile}
       title="Licenças"
       actions={
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+        <div className="flex w-full min-w-0 items-center justify-end gap-2">
           <form className="flex min-w-0 shrink-0 justify-end gap-2">
             <div className="relative min-w-0 w-[320px]">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -180,15 +179,6 @@ export default async function LicencasPage({ searchParams }: PageProps) {
 
           <Separator orientation="vertical" className="hidden h-5 xl:block" />
 
-          <div className="hidden shrink-0 items-center gap-1.5 xl:flex">
-            <Badge variant="outline" className="h-7 border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100">
-              {licencas.length} total
-            </Badge>
-            <Badge variant="outline" className="h-7 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
-              {activeCount} ativas
-            </Badge>
-          </div>
-
           <Dialog>
             <DialogTrigger
               className={buttonVariants({
@@ -198,7 +188,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
               <Plus className="size-4" />
               Nova licença
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Nova licença</DialogTitle>
               </DialogHeader>
@@ -216,22 +206,14 @@ export default async function LicencasPage({ searchParams }: PageProps) {
       <LicencasToasts deleted={params.deleted} error={params.error} />
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
           <Card>
-            <CardHeader>
-              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40">
-                    <KeyRound className="size-5 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <CardTitle>Lista de licenças</CardTitle>
-                    <CardDescription>
-                      Módulos liberados por empresa e vigência contratada.
-                    </CardDescription>
-                  </div>
-                </div>
-                <Badge variant="outline">{licencas.length} registro(s)</Badge>
-              </div>
-            </CardHeader>
+            <ListPanelHeader
+              title="Licenças cadastradas"
+              icon={KeyRound}
+              metrics={<ListMetrics items={[
+                { label: "Ativas", value: activeCount, tone: "success" },
+                { label: "Total", value: licencas.length },
+              ]} />}
+            />
             <CardContent>
               {licencas.length ? (
                 <div className="overflow-hidden rounded-lg border">
@@ -283,8 +265,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                               {formatCurrency(licenca.valor_mensal)}/mês
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Contrato anual de{" "}
-                              {formatCurrency(licenca.valor_anual)}
+                              Contrato: {formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}
                             </div>
                           </TableCell>
                           <TableCell>
@@ -302,7 +283,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                                 >
                                   <Pencil className="size-4" />
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-lg">
+                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                   <DialogHeader>
                                     <DialogTitle>Editar licença</DialogTitle>
                                   </DialogHeader>
@@ -317,23 +298,23 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                               <Dialog>
                                 <DialogTrigger
                                   className={buttonVariants({
-                                    variant: "destructive",
+                                    variant: "ghost",
                                     size: "icon-sm",
                                   })}
-                                  title="Excluir licença"
+                                  title="Renovar licença"
                                 >
-                                  <Trash2 className="size-4" />
+                                  <RefreshCw className="size-4" />
                                 </DialogTrigger>
-                                <DialogContent className="sm:max-w-md">
+                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
                                   <DialogHeader>
-                                    <DialogTitle>Excluir licença</DialogTitle>
+                                    <DialogTitle>Renovar licença</DialogTitle>
                                     <DialogDescription>
-                                      Esta ação remove a licença de{" "}
+                                      Novo período de{" "}
                                       {licenca.modulo_nome} para{" "}
                                       {licenca.prefeitura_nome}.
                                     </DialogDescription>
                                   </DialogHeader>
-                                  <DeleteLicencaForm id={licenca.id} />
+                                  <LicencaRenewForm licenca={licenca} />
                                 </DialogContent>
                               </Dialog>
                             </div>
@@ -364,7 +345,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                       <Plus className="size-4" />
                       Cadastrar licença
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg">
+                    <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                       <DialogHeader>
                         <DialogTitle>Nova licença</DialogTitle>
                       </DialogHeader>
@@ -460,6 +441,7 @@ function addOneYearIsoDate(value: string) {
     nextDate.setUTCDate(0);
   }
 
+  nextDate.setUTCDate(nextDate.getUTCDate() - 1);
   return [
     nextDate.getUTCFullYear(),
     String(nextDate.getUTCMonth() + 1).padStart(2, "0"),

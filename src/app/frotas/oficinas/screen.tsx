@@ -1,3 +1,4 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CadastroStatusButton } from "@/components/cadastro-status-button";
@@ -10,6 +11,7 @@ import { getFrotasData } from "@/lib/frotas-data";
 import { getOficinasForEmpresa } from "@/lib/oficinas-data";
 import { FrotasShell } from "../frotas-shell";
 import { ListMetrics } from "@/components/list-metrics";
+import { ListPagination } from "@/components/list-pagination";
 import { HeaderSeparator } from "@/components/header-separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +34,7 @@ export default async function OficinasPage({
   loading = false,
 }: {
   loading?: boolean;
-  searchParams: Promise<{ prefeitura?: string; q?: string }>;
+  searchParams: Promise<{ prefeitura?: string; q?: string; size?: string; page?: string }>;
 }) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
@@ -42,35 +44,16 @@ export default async function OficinasPage({
     redirect("/frotas");
   const params = await searchParams;
   const data = loading ? await getFrotasLoadingData(profile, params.prefeitura) : await getFrotasData({
+    contextOnly: true, lightweight: true,
     prefeituraId:
       profile.role === "bdl_admin"
         ? params.prefeitura
         : (profile.prefeitura_id ?? undefined),
   });
-  const all = loading ? [] : await getOficinasForEmpresa(data.selectedPrefeituraId);
-  const normalize = (value: string) =>
-    value
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase();
-  const query = normalize(params.q?.trim() ?? "");
-  const oficinas = all.filter(
-    (item) =>
-      normalize(
-        [
-          item.nome,
-          item.documento,
-          item.telefone,
-          item.responsavel,
-          item.endereco,
-          item.especialidades,
-        ].join(" "),
-      ).includes(query) ||
-      Boolean(
-        query.replace(/\D/g, "") &&
-        item.documento?.includes(query.replace(/\D/g, "")),
-      ),
-  );
+  const query = params.q?.trim();
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "oficinas", { ...params, prefeitura: data.selectedPrefeituraId });
+  const oficinas = loading ? [] : await getOficinasForEmpresa(data.selectedPrefeituraId, databasePage.ids);
+  const oficinaPage = { ...databasePage, items: orderPageItems(oficinas, databasePage) };
   return (
     <FrotasShell
       loading={loading}
@@ -111,8 +94,8 @@ export default async function OficinasPage({
         </div>
       }
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-3 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -124,18 +107,17 @@ export default async function OficinasPage({
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Total", value: oficinas.length },
+                  { label: "Total", value: databasePage.total },
                   {
                     label: "Ativas",
-                    value: oficinas.filter((item) => item.status === "active")
-                      .length,
+                    value: databasePage.statuses.active ?? 0,
                     tone: "success",
                   },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || oficinas.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -152,7 +134,7 @@ export default async function OficinasPage({
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={6} /> : oficinas.map((item) => (
+                    {loading ? <TableLoadingRows columns={6} /> : oficinaPage.items.map((item) => (
                       <TableRow key={item.id}>
                         <TableCell>
                           <div className="font-medium">{item.nome}</div>
@@ -222,6 +204,7 @@ export default async function OficinasPage({
                 ) : null}
               </div>
             )}
+            {oficinas.length > 0 && <ListPagination page={oficinaPage.page} pageCount={oficinaPage.pageCount} pathname="/frotas/oficinas" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>
         </Card>
       </main>

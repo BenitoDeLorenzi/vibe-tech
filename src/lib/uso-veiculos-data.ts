@@ -49,6 +49,8 @@ type UsoVeiculoRow = Omit<
 };
 
 export async function getUsoVeiculosData(params?: {
+  ids?: string[];
+  lightweight?: boolean;
   registroId?: string;
   prefeituraId?: string;
   query?: string;
@@ -57,6 +59,7 @@ export async function getUsoVeiculosData(params?: {
   const supabase = createSupabaseServerClient();
   const frotasData = await getFrotasData({
     prefeituraId: params?.prefeituraId,
+    lightweight: params?.lightweight,
   });
   const selectedPrefeituraId =
     params?.prefeituraId ?? frotasData.selectedPrefeituraId;
@@ -81,6 +84,7 @@ export async function getUsoVeiculosData(params?: {
   }
 
   if (params?.registroId) usosQuery = usosQuery.eq("id", /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(params.registroId) ? params.registroId : "00000000-0000-0000-0000-000000000000");
+  if (params?.ids) usosQuery = usosQuery.in("id", params.ids);
   const { data, error } = await usosQuery;
 
   if (error) {
@@ -111,7 +115,7 @@ export async function getUsoVeiculosData(params?: {
     prefeitura_nome: uso.prefeituras?.nome ?? "-",
   }));
 
-  if (params?.query) {
+  if (params?.query && !params.ids) {
     const normalizedQuery = normalizeSearch(params.query);
     usos = usos.filter((uso) =>
       normalizeSearch(

@@ -1,3 +1,6 @@
+import { HeaderSeparator } from "@/components/header-separator";
+import { ListPanelHeader } from "@/components/list-panel-header";
+import { ListMetric } from "@/components/list-metrics";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -16,9 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -68,22 +68,7 @@ export function Panel({
 }) {
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            {Icon && (
-              <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40">
-                <Icon className="size-5 text-muted-foreground" />
-              </div>
-            )}
-            <div>
-              <CardTitle>{title}</CardTitle>
-              {description && <CardDescription>{description}</CardDescription>}
-            </div>
-          </div>
-          {metrics && <div className="flex flex-wrap gap-2">{metrics}</div>}
-        </div>
-      </CardHeader>
+      <ListPanelHeader title={title} icon={Icon} description={description} metrics={metrics} />
       <CardContent>{children}</CardContent>
     </Card>
   );
@@ -100,14 +85,7 @@ export function MetricBadge({
   tone?: keyof typeof badgeTones;
 }) {
   return (
-    <Badge
-      variant="outline"
-      className={`h-8 gap-1.5 rounded-lg px-3 ${badgeTones[tone]}`}
-    >
-      <Icon aria-hidden="true" />
-      <span className="font-semibold">{value}</span>
-      <span>{label}</span>
-    </Badge>
+    <ListMetric label={label} value={value} icon={Icon} tone={tone} />
   );
 }
 export function Empty({
@@ -283,7 +261,7 @@ export function SearchToolbar({
   return (
     <div className="flex w-full min-w-0 items-center justify-end gap-2">
       <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-        <div className="relative w-[280px] min-w-0">
+        <div className="relative w-[320px] min-w-0">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             className="h-9 pl-9"
@@ -313,6 +291,7 @@ export function SearchToolbar({
           </Button>
         )}
       </form>
+      {children && <HeaderSeparator className="hidden xl:block" />}
       {children}
     </div>
   );

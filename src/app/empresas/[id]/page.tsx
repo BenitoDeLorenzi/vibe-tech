@@ -1,3 +1,5 @@
+import { ListPanelHeader } from "@/components/list-panel-header";
+import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -50,13 +52,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  cancelLicencaPagamento,
-  reopenLicencaPagamento,
-} from "@/app/licencas/actions";
 import { LicencaForm } from "@/app/licencas/licenca-form";
-import { LicencaParcelaForm } from "@/app/licencas/licenca-parcela-form";
-import { LicencaPagamentoForm } from "@/app/licencas/licenca-pagamento-form";
+import { BillingActions } from "@/app/cobrancas/billing-actions";
 import { LicencaRenewForm } from "@/app/licencas/licenca-renew-form";
 import {
   formatCurrency,
@@ -116,7 +113,7 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
   const modulos = buildModuloResumo(prefeituraLicencas);
   const receitaAnual = prefeituraLicencas
     .filter((licenca) => licenca.status === "active")
-    .reduce((total, licenca) => total + Number(licenca.valor_anual ?? 0), 0);
+    .reduce((total, licenca) => total + licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0), 0);
   const pagamentos = prefeituraLicencas.flatMap((licenca) =>
     licenca.pagamentos.map((pagamento) => ({
       ...pagamento,
@@ -152,7 +149,7 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
               <Pencil className="size-4" />
               Editar
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Editar empresa</DialogTitle>
               </DialogHeader>
@@ -308,7 +305,7 @@ function PrefeituraHero({
               value={formatCurrency(receitaMensal)}
             />
             <MetricTile
-              label="Contrato anual"
+              label="Total contratado"
               value={formatCurrency(receitaAnual)}
             />
           </div>
@@ -376,15 +373,9 @@ function LicencasTab({
 }) {
   return (
     <Card>
-      <CardHeader className="pb-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Licenças</CardTitle>
-            <CardDescription>
-              Módulos contratados e vigência anual.
-            </CardDescription>
-          </div>
-          <Dialog>
+      <ListPanelHeader title="Licenças" icon={KeyRound} metrics={<>
+        <ListMetrics items={[{ label: "Total", value: licencas.length }]} />
+        <Dialog>
             <DialogTrigger
               className={buttonVariants({
                 className: "h-9 gap-2",
@@ -393,7 +384,7 @@ function LicencasTab({
               <Plus className="size-4" />
               Nova licença
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Nova licença</DialogTitle>
               </DialogHeader>
@@ -406,8 +397,7 @@ function LicencasTab({
               />
             </DialogContent>
           </Dialog>
-        </div>
-      </CardHeader>
+      </>} />
       <CardContent>
         {licencas.length ? (
           <div className="overflow-hidden rounded-lg border">
@@ -449,7 +439,7 @@ function LicencasTab({
                         {formatCurrency(licenca.valor_mensal)}/mês
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        Contrato anual de {formatCurrency(licenca.valor_anual)}
+                        Mensalidade integral por período contratado
                       </div>
                     </TableCell>
                     <TableCell>
@@ -513,11 +503,11 @@ function LicencaActions({ licenca }: { licenca: Licenca }) {
           />
           <TooltipContent>Renovar licença</TooltipContent>
         </Tooltip>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Renovar licença</DialogTitle>
             <DialogDescription>
-              Gere um novo ciclo anual e 12 novas parcelas para{" "}
+              Defina um novo período e suas mensalidades para{" "}
               {licenca.modulo_nome}.
             </DialogDescription>
           </DialogHeader>
@@ -550,10 +540,7 @@ function ModulosTab({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Módulos</CardTitle>
-        <CardDescription>Produtos liberados para esta empresa.</CardDescription>
-      </CardHeader>
+      <ListPanelHeader title="Módulos" icon={Layers3} metrics={<ListMetrics items={[{ label: "Total", value: modulos.length }]} />} />
       <CardContent>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {modulos.map((modulo) => (
@@ -569,7 +556,7 @@ function ModulosTab({
               </div>
               <div className="mt-3">
                 <MetricTile
-                  label="Receita anual"
+                  label="Contratos atuais"
                   value={formatCurrency(modulo.receita)}
                 />
               </div>
@@ -594,10 +581,7 @@ function UsuariosTab({ usuarios }: { usuarios: Usuario[] }) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Usuários</CardTitle>
-        <CardDescription>Acessos vinculados a esta empresa.</CardDescription>
-      </CardHeader>
+      <ListPanelHeader title="Usuários" icon={Users} metrics={<ListMetrics items={[{ label: "Total", value: usuarios.length }]} />} />
       <CardContent>
         <div className="overflow-hidden rounded-lg border">
           <Table>
@@ -650,12 +634,7 @@ function FinanceiroTab({
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Parcelas mensais</CardTitle>
-        <CardDescription>
-          Cobranças geradas automaticamente a partir do contrato anual.
-        </CardDescription>
-      </CardHeader>
+      <ListPanelHeader title="Parcelas mensais" icon={CircleDollarSign} metrics={<ListMetrics items={[{ label: "Total", value: pagamentosOrdenados.length }]} />} />
       <CardContent>
         {pagamentosOrdenados.length ? (
           <div className="overflow-hidden rounded-lg border">
@@ -675,7 +654,7 @@ function FinanceiroTab({
                 {pagamentosOrdenados.map((pagamento) => (
                   <TableRow key={pagamento.id}>
                     <TableCell className="font-medium">
-                      {pagamento.numero_parcela}/12
+                      {pagamento.numero_parcela}
                     </TableCell>
                     <TableCell>{pagamento.modulo_nome}</TableCell>
                     <TableCell>{formatDate(pagamento.vencimento)}</TableCell>
@@ -711,7 +690,7 @@ function FinanceiroTab({
                       )}
                     </TableCell>
                     <TableCell>
-                      <PagamentoActions pagamento={pagamento} />
+                      <BillingActions pagamento={pagamento} />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -727,128 +706,6 @@ function FinanceiroTab({
         )}
       </CardContent>
     </Card>
-  );
-}
-
-function PagamentoActions({
-  pagamento,
-}: {
-  pagamento: LicencaPagamento & { modulo_nome: string };
-}) {
-  const canRegisterPayment =
-    pagamento.status === "open" || pagamento.status === "overdue";
-  const canReopenPayment = pagamento.status === "paid";
-  const canCancelPayment =
-    pagamento.status === "open" || pagamento.status === "overdue";
-
-  return (
-    <div className="flex justify-end gap-1">
-      <Dialog>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <DialogTrigger
-                className={buttonVariants({
-                  variant: "ghost",
-                  size: "icon-sm",
-                })}
-                aria-label="Editar parcela"
-              >
-                <Pencil className="size-4" />
-              </DialogTrigger>
-            }
-          />
-          <TooltipContent>Editar parcela</TooltipContent>
-        </Tooltip>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Editar parcela</DialogTitle>
-            <DialogDescription>
-              Ajuste vencimento, valor ou observações da parcela{" "}
-              {pagamento.numero_parcela}/12.
-            </DialogDescription>
-          </DialogHeader>
-          <LicencaParcelaForm pagamento={pagamento} />
-        </DialogContent>
-      </Dialog>
-
-      {canRegisterPayment ? (
-        <Dialog>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <DialogTrigger
-                  className={buttonVariants({
-                    variant: "ghost",
-                    size: "icon-sm",
-                  })}
-                  aria-label="Registrar pagamento"
-                >
-                  <CircleDollarSign className="size-4" />
-                </DialogTrigger>
-              }
-            />
-            <TooltipContent>Registrar pagamento</TooltipContent>
-          </Tooltip>
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Registrar pagamento</DialogTitle>
-              <DialogDescription>
-                Parcela {pagamento.numero_parcela}/12 de {pagamento.modulo_nome}
-                .
-              </DialogDescription>
-            </DialogHeader>
-            <LicencaPagamentoForm pagamento={pagamento} />
-          </DialogContent>
-        </Dialog>
-      ) : null}
-
-      {canReopenPayment ? (
-        <form action={reopenLicencaPagamento}>
-          <input type="hidden" name="id" value={pagamento.id} />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="submit"
-                  className={buttonVariants({
-                    variant: "ghost",
-                    size: "icon-sm",
-                  })}
-                  aria-label="Reabrir parcela"
-                >
-                  <RotateCcw className="size-4" />
-                </button>
-              }
-            />
-            <TooltipContent>Reabrir parcela</TooltipContent>
-          </Tooltip>
-        </form>
-      ) : null}
-
-      {canCancelPayment ? (
-        <form action={cancelLicencaPagamento}>
-          <input type="hidden" name="id" value={pagamento.id} />
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <button
-                  type="submit"
-                  className={buttonVariants({
-                    variant: "ghost",
-                    size: "icon-sm",
-                  })}
-                  aria-label="Cancelar parcela"
-                >
-                  <Ban className="size-4" />
-                </button>
-              }
-            />
-            <TooltipContent>Cancelar parcela</TooltipContent>
-          </Tooltip>
-        </form>
-      ) : null}
-    </div>
   );
 }
 
@@ -976,12 +833,14 @@ function PagamentoStatusBadge({ status }: { status: LicencaPagamentoStatus }) {
     cancelled: "border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100",
     open: "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50",
     overdue: "border-red-200 bg-red-50 text-red-700 hover:bg-red-50",
+    partial: "border-amber-200 bg-amber-50 text-amber-700",
     paid: "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50",
   };
   const icons = {
     cancelled: CircleX,
     open: Clock3,
     overdue: Clock3,
+    partial: Clock3,
     paid: CircleCheck,
   } satisfies Record<LicencaPagamentoStatus, typeof CircleCheck>;
   const Icon = icons[status];
@@ -1059,7 +918,7 @@ function buildModuloResumo(licencas: Licenca[]) {
     };
 
     current.licencas += 1;
-    current.receita += Number(licenca.valor_anual ?? 0);
+    current.receita += licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0);
     modulos.set(licenca.modulo_id, current);
   });
 
@@ -1092,6 +951,7 @@ function addOneYearIsoDate(value: string) {
     nextDate.setUTCDate(0);
   }
 
+  nextDate.setUTCDate(nextDate.getUTCDate() - 1);
   return [
     nextDate.getUTCFullYear(),
     String(nextDate.getUTCMonth() + 1).padStart(2, "0"),

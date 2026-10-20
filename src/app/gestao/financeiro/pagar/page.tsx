@@ -129,9 +129,10 @@ export default async function PagarPage({
             </>
           }
         >
-          <Table>
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 <TableHead>Descrição</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Situação</TableHead>
@@ -249,6 +250,7 @@ export default async function PagarPage({
               )}
             </TableBody>
           </Table>
+          </div>
           <p className="mt-4 text-xs text-muted-foreground">
             Consulte os pagamentos e estorne lançamentos em{" "}
             <Link className="underline" href="/gestao/financeiro/extratos">

@@ -1,6 +1,9 @@
 "use client";
 
-import { NotificationProvider, NotificationBadge } from "@/app/frotas/notificacoes/notification-center";
+import {
+  NotificationProvider,
+  NotificationBadge,
+} from "@/app/frotas/notificacoes/notification-center";
 import {
   sidebarFooterClass,
   sidebarNavClass,
@@ -8,7 +11,13 @@ import {
 import { usePathname, useSearchParams } from "next/navigation";
 
 import { SidebarRouteLink } from "./sidebar-route-link";
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useLayoutEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { FrotasPrefeituraContext } from "@/app/frotas/frotas-prefeitura-context";
 import { SidebarUserMenu } from "@/components/sidebar-user-menu";
 
@@ -30,6 +39,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   Bell,
+  Building2,
   Headset,
   Car,
   ChartNoAxesCombined,
@@ -48,7 +58,9 @@ const CompanyContext = createContext<((id?: string) => void) | null>(null);
 
 export function FrotasCompanyScope({ empresa }: { empresa?: string }) {
   const select = useContext(CompanyContext);
-  useLayoutEffect(() => { select?.(empresa); }, [empresa, select]);
+  useLayoutEffect(() => {
+    select?.(empresa);
+  }, [empresa, select]);
   return null;
 }
 
@@ -76,7 +88,18 @@ const navOperacoes = [
 ] as const;
 
 const navCadastros = [
-  { key: "oficinas", label: "Oficinas", href: "/frotas/oficinas", icon: Wrench },
+  {
+    key: "secretarias",
+    label: "Secretarias",
+    href: "/frotas/secretarias",
+    icon: Building2,
+  },
+  {
+    key: "oficinas",
+    label: "Oficinas",
+    href: "/frotas/oficinas",
+    icon: Wrench,
+  },
   {
     key: "postos",
     label: "Postos de Combustível",
@@ -92,7 +115,12 @@ const navCadastros = [
 ] as const;
 
 const navAdministracao = [
-  { key: "ajuda", label: "Central de Ajuda", href: "/frotas/ajuda", icon: Headset },
+  {
+    key: "ajuda",
+    label: "Central de Ajuda",
+    href: "/frotas/ajuda",
+    icon: Headset,
+  },
   {
     key: "relatorios",
     label: "Relatórios",
@@ -108,18 +136,32 @@ const navAdministracao = [
   { label: "Configurações", href: "#", icon: Settings },
 ] as const;
 
-export function FrotasPersistentFrame({ children, profile, prefeituras, access }: {
-  children: ReactNode; profile: CurrentUserProfile; prefeituras: FrotaPrefeituraOption[]; access: FrotasPermissionAccess;
+export function FrotasPersistentFrame({
+  children,
+  profile,
+  prefeituras,
+  access,
+}: {
+  children: ReactNode;
+  profile: CurrentUserProfile;
+  prefeituras: FrotaPrefeituraOption[];
+  access: FrotasPermissionAccess;
 }) {
   const pathname = usePathname();
   const search = useSearchParams();
   const [pageEmpresa, setPageEmpresa] = useState<string | undefined>();
   const requested = search.get("prefeitura");
-  const selectedPrefeituraId = profile.role === "bdl_admin"
-    ? (requested && prefeituras.some(item => item.id === requested) ? requested : pageEmpresa ?? prefeituras[0]?.id)
-    : profile.prefeitura_id ?? undefined;
+  const selectedPrefeituraId =
+    profile.role === "bdl_admin"
+      ? requested && prefeituras.some((item) => item.id === requested)
+        ? requested
+        : (pageEmpresa ?? prefeituras[0]?.id)
+      : (profile.prefeitura_id ?? undefined);
   const active = pathname === "/frotas" ? "dashboard" : pathname.split("/")[2];
-  const hrefFor = (href: string) => href === "#" || !selectedPrefeituraId ? href : `${href}?prefeitura=${selectedPrefeituraId}`;
+  const hrefFor = (href: string) =>
+    href === "#" || !selectedPrefeituraId
+      ? href
+      : `${href}?prefeitura=${selectedPrefeituraId}`;
   const visibleOperacoes = navOperacoes.filter((item) => {
     if (item.key === "dashboard") {
       return true;
@@ -144,6 +186,16 @@ export function FrotasPersistentFrame({ children, profile, prefeituras, access }
     return true;
   });
   const visibleCadastros = navCadastros.filter((item) => {
+    if (item.key === "secretarias")
+      return (
+        Boolean(
+          prefeituras.find((empresa) => empresa.id === selectedPrefeituraId)
+            ?.is_prefeitura,
+        ) &&
+        (access.isFullAccess ||
+          access.keys.includes("departments.read") ||
+          access.keys.includes("departments.manage"))
+      );
     if (access.isFullAccess) {
       return true;
     }
@@ -152,7 +204,11 @@ export function FrotasPersistentFrame({ children, profile, prefeituras, access }
       return false;
     }
 
-    if (item.key === "oficinas") return access.keys.includes("workshops.read") || access.keys.includes("workshops.manage");
+    if (item.key === "oficinas")
+      return (
+        access.keys.includes("workshops.read") ||
+        access.keys.includes("workshops.manage")
+      );
 
     if (item.key === "postos") {
       return (
@@ -179,106 +235,118 @@ export function FrotasPersistentFrame({ children, profile, prefeituras, access }
 
   return (
     <CompanyContext.Provider value={setPageEmpresa}>
-    <NotificationProvider key={`${profile.id}-${selectedPrefeituraId}`} empresa={selectedPrefeituraId} enabled>
-    <SidebarProvider className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
-      <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader>
-          <FrotasPrefeituraContext
-            prefeituras={prefeituras}
-            profile={profile}
-            selectedPrefeituraId={selectedPrefeituraId}
-          />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Operações</SidebarGroupLabel>
-            <SidebarGroupContent>
+      <NotificationProvider
+        key={`${profile.id}-${selectedPrefeituraId}`}
+        empresa={selectedPrefeituraId}
+        enabled
+      >
+        <SidebarProvider className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
+          <Sidebar collapsible="icon" variant="inset">
+            <SidebarHeader>
+              <FrotasPrefeituraContext
+                prefeituras={prefeituras}
+                profile={profile}
+                selectedPrefeituraId={selectedPrefeituraId}
+              />
+            </SidebarHeader>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupLabel>Operações</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {visibleOperacoes.map((item) => (
+                      <SidebarMenuItem key={item.key}>
+                        <SidebarMenuButton
+                          className={sidebarNavClass}
+                          isActive={active === item.key}
+                          tooltip={item.label}
+                          render={
+                            <SidebarRouteLink href={hrefFor(item.href)} />
+                          }
+                        >
+                          <item.icon />
+                          <span>{item.label}</span>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    ))}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              {visibleCadastros.length ? (
+                <>
+                  <SidebarSeparator />
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {visibleCadastros.map((item) => (
+                          <SidebarMenuItem key={item.label}>
+                            <SidebarMenuButton
+                              className={sidebarNavClass}
+                              isActive={"key" in item && active === item.key}
+                              tooltip={item.label}
+                              render={
+                                <SidebarRouteLink href={hrefFor(item.href)} />
+                              }
+                            >
+                              <item.icon />
+                              <span>{item.label}</span>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                </>
+              ) : null}
+              {visibleAdministracao.length ? (
+                <>
+                  <SidebarSeparator />
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Administração</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu>
+                        {visibleAdministracao.map((item) => (
+                          <SidebarMenuItem key={item.label}>
+                            <SidebarMenuButton
+                              className={sidebarNavClass}
+                              isActive={"key" in item && active === item.key}
+                              tooltip={item.label}
+                              render={
+                                <SidebarRouteLink href={hrefFor(item.href)} />
+                              }
+                            >
+                              <item.icon />
+                              <span>{item.label}</span>
+                            </SidebarMenuButton>
+                            {"key" in item && item.key === "notificacoes" && (
+                              <NotificationBadge />
+                            )}
+                          </SidebarMenuItem>
+                        ))}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                </>
+              ) : null}
+            </SidebarContent>
+            <SidebarFooter className={sidebarFooterClass}>
               <SidebarMenu>
-                {visibleOperacoes.map((item) => (
-                  <SidebarMenuItem key={item.key}>
-                    <SidebarMenuButton
-                      className={sidebarNavClass}
-                      isActive={active === item.key}
-                      tooltip={item.label}
-                      render={<SidebarRouteLink href={hrefFor(item.href)} />}
-                    >
-                      <item.icon />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                <SidebarUserMenu
+                  emphasized
+                  profile={profile}
+                  tooltip="Conta Vibe Frotas"
+                />
               </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-          {visibleCadastros.length ? (
-            <>
-              <SidebarSeparator />
-              <SidebarGroup>
-                <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {visibleCadastros.map((item) => (
-                      <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton
-                          className={sidebarNavClass}
-                          isActive={"key" in item && active === item.key}
-                          tooltip={item.label}
-                          render={<SidebarRouteLink href={hrefFor(item.href)} />}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </>
-          ) : null}
-          {visibleAdministracao.length ? (
-            <>
-              <SidebarSeparator />
-              <SidebarGroup>
-                <SidebarGroupLabel>Administração</SidebarGroupLabel>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {visibleAdministracao.map((item) => (
-                      <SidebarMenuItem key={item.label}>
-                        <SidebarMenuButton
-                          className={sidebarNavClass}
-                          isActive={"key" in item && active === item.key}
-                          tooltip={item.label}
-                          render={<SidebarRouteLink href={hrefFor(item.href)} />}
-                        >
-                          <item.icon />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                        {"key" in item && item.key === "notificacoes" && <NotificationBadge />}
-                      </SidebarMenuItem>
-                    ))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            </>
-          ) : null}
-        </SidebarContent>
-        <SidebarFooter className={sidebarFooterClass}>
-          <SidebarMenu>
-            <SidebarUserMenu
-              emphasized
-              profile={profile}
-              tooltip="Conta Vibe Frotas"
-            />
-          </SidebarMenu>
-        </SidebarFooter>
-        <SidebarRail />
-      </Sidebar>
+            </SidebarFooter>
+            <SidebarRail />
+          </Sidebar>
 
-      <SidebarInset className="min-h-0 overflow-hidden print:m-0 print:block print:min-h-0 print:w-full print:overflow-visible print:rounded-none print:bg-white print:shadow-none">
-        {children}
-      </SidebarInset>
-    </SidebarProvider>
-    </NotificationProvider>
+          <SidebarInset className="min-h-0 overflow-hidden print:m-0 print:block print:min-h-0 print:w-full print:overflow-visible print:rounded-none print:bg-white print:shadow-none">
+            {children}
+          </SidebarInset>
+        </SidebarProvider>
+      </NotificationProvider>
     </CompanyContext.Provider>
   );
 }

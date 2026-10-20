@@ -1,8 +1,10 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CancellationDetails } from "@/components/cancellation-details";
 import { CancelFrotaDialog } from "@/components/cancel-frota-dialog";
 import { ListStatusActionButton } from "@/components/list-status-action-button";
+import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -78,6 +80,7 @@ type PageProps = {
     q?: string;
     registro?: string;
     status?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -101,13 +104,17 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "uso-veiculo", params);
   const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getUsoVeiculosData({
+    ids: databasePage.ids,
+    lightweight: true,
     registroId: params.registro,
-    prefeituraId,
+    prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
     status: params.status,
   });
   const searchTerm = params.q?.trim();
+  const usagePage = { ...databasePage, items: orderPageItems(data.usos, databasePage) };
   const buildFilterHref = (values: {
     prefeitura?: string | null;
     status?: string | null;
@@ -154,8 +161,8 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
       selectedPrefeituraId={data.selectedPrefeituraId}
       title="Uso do Veículo"
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-3 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -169,14 +176,14 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Em uso", value: data.metricas.emUso, tone: "inUse" },
-                  { label: "Devolvidos", value: data.metricas.devolvidos, tone: "success" },
-                  { label: "Total", value: data.metricas.total },
+                  { label: "Em uso", value: (databasePage.statuses.in_use ?? 0), tone: "inUse" },
+                  { label: "Devolvidos", value: (databasePage.statuses.returned ?? 0), tone: "success" },
+                  { label: "Total", value: databasePage.total },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || data.usos.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -194,7 +201,7 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={7} /> : data.usos.map((uso) => (
+                    {loading ? <TableLoadingRows columns={7} /> : usagePage.items.map((uso) => (
                       <TableRow key={uso.id}>
                         <TableCell>
                           <div className="min-w-[180px]">
@@ -258,6 +265,7 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
                 veiculos={data.veiculos} motoristas={data.motoristas}
               />
             )}
+            {!loading && <ListPagination page={usagePage.page} pageCount={usagePage.pageCount} pathname="/frotas/uso-veiculo" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
           </CardContent>
         </Card>
       </main>

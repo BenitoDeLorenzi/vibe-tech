@@ -6,6 +6,7 @@ import Link from "next/link";
 import { SupportBadge } from "@/components/support/support-live";
 import { SidebarIdentity } from "@/components/sidebar-identity";
 import {
+  CircleDollarSign,
   Building2,
   Headset,
   Car,
@@ -41,6 +42,7 @@ type AdminSidebarProps = {
     | "dashboard"
     | "empresas"
     | "licencas"
+    | "cobrancas"
     | "usuarios"
     | "modulos"
     | "atendimentos"
@@ -52,6 +54,7 @@ const navOperacoes = [
   { key: "dashboard", label: "Visão geral", href: "/", icon: LayoutDashboard },
   { key: "empresas", label: "Empresas", href: "/empresas", icon: Building2 },
   { key: "licencas", label: "Licenças", href: "/licencas", icon: KeyRound },
+  { key: "cobrancas", label: "Cobranças", href: "/cobrancas", icon: CircleDollarSign },
   { key: "usuarios", label: "Usuários", href: "/usuarios", icon: Users },
 ] as const;
 
@@ -81,7 +84,7 @@ export function AdminSidebar({ active, profile }: AdminSidebarProps) {
           icon={<ShieldCheck className="size-4 text-muted-foreground" />}
           name="Vibe Tech"
           description="Portal administrativo"
-          logoUrl="/vibe-tech-mark.svg"
+          logoUrl="/brand/vibe-tech-icon.png"
         />
       </SidebarHeader>
 

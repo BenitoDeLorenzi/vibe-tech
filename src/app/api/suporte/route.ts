@@ -34,7 +34,11 @@ export async function GET(request: Request) {
     if (status && !["waiting", "active", "resolved"].includes(status)) return fail("Status inválido.");
     const page = Number(params.get("page") || 1);
     if (!Number.isInteger(page) || page < 1 || page > 10000) return fail("Página inválida.");
-    const { data, error } = await db.rpc("suporte_listar", { ...supportRpcScope(scope), p_status: status, p_busca: (params.get("q") ?? "").slice(0, 120), p_page: page });
+    const size = Number(params.get("size") ?? 25);
+    if (!Number.isInteger(size) || size < 1 || size > 25) return fail("Tamanho de página inválido.");
+    const { data, error } = await db.rpc("suporte_listar_pagina", {
+      ...supportRpcScope(scope), p_status: status, p_busca: (params.get("q") ?? "").slice(0, 120), p_page: page, p_size: size,
+    });
     return error ? fail("Não foi possível carregar os atendimentos.", 500) : json(data);
   } catch { return fail("Não foi possível carregar o suporte. Tente novamente.", 500); }
 }

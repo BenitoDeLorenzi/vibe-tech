@@ -7,6 +7,7 @@ export type Prefeitura = {
   nome: string;
   nome_fantasia?: string | null;
   cnpj: string;
+  is_prefeitura: boolean;
   brasao_path: string | null;
   brasao_url: string | null;
   cidade: string | null;
@@ -25,6 +26,7 @@ type PrefeituraRow = {
   nome: string;
   nome_fantasia?: string | null;
   cnpj: string;
+  is_prefeitura: boolean;
   brasao_path: string | null;
   brasao_url: string | null;
   cidade: string | null;
@@ -51,7 +53,7 @@ export async function getPrefeituras(params?: {
   let query = supabase
     .from("empresas")
     .select(
-      "id,nome,nome_fantasia,cnpj,brasao_path,brasao_url,cidade,uf,cep,endereco,status,created_at,licencas(status,fim,modulos(nome))",
+      "id,nome,nome_fantasia,cnpj,is_prefeitura,brasao_path,brasao_url,cidade,uf,cep,endereco,status,created_at,licencas(status,fim,modulos(nome))",
     )
     .order("created_at", { ascending: false });
 
@@ -81,6 +83,7 @@ export async function getPrefeituras(params?: {
       nome: prefeitura.nome,
       nome_fantasia: prefeitura.nome_fantasia,
       cnpj: prefeitura.cnpj ?? "",
+      is_prefeitura: prefeitura.is_prefeitura,
       brasao_path: prefeitura.brasao_path,
       brasao_url: prefeitura.brasao_url,
       cidade: prefeitura.cidade,

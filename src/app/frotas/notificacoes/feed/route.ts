@@ -7,10 +7,12 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const scope = await getNotificationScope(params.get("empresa"));
   if (!scope) return new Response(null, { status: 403 });
-  const before = params.get("before");
-  if (before && !/^[1-9]\d{0,14}$/.test(before)) return new Response(null, { status: 400 });
-  const { data, error } = await createSupabaseServerClient().rpc("listar_frota_notificacoes", {
-    p_empresa: scope.empresaId, p_usuario: scope.usuarioId, p_before: before ?? null, p_tipos: scope.tipos,
+  const size = Number(params.get("size") ?? 13);
+  if (!Number.isInteger(size) || size < 1 || size > 13) return new Response(null, { status: 400 });
+  const requestedPage = Number(params.get("page") ?? 1);
+  if (!Number.isSafeInteger(requestedPage) || requestedPage < 1 || requestedPage > 100000) return new Response(null, { status: 400 });
+  const { data, error } = await createSupabaseServerClient().rpc("frota_notificacoes_pagina", {
+    p_empresa: scope.empresaId, p_usuario: scope.usuarioId, p_tipos: scope.tipos, p_page: requestedPage, p_size: size,
   });
   if (error) return new Response(null, { status: 500 });
   return Response.json(data, { headers: { "Cache-Control": "private, no-store" } });

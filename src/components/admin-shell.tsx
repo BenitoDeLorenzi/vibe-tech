@@ -16,6 +16,7 @@ type AdminShellProps = {
     | "dashboard"
     | "empresas"
     | "licencas"
+    | "cobrancas"
     | "usuarios"
     | "modulos"
     | "atendimentos"

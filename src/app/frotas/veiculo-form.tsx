@@ -1,16 +1,12 @@
 "use client";
 
+import { SecretariaSelect } from "./secretarias/secretaria-select";
 import { FormDialogCancel } from "@/components/form-dialog-cancel";
 
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
-import {
-  ArrowLeft,
-  AlertCircle,
-  CheckCircle2,
-  Loader2,
-} from "lucide-react";
+import { Controller, useForm, useWatch } from "react-hook-form";
+import { ArrowLeft, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { PrefeituraCombobox } from "@/components/prefeitura-combobox";
@@ -49,6 +45,7 @@ type VeiculoFormProps = {
 };
 
 type VeiculoFormValues = {
+  secretaria_id: string;
   ano_fabricacao: string;
   ano_modelo: string;
   carroceria: string;
@@ -121,16 +118,24 @@ export function VeiculoForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, actionPending] = useActionState(
     isEditing ? updateVeiculo : createVeiculo,
-    {}
+    {},
   );
   const form = useForm<VeiculoFormValues>({
     defaultValues: {
       ...getDefaultValues(veiculo, selectedPrefeituraId),
       ...initialValues,
       prefeitura_id:
-        initialValues?.prefeitura_id ?? veiculo?.prefeitura_id ?? selectedPrefeituraId ?? null,
+        initialValues?.prefeitura_id ??
+        veiculo?.prefeitura_id ??
+        selectedPrefeituraId ??
+        null,
     },
   });
+
+  const empresaId = useWatch({ control: form.control, name: "prefeitura_id" });
+  const isPrefeitura = prefeituras.some(
+    (e) => e.id === empresaId && e.is_prefeitura,
+  );
 
   useEffect(() => {
     if (state.success) {
@@ -155,6 +160,7 @@ export function VeiculoForm({
     }
 
     formData.set("prefeitura_id", values.prefeitura_id ?? "");
+    formData.set("secretaria_id", isPrefeitura ? values.secretaria_id : "");
     formData.set("renavam", values.renavam);
     formData.set("placa", values.placa);
     formData.set("lugares", values.lugares);
@@ -186,7 +192,12 @@ export function VeiculoForm({
   }
 
   if (veiculo?.status === "processing") {
-    return <div className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">A consulta está em andamento. Aguarde o resultado da Plexi para conferir e finalizar o cadastro.</div>;
+    return (
+      <div className="rounded-lg border bg-muted/40 p-4 text-sm" role="status">
+        A consulta está em andamento. Aguarde o resultado da Plexi para conferir
+        e finalizar o cadastro.
+      </div>
+    );
   }
 
   return (
@@ -197,9 +208,13 @@ export function VeiculoForm({
       noValidate
     >
       {veiculo?.status === "consult_error" ? (
-        <div className="rounded-lg border bg-muted/40 p-3 text-sm" role="status">
+        <div
+          className="rounded-lg border bg-muted/40 p-3 text-sm"
+          role="status"
+        >
           {veiculo.consulta_status === "error"
-            ? veiculo.consulta_mensagem ?? "A consulta falhou. Preencha os dados para concluir o cadastro manualmente."
+            ? (veiculo.consulta_mensagem ??
+              "A consulta falhou. Preencha os dados para concluir o cadastro manualmente.")
             : "Os dados da Plexi foram recebidos. Confira as informações e confirme o cadastro para liberar o veículo para uso."}
         </div>
       ) : null}
@@ -223,7 +238,10 @@ export function VeiculoForm({
                   <PrefeituraCombobox
                     id="prefeitura_id"
                     value={field.value}
-                    onChange={field.onChange}
+                    onChange={(value) => {
+                      field.onChange(value);
+                      form.setValue("secretaria_id", "");
+                    }}
                     prefeituras={prefeituras}
                     disabled={actionPending || isEditing}
                     invalid={fieldState.invalid}
@@ -234,63 +252,286 @@ export function VeiculoForm({
             />
           ) : null}
 
+          {isPrefeitura && empresaId && (
+            <Controller
+              control={form.control}
+              name="secretaria_id"
+              rules={{ required: "Selecione a secretaria do veículo." }}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <SecretariaSelect
+                    key={empresaId}
+                    empresaId={empresaId}
+                    value={field.value}
+                    onChange={field.onChange}
+                    disabled={actionPending}
+                  />
+                  <FieldError errors={[fieldState.error]} />
+                </Field>
+              )}
+            />
+          )}
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Placa" maxLength={7} name="placa" rules={{ pattern: { value: /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/, message: "Informe uma placa brasileira válida." }, required: "Informe a placa." }} transform={formatPlateInput} />
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Renavam" maxLength={11} name="renavam" rules={{ pattern: { value: /^\d{11}$/, message: "Informe o Renavam com 11 dígitos." }, required: "Informe o Renavam." }} transform={(value) => onlyDigits(value).slice(0, 11)} />
-            <TextField className="sm:col-span-2" control={form.control} disabled={actionPending} inputMode="numeric" label="Lugares" name="lugares" transform={(value) => onlyDigits(value).slice(0, 2)} />
-            <TextField className="sm:col-span-2" control={form.control} disabled={actionPending} inputMode="numeric" label="Ano fabricação" name="ano_fabricacao" rules={{ pattern: { value: /^\d{4}$/, message: "Informe um ano válido." }, required: "Informe o ano de fabricação." }} transform={(value) => onlyDigits(value).slice(0, 4)} />
-            <TextField className="sm:col-span-2" control={form.control} disabled={actionPending} inputMode="numeric" label="Ano modelo" name="ano_modelo" rules={{ pattern: { value: /^\d{4}$/, message: "Informe um ano válido." }, required: "Informe o ano modelo." }} transform={(value) => onlyDigits(value).slice(0, 4)} />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Placa"
+              maxLength={7}
+              name="placa"
+              rules={{
+                pattern: {
+                  value: /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/,
+                  message: "Informe uma placa brasileira válida.",
+                },
+                required: "Informe a placa.",
+              }}
+              transform={formatPlateInput}
+            />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Renavam"
+              maxLength={11}
+              name="renavam"
+              rules={{
+                pattern: {
+                  value: /^\d{11}$/,
+                  message: "Informe o Renavam com 11 dígitos.",
+                },
+                required: "Informe o Renavam.",
+              }}
+              transform={(value) => onlyDigits(value).slice(0, 11)}
+            />
+            <TextField
+              className="sm:col-span-2"
+              control={form.control}
+              disabled={actionPending}
+              inputMode="numeric"
+              label="Lugares"
+              name="lugares"
+              transform={(value) => onlyDigits(value).slice(0, 2)}
+            />
+            <TextField
+              className="sm:col-span-2"
+              control={form.control}
+              disabled={actionPending}
+              inputMode="numeric"
+              label="Ano fabricação"
+              name="ano_fabricacao"
+              rules={{
+                pattern: {
+                  value: /^\d{4}$/,
+                  message: "Informe um ano válido.",
+                },
+                required: "Informe o ano de fabricação.",
+              }}
+              transform={(value) => onlyDigits(value).slice(0, 4)}
+            />
+            <TextField
+              className="sm:col-span-2"
+              control={form.control}
+              disabled={actionPending}
+              inputMode="numeric"
+              label="Ano modelo"
+              name="ano_modelo"
+              rules={{
+                pattern: {
+                  value: /^\d{4}$/,
+                  message: "Informe um ano válido.",
+                },
+                required: "Informe o ano modelo.",
+              }}
+              transform={(value) => onlyDigits(value).slice(0, 4)}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <SelectField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Tipo" name="tipo" options={tipoItems} rules={{ required: "Informe o tipo." }} />
-            <SelectField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Espécie" name="especie" options={especieItems} />
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Marca" name="marca" rules={{ required: "Informe a marca." }} />
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Modelo" name="modelo" rules={{ required: "Informe o modelo." }} />
+            <SelectField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Tipo"
+              name="tipo"
+              options={tipoItems}
+              rules={{ required: "Informe o tipo." }}
+            />
+            <SelectField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Espécie"
+              name="especie"
+              options={especieItems}
+            />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Marca"
+              name="marca"
+              rules={{ required: "Informe a marca." }}
+            />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Modelo"
+              name="modelo"
+              rules={{ required: "Informe o modelo." }}
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Cor" name="cor" />
-            <SelectField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Combustível" name="combustivel" options={combustivelItems} rules={{ required: "Informe o combustível." }} />
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Carroceria" name="carroceria" />
-            <TextField className="sm:col-span-3" control={form.control} disabled={actionPending} label="Categoria" name="categoria" />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Cor"
+              name="cor"
+            />
+            <SelectField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Combustível"
+              name="combustivel"
+              options={combustivelItems}
+              rules={{ required: "Informe o combustível." }}
+            />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Carroceria"
+              name="carroceria"
+            />
+            <TextField
+              className="sm:col-span-3"
+              control={form.control}
+              disabled={actionPending}
+              label="Categoria"
+              name="categoria"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Data aquisição" name="data_aquisicao" placeholder="dd/mm/aaaa" transform={formatDateInputValue} />
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Município emplacamento" name="municipio_emplacamento" />
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Situação" name="situacao_veicular" placeholder="Em circulação" />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Data aquisição"
+              name="data_aquisicao"
+              placeholder="dd/mm/aaaa"
+              transform={formatDateInputValue}
+            />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Município emplacamento"
+              name="municipio_emplacamento"
+            />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Situação"
+              name="situacao_veicular"
+              placeholder="Em circulação"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Licenciado" name="licenciado" placeholder="2026 CRLV Digital" />
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Origem dos dados" name="origem_dados" />
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Principal condutor" name="principal_condutor" />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Licenciado"
+              name="licenciado"
+              placeholder="2026 CRLV Digital"
+            />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Origem dos dados"
+              name="origem_dados"
+            />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Principal condutor"
+              name="principal_condutor"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-6" control={form.control} disabled={actionPending} label="Proprietário atual" name="proprietario_atual" />
-            <TextField className="sm:col-span-6" control={form.control} disabled={actionPending} label="Proprietário anterior" name="proprietario_anterior" />
+            <TextField
+              className="sm:col-span-6"
+              control={form.control}
+              disabled={actionPending}
+              label="Proprietário atual"
+              name="proprietario_atual"
+            />
+            <TextField
+              className="sm:col-span-6"
+              control={form.control}
+              disabled={actionPending}
+              label="Proprietário anterior"
+              name="proprietario_anterior"
+            />
           </div>
 
           <div className="grid gap-3 sm:grid-cols-12">
-            <TextField className="sm:col-span-4" control={form.control} disabled={actionPending} label="Restrição de venda" name="restricao_venda" placeholder="Sem gravame" />
-            <TextField className="sm:col-span-8" control={form.control} disabled={actionPending} label="Restrições" name="restricoes" />
+            <TextField
+              className="sm:col-span-4"
+              control={form.control}
+              disabled={actionPending}
+              label="Restrição de venda"
+              name="restricao_venda"
+              placeholder="Sem gravame"
+            />
+            <TextField
+              className="sm:col-span-8"
+              control={form.control}
+              disabled={actionPending}
+              label="Restrições"
+              name="restricoes"
+            />
           </div>
         </FieldGroup>
       </fieldset>
 
       <DialogFooter className="flex-col-reverse gap-2 sm:flex-row">
         {onBack ? (
-          <Button type="button" variant="outline" className="gap-2 sm:mr-auto" onClick={onBack} disabled={actionPending}>
+          <Button
+            type="button"
+            variant="outline"
+            className="gap-2 sm:mr-auto"
+            onClick={onBack}
+            disabled={actionPending}
+          >
             <ArrowLeft className="size-4" />
             Voltar à consulta
           </Button>
         ) : null}
         <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
-          {actionPending ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
-          {actionPending ? "Salvando..." : veiculo?.status === "consult_error" ? "Confirmar cadastro" : isEditing ? "Salvar alterações" : "Cadastrar veículo"}
+          {actionPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <CheckCircle2 className="size-4" />
+          )}
+          {actionPending
+            ? "Salvando..."
+            : veiculo?.status === "consult_error"
+              ? "Confirmar cadastro"
+              : isEditing
+                ? "Salvar alterações"
+                : "Cadastrar veículo"}
         </Button>
       </DialogFooter>
     </form>
@@ -299,11 +540,19 @@ export function VeiculoForm({
 
 function getDefaultValues(
   veiculo: FrotaVeiculo | undefined,
-  selectedPrefeituraId: string | undefined
+  selectedPrefeituraId: string | undefined,
 ): VeiculoFormValues {
   return {
-    ano_fabricacao: veiculo?.ano_fabricacao ? String(veiculo.ano_fabricacao) : veiculo?.ano ? String(veiculo.ano) : "",
-    ano_modelo: veiculo?.ano_modelo ? String(veiculo.ano_modelo) : veiculo?.ano ? String(veiculo.ano) : "",
+    ano_fabricacao: veiculo?.ano_fabricacao
+      ? String(veiculo.ano_fabricacao)
+      : veiculo?.ano
+        ? String(veiculo.ano)
+        : "",
+    ano_modelo: veiculo?.ano_modelo
+      ? String(veiculo.ano_modelo)
+      : veiculo?.ano
+        ? String(veiculo.ano)
+        : "",
     carroceria: veiculo?.carroceria ?? "",
     categoria: veiculo?.categoria ?? "",
     combustivel: veiculo?.combustivel ?? "",
@@ -318,6 +567,7 @@ function getDefaultValues(
     origem_dados: veiculo?.origem_dados ?? "Documento",
     placa: veiculo?.placa ?? "",
     prefeitura_id: veiculo?.prefeitura_id ?? selectedPrefeituraId ?? null,
+    secretaria_id: veiculo?.secretaria_id ?? "",
     principal_condutor: veiculo?.principal_condutor ?? "",
     proprietario_anterior: veiculo?.proprietario_anterior ?? "",
     proprietario_atual: veiculo?.proprietario_atual ?? "",
@@ -325,7 +575,10 @@ function getDefaultValues(
     restricao_venda: veiculo?.restricao_venda ?? "",
     restricoes: veiculo?.restricoes ?? "",
     situacao_veicular: veiculo?.situacao_veicular ?? "",
-    status: veiculo?.status === "processing" || veiculo?.status === "consult_error" ? "active" : veiculo?.status ?? "active",
+    status:
+      veiculo?.status === "processing" || veiculo?.status === "consult_error"
+        ? "active"
+        : (veiculo?.status ?? "active"),
     tipo: veiculo?.tipo ?? "",
   };
 }
@@ -355,13 +608,14 @@ function formatDateInput(value: string | null | undefined) {
 function formatDateInputValue(value: string) {
   const digits = onlyDigits(value).slice(0, 8);
 
-  return digits
-    .replace(/(\d{2})(\d)/, "$1/$2")
-    .replace(/(\d{2})(\d)/, "$1/$2");
+  return digits.replace(/(\d{2})(\d)/, "$1/$2").replace(/(\d{2})(\d)/, "$1/$2");
 }
 
 function formatPlateInput(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7);
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 7);
 }
 
 function onlyDigits(value: string) {
@@ -461,7 +715,11 @@ function SelectField({
             onValueChange={(value) => field.onChange(value ?? "")}
             disabled={disabled}
           >
-            <SelectTrigger id={name} className="w-full" aria-invalid={fieldState.invalid}>
+            <SelectTrigger
+              id={name}
+              className="w-full"
+              aria-invalid={fieldState.invalid}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

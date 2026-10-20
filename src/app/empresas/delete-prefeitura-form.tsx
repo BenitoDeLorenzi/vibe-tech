@@ -1,5 +1,7 @@
 "use client";
 
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import { useFormStatus } from "react-dom";
 import { Loader2, Trash2 } from "lucide-react";
 
@@ -25,6 +27,7 @@ function DeleteButton() {
 
   return (
     <DialogFooter>
+      <FormDialogCancel disabled={pending} />
       <Button
         type="submit"
         variant="destructive"

@@ -1,4 +1,6 @@
 "use server";
+import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 import { requireRole } from "@/lib/auth-data";
 
 import { revalidatePath } from "next/cache";
@@ -34,63 +36,34 @@ export async function createPrefeitura(
   formData: FormData,
 ): Promise<PrefeituraActionState> {
   await requireRole(["bdl_admin"]);
-  const nome = getRequiredValue(formData, "nome");
-  const nome_fantasia = getOptionalValue(formData, "nome_fantasia");
-  if (nome_fantasia && (nome_fantasia.length < 2 || nome_fantasia.length > 80))
-    return { error: "Nome fantasia deve ter de 2 a 80 caracteres." };
-  const cnpj = getRequiredValue(formData, "cnpj");
-  if (nome.length < 2 || cnpj.replace(/\D/g, "").length !== 14) {
-    return { error: "Informe o nome da empresa e um CNPJ com 14 dígitos." };
-  }
-  const cidade = getOptionalValue(formData, "cidade");
-  const uf = getOptionalValue(formData, "uf")?.toUpperCase();
-  const cep = getOptionalValue(formData, "cep");
-  const endereco = getOptionalValue(formData, "endereco");
-  const brasao = formData.get("brasao");
-
+  const parsed = parseEmpresa(formData);
+  if ("error" in parsed) return parsed;
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("empresas")
-    .insert({
-      nome,
-      nome_fantasia,
-      cnpj,
-      cidade,
-      uf,
-      cep,
-      endereco,
-      status: "active",
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
-    return {
-      error: formatSupabaseError(error?.message ?? "Empresa não cadastrada."),
-    };
+  const id = randomUUID();
+  const brasao = formData.get("brasao");
+  let logo: { brasao_path: string; brasao_url: string } | undefined;
+  if (
+    brasao instanceof File &&
+    brasao.size > 0 &&
+    formData.get("remove_brasao") !== "true"
+  ) {
+    const uploaded = await uploadPrefeituraBrasao(supabase, id, brasao);
+    if ("error" in uploaded) return uploaded;
+    logo = uploaded;
   }
-
-  if (brasao instanceof File && brasao.size > 0) {
-    const uploadResult = await uploadPrefeituraBrasao(
-      supabase,
-      data.id,
-      brasao,
-    );
-
-    if ("error" in uploadResult) {
-      return uploadResult;
-    }
-
-    const { error: updateError } = await supabase
-      .from("empresas")
-      .update(uploadResult)
-      .eq("id", data.id);
-
-    if (updateError) {
-      return { error: formatSupabaseError(updateError.message) };
-    }
+  const { error } = await supabase.from("empresas").insert({
+    id,
+    ...parsed.values,
+    status: "active",
+    ...logo,
+  });
+  if (error) {
+    if (logo)
+      await supabase.storage
+        .from(prefeituraBrasaoBucket)
+        .remove([logo.brasao_path]);
+    return { error: formatSupabaseError(error.message) };
   }
-
   revalidatePath("/", "layout");
   revalidatePath("/empresas");
   return { success: "Empresa cadastrada com sucesso." };
@@ -101,64 +74,87 @@ export async function updatePrefeitura(
   formData: FormData,
 ): Promise<PrefeituraActionState> {
   await requireRole(["bdl_admin"]);
-  const id = getRequiredValue(formData, "id");
-  const nome = getRequiredValue(formData, "nome");
-  const nome_fantasia = getOptionalValue(formData, "nome_fantasia");
-  if (nome_fantasia && (nome_fantasia.length < 2 || nome_fantasia.length > 80))
-    return { error: "Nome fantasia deve ter de 2 a 80 caracteres." };
-  const cnpj = getRequiredValue(formData, "cnpj");
-  if (nome.length < 2 || cnpj.replace(/\D/g, "").length !== 14) {
-    return { error: "Informe o nome da empresa e um CNPJ com 14 dígitos." };
-  }
-  const cidade = getOptionalValue(formData, "cidade");
-  const uf = getOptionalValue(formData, "uf")?.toUpperCase();
-  const cep = getOptionalValue(formData, "cep");
-  const endereco = getOptionalValue(formData, "endereco");
-  const currentBrasaoPath = getOptionalValue(formData, "current_brasao_path");
-  const brasao = formData.get("brasao");
-
+  const id = getOptionalValue(formData, "id");
+  if (!id) return { error: "Empresa não informada." };
+  const parsed = parseEmpresa(formData);
+  if ("error" in parsed) return parsed;
   const supabase = createSupabaseServerClient();
-  let brasaoPayload: Partial<{
-    brasao_path: string;
-    brasao_url: string;
-  }> = {};
-
-  if (brasao instanceof File && brasao.size > 0) {
-    const uploadResult = await uploadPrefeituraBrasao(
-      supabase,
-      id,
-      brasao,
-      currentBrasaoPath,
-    );
-
-    if ("error" in uploadResult) {
-      return { error: uploadResult.error };
-    }
-
-    brasaoPayload = uploadResult;
-  }
-
-  const { error } = await supabase
+  // Read the stored path; never accept a storage deletion target from the form.
+  const { data: current, error: readError } = await supabase
     .from("empresas")
-    .update({
-      nome,
-      nome_fantasia,
-      cnpj,
-      cidade,
-      uf,
-      cep,
-      endereco,
-      ...brasaoPayload,
-    })
-    .eq("id", id);
-
-  if (error) {
-    return { error: formatSupabaseError(error.message) };
+    .select("brasao_path")
+    .eq("id", id)
+    .single();
+  if (readError || !current)
+    return {
+      error:
+        "Não foi possível carregar a empresa. Atualize a página e tente novamente.",
+    };
+  const brasao = formData.get("brasao");
+  const remove = formData.get("remove_brasao") === "true";
+  let logo:
+    { brasao_path: string | null; brasao_url: string | null } | undefined;
+  if (remove) {
+    logo = { brasao_path: null, brasao_url: null };
+  } else if (brasao instanceof File && brasao.size > 0) {
+    const uploaded = await uploadPrefeituraBrasao(supabase, id, brasao);
+    if ("error" in uploaded) return uploaded;
+    logo = uploaded;
   }
-
+  let query = supabase
+    .from("empresas")
+    .update({ ...parsed.values, ...logo })
+    .eq("id", id);
+  if (logo)
+    query = current.brasao_path
+      ? query.eq("brasao_path", current.brasao_path)
+      : query.is("brasao_path", null);
+  const { data, error } = await query.select("id");
+  if (error || !data?.length) {
+    if (logo?.brasao_path)
+      await supabase.storage
+        .from(prefeituraBrasaoBucket)
+        .remove([logo.brasao_path]);
+    return {
+      error: error
+        ? formatSupabaseError(error.message)
+        : "O cadastro mudou durante a edição. Atualize a página e tente novamente.",
+    };
+  }
+  // Only discard the previous image after the new reference has been saved.
+  if (logo && current.brasao_path?.startsWith(`${id}/`)) {
+    await supabase.storage
+      .from(prefeituraBrasaoBucket)
+      .remove([current.brasao_path]);
+  }
   revalidatePath("/", "layout");
   revalidatePath("/empresas");
   return { success: "Empresa atualizada com sucesso." };
+}
+
+function parseEmpresa(formData: FormData) {
+  const nome = getOptionalValue(formData, "nome") ?? "";
+  const nome_fantasia = getOptionalValue(formData, "nome_fantasia");
+  const cnpj = getOptionalValue(formData, "cnpj") ?? "";
+  const flag = formData.get("is_prefeitura");
+  if (flag !== "true" && flag !== "false")
+    return { error: "Informe se a empresa é uma prefeitura." };
+  if (nome_fantasia && (nome_fantasia.length < 2 || nome_fantasia.length > 80))
+    return { error: "Nome fantasia deve ter de 2 a 80 caracteres." };
+  if (nome.length < 2 || cnpj.replace(/\D/g, "").length !== 14)
+    return { error: "Informe o nome da empresa e um CNPJ com 14 dígitos." };
+  return {
+    values: {
+      nome,
+      nome_fantasia,
+      cnpj,
+      is_prefeitura: flag === "true",
+      cidade: getOptionalValue(formData, "cidade"),
+      uf: getOptionalValue(formData, "uf")?.toUpperCase(),
+      cep: getOptionalValue(formData, "cep"),
+      endereco: getOptionalValue(formData, "endereco"),
+    },
+  };
 }
 
 export async function updatePrefeituraStatus(formData: FormData) {
@@ -225,9 +221,8 @@ async function uploadPrefeituraBrasao(
   supabase: ReturnType<typeof createSupabaseServerClient>,
   prefeituraId: string,
   file: File,
-  previousPath?: string | null,
 ): Promise<PrefeituraBrasaoUploadResult> {
-  if (!file.type.startsWith("image/")) {
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
     return { error: "Envie uma imagem válida para o logotipo." };
   }
 
@@ -235,24 +230,31 @@ async function uploadPrefeituraBrasao(
     return { error: "O logotipo deve ter no máximo 3 MB." };
   }
 
+  let image: Buffer;
+  try {
+    const source = sharp(Buffer.from(await file.arrayBuffer()), {
+      limitInputPixels: 25000000,
+    });
+    const metadata = await source.metadata();
+    if (!["jpeg", "png", "webp"].includes(metadata.format ?? ""))
+      return { error: "Formato de imagem inválido." };
+    image = await source
+      .rotate()
+      .resize(512, 512, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 85 })
+      .toBuffer();
+  } catch {
+    return { error: "Não foi possível ler o logotipo. Escolha outra imagem." };
+  }
   const bucketError = await ensurePrefeituraBrasaoBucket(supabase);
-
-  if (bucketError) {
-    return { error: bucketError };
-  }
-
-  if (previousPath) {
-    await supabase.storage.from(prefeituraBrasaoBucket).remove([previousPath]);
-  }
-
-  const extension = getImageExtension(file);
-  const path = `${prefeituraId}/brasao-${Date.now()}.${extension}`;
+  if (bucketError) return { error: bucketError };
+  const path = `${prefeituraId}/brasao-${randomUUID()}.webp`;
   const { error: uploadError } = await supabase.storage
     .from(prefeituraBrasaoBucket)
-    .upload(path, file, {
+    .upload(path, image, {
       cacheControl: "3600",
-      contentType: file.type,
-      upsert: true,
+      contentType: "image/webp",
+      upsert: false,
     });
 
   if (uploadError) {
@@ -286,24 +288,6 @@ async function ensurePrefeituraBrasaoBucket(
   }
 
   return formatSupabaseError(error.message);
-}
-
-function getImageExtension(file: File) {
-  const extension = file.name.split(".").pop()?.toLowerCase();
-
-  if (extension && ["jpg", "jpeg", "png", "webp"].includes(extension)) {
-    return extension;
-  }
-
-  if (file.type === "image/png") {
-    return "png";
-  }
-
-  if (file.type === "image/webp") {
-    return "webp";
-  }
-
-  return "jpg";
 }
 
 function formatSupabaseError(message: string) {

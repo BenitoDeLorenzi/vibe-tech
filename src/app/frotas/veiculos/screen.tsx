@@ -1,3 +1,6 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { ListPanelHeader } from "@/components/list-panel-header";
+import { ListPagination } from "@/components/list-pagination";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
@@ -23,8 +26,6 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -75,6 +76,7 @@ type PageProps = {
     prefeitura?: string;
     q?: string;
     status?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -96,12 +98,16 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "veiculos", params);
   const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getFrotasData({
-    prefeituraId,
+    ids: databasePage.ids,
+    lightweight: true,
+    prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
     status: params.status,
   });
   const searchTerm = params.q?.trim();
+  const vehiclePage = { ...databasePage, items: orderPageItems(data.veiculos, databasePage) };
   const buildFilterHref = (values: {
     prefeitura?: string | null;
     status?: string | null;
@@ -152,28 +158,16 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
       <VehicleRealtimeSync prefeituraId={data.selectedPrefeituraId} />
       <VehicleLookupSync prefeituraId={data.selectedPrefeituraId} vehicleIds={data.veiculos.filter((vehicle) => vehicle.status === "processing").map((vehicle) => vehicle.id)} />
       <FrotasToasts deleted={params.deleted} error={params.error} />
-        <main className="flex flex-1 flex-col gap-3 p-4">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex size-10 items-center justify-center rounded-lg border bg-muted/40">
-                      <Car className="size-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <CardTitle>Veículos cadastrados</CardTitle>
-                    </div>
-                  </div>
-                  <ListMetrics
+        <main className="flex min-h-full flex-col gap-3 p-4">
+            <Card className="flex flex-1 flex-col">
+              <ListPanelHeader title="Veículos cadastrados" icon={Car} metrics={<ListMetrics
                 loading={loading}
                     items={[
-                      { label: "Ativos", value: data.metricas.ativos, tone: "success" },
-                      { label: "Total", value: data.metricas.total },
+                      { label: "Ativos", value: (databasePage.statuses.active ?? 0), tone: "success" },
+                      { label: "Total", value: databasePage.total },
                     ]}
-                  />
-                </div>
-              </CardHeader>
-              <CardContent>
+                  />} />
+              <CardContent className="flex flex-1 flex-col">
                 {loading || data.veiculos.length ? (
                   <div className="overflow-hidden rounded-lg border">
                     <Table>
@@ -191,7 +185,7 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loading ? <TableLoadingRows columns={7} /> : data.veiculos.map((veiculo) => (
+                        {loading ? <TableLoadingRows columns={7} /> : vehiclePage.items.map((veiculo) => (
                           <TableRow key={veiculo.id}>
                             <TableCell>
                               <VeiculoAvatar fotoUrl={veiculo.foto_url} placa={veiculo.placa} className="size-12" />
@@ -353,6 +347,7 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                     selectedPrefeituraId={data.selectedPrefeituraId}
                   />
                 )}
+                {!loading && <ListPagination page={vehiclePage.page} pageCount={vehiclePage.pageCount} pathname="/frotas/veiculos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
               </CardContent>
             </Card>
         </main>

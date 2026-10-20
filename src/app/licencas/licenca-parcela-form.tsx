@@ -1,5 +1,7 @@
 "use client";
 
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
@@ -141,6 +143,7 @@ export function LicencaParcelaForm({ pagamento }: LicencaParcelaFormProps) {
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />

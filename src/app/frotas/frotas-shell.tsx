@@ -19,6 +19,7 @@ type FrotasShellProps = {
     | "oficinas"
     | "postos"
     | "motoristas"
+    | "secretarias"
     | "relatorios"
     | "notificacoes"
     | "ajuda"
@@ -32,28 +33,46 @@ type FrotasShellProps = {
   title: string;
 };
 
-export async function FrotasShell({ loading = false, actions, children, icon: Icon, profile, selectedPrefeituraId, title }: FrotasShellProps) {
+export async function FrotasShell({
+  loading = false,
+  actions,
+  children,
+  icon: Icon,
+  profile,
+  selectedPrefeituraId,
+  title,
+}: FrotasShellProps) {
   if (!(await hasModuleAccess(profile, "frotas-publicas"))) redirect("/portal");
-  return <>
-    {!loading && <FrotasCompanyScope empresa={selectedPrefeituraId} />}
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
-          <SidebarTrigger className="-ml-1" />
-          <HeaderSeparator />
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
-            <h1 className="truncate text-xl font-semibold tracking-normal">
-              {title}
-            </h1>
-          </div>
-          {actions ? (
-            <div inert={loading} aria-busy={loading} className="ml-auto flex min-w-0 flex-1 items-center justify-end">
-              {actions}
-            </div>
-          ) : null}
-        </header>
-        <div className="min-h-0 flex-1 overflow-y-auto print:block print:min-h-0 print:overflow-visible">
-          {loading && <p role="status" className="sr-only">Carregando registros…</p>}
-          {children}
+  return (
+    <>
+      {!loading && <FrotasCompanyScope empresa={selectedPrefeituraId} />}
+      <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
+        <SidebarTrigger className="-ml-1" />
+        <HeaderSeparator />
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
+          {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
+          <h1 className="truncate text-xl font-semibold tracking-normal">
+            {title}
+          </h1>
         </div>
-  </>;
+        {actions ? (
+          <div
+            inert={loading}
+            aria-busy={loading}
+            className="ml-auto flex min-w-0 flex-1 items-center justify-end"
+          >
+            {actions}
+          </div>
+        ) : null}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto print:block print:min-h-0 print:overflow-visible">
+        {loading && (
+          <p role="status" className="sr-only">
+            Carregando registros…
+          </p>
+        )}
+        {children}
+      </div>
+    </>
+  );
 }

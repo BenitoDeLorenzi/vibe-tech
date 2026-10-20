@@ -1,5 +1,9 @@
 "use client";
 
+import { ContractPreview } from "./contract-preview";
+import { FormSelect } from "@/components/form-select";
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -49,7 +53,8 @@ type LicencaFormValues = {
   modulo_id: string | null;
   prefeitura_id: string | null;
   status: string | null;
-  valor_anual: number | null;
+  dia_vencimento: number;
+  valor_mensal: number | null;
 };
 
 const statusOptions = [
@@ -76,12 +81,13 @@ export function LicencaForm({
   );
   const form = useForm<LicencaFormValues>({
     defaultValues: {
-      fim: licenca?.fim ?? defaultFim ?? "",
-      inicio: licenca?.inicio ?? defaultInicio ?? "",
+      fim: licenca?.contrato.fim ?? defaultFim ?? "",
+      inicio: licenca?.contrato.inicio ?? defaultInicio ?? "",
       modulo_id: licenca?.modulo_id ?? null,
       prefeitura_id: licenca?.prefeitura_id ?? defaultPrefeituraId ?? null,
       status: licenca?.status ?? "active",
-      valor_anual: licenca?.valor_anual ?? null,
+      dia_vencimento: licenca?.dia_vencimento ?? 10,
+      valor_mensal: licenca?.valor_mensal ?? null,
     },
   });
   const moduloItems = [
@@ -95,12 +101,13 @@ export function LicencaForm({
     label: option.label,
     value: option.value,
   }));
-  const valorAnual = useWatch({
+  const valorMensal = useWatch({
     control: form.control,
-    name: "valor_anual",
+    name: "valor_mensal",
   });
-  const valorMensal =
-    valorAnual !== null ? Math.round((valorAnual / 12) * 100) / 100 : null;
+  const inicioPreview = useWatch({ control: form.control, name: "inicio" });
+  const fimPreview = useWatch({ control: form.control, name: "fim" });
+  const diaPreview = useWatch({ control: form.control, name: "dia_vencimento" });
 
   useEffect(() => {
     if (state.success) {
@@ -116,7 +123,8 @@ export function LicencaForm({
           modulo_id: null,
           prefeitura_id: defaultPrefeituraId ?? null,
           status: "active",
-          valor_anual: null,
+          dia_vencimento: 10,
+          valor_mensal: null,
         });
       }
 
@@ -143,7 +151,8 @@ export function LicencaForm({
     formData.set("modulo_id", values.modulo_id ?? "");
     formData.set("inicio", values.inicio);
     formData.set("fim", values.fim);
-    formData.set("valor_anual", String(values.valor_anual ?? ""));
+    formData.set("dia_vencimento", String(values.dia_vencimento));
+    formData.set("valor_mensal", String(values.valor_mensal ?? ""));
     formData.set("status", values.status ?? "");
 
     startTransition(() => {
@@ -166,6 +175,7 @@ export function LicencaForm({
         </div>
       ) : null}
 
+      {isEditing && <p className="text-sm text-muted-foreground">O contrato e suas cobranças são preservados. Aqui você pode alterar o status; use Renovar para um novo período e Cobranças para ajustes individuais.</p>}
       <fieldset disabled={actionPending} className="disabled:opacity-70">
         <FieldGroup className="gap-4">
           <Controller
@@ -180,7 +190,7 @@ export function LicencaForm({
                   value={field.value}
                   onChange={field.onChange}
                   empresas={prefeituras}
-                  disabled={actionPending}
+                  disabled={actionPending || isEditing}
                   invalid={fieldState.invalid}
                   placeholder="Pesquisar por empresa ou CNPJ"
                 />
@@ -202,7 +212,7 @@ export function LicencaForm({
                   value={field.value}
                   onValueChange={field.onChange}
                   required
-                  disabled={actionPending}
+                  disabled={actionPending || isEditing}
                 >
                   <SelectTrigger
                     id="modulo_id"
@@ -242,7 +252,7 @@ export function LicencaForm({
                   label="Início"
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={actionPending}
+                  disabled={actionPending || isEditing}
                   error={fieldState.error?.message}
                   required
                 />
@@ -267,7 +277,7 @@ export function LicencaForm({
                   label="Fim"
                   value={field.value}
                   onValueChange={field.onChange}
-                  disabled={actionPending}
+                  disabled={actionPending || isEditing}
                   error={fieldState.error?.message}
                   required
                 />
@@ -278,29 +288,27 @@ export function LicencaForm({
           <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
             <Controller
               control={form.control}
-              name="valor_anual"
+              name="valor_mensal"
               rules={{
                 validate: (value) =>
                   value !== null && value > 0
                     ? true
-                    : "Informe o valor anual.",
+                    : "Informe o valor mensal.",
               }}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="valor_anual">
-                    Valor anual do contrato
+                  <FieldLabel htmlFor="valor_mensal">
+                    Mensalidade
                   </FieldLabel>
                   <CurrencyInput
-                    id="valor_anual"
+                    id="valor_mensal"
                     name={field.name}
                     value={field.value}
                     onValueChange={field.onChange}
-                    disabled={actionPending}
+                    disabled={actionPending || isEditing}
                     invalid={fieldState.invalid}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Cobrança mensal: 12x de {formatCurrency(valorMensal)}.
-                  </p>
+                  
                   <FieldError errors={[fieldState.error]} />
                 </Field>
               )}
@@ -344,10 +352,13 @@ export function LicencaForm({
               )}
             />
           </div>
+          <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending || isEditing} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />
+          {!isEditing && <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={valorMensal} dia={diaPreview} />}
         </FieldGroup>
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -420,13 +431,3 @@ function CurrencyInput({
   );
 }
 
-function formatCurrency(value: number | null) {
-  if (value === null) {
-    return "R$ 0,00";
-  }
-
-  return new Intl.NumberFormat("pt-BR", {
-    currency: "BRL",
-    style: "currency",
-  }).format(value);
-}

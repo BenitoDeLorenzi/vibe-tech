@@ -1,5 +1,6 @@
 "use client";
 
+import { AdaptiveListSize } from "@/components/adaptive-list-size";
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { Bell, Fuel, Wrench, KeyRound, Headset, CircleCheck, CircleX, ArrowUpRight } from "lucide-react";
@@ -10,6 +11,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListMetrics } from "@/components/list-metrics";
+import { PaginationControl } from "@/components/pagination-control";
 import { cn } from "@/lib/utils";
 
 type Notification = {
@@ -20,22 +22,23 @@ type Notification = {
   numero_ordem: string; veiculo: string; posto: string | null; responsavel: string | null;
   created_at: string; lida: boolean;
 };
-type Feed = { items: Notification[]; unread: number; hasMore: boolean };
+type Feed = { items: Notification[]; unread: number; total: number; page: number; pageCount: number };
 type Center = Feed & {
-  available: boolean; empresa: string; loading: boolean; error: boolean; connected: boolean; hasMore: boolean;
-  refresh: () => Promise<void>; page: number; previous: () => void; more: () => void; read: (id: number) => void;
+  available: boolean; empresa: string; loading: boolean; error: boolean; connected: boolean;
+  size: number; resize: (size: number) => void; goToPage: (page: number) => void; refresh: () => Promise<void>; read: (id: number) => void;
 };
 const Context = createContext<Center | null>(null);
 
 export function NotificationProvider({ empresa, enabled, children }: {
   empresa?: string; enabled: boolean; children: ReactNode;
 }) {
-  const [feed, setFeed] = useState<Feed>({ items: [], unread: 0, hasMore: false });
+  const [feed, setFeed] = useState<Feed>({ items: [], unread: 0, total: 0, page: 1, pageCount: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [connected, setConnected] = useState(false);
-  const [cursors, setCursors] = useState<Array<number | null>>([null]);
-  const before = cursors.at(-1);
+  const [requestedPage, setRequestedPage] = useState(1);
+  const [size, setSize] = useState(13);
+  const resize = useCallback((next: number) => { setSize(next); setRequestedPage(1); setLoading(true); }, []);
   const pending = useRef(new Set<number>());
   const base = `/frotas/notificacoes/feed?empresa=${encodeURIComponent(empresa ?? "")}`;
   const version = useRef(0);
@@ -43,7 +46,7 @@ export function NotificationProvider({ empresa, enabled, children }: {
     if (!enabled || !empresa) return;
     const requestVersion = ++version.current;
     try {
-      const response = await fetch(`${base}${before ? `&before=${before}` : ""}`, { cache: "no-store" });
+      const response = await fetch(`${base}&size=${size}&page=${requestedPage}`, { cache: "no-store" });
       if (!response.ok) throw new Error("feed");
       const next: Feed = await response.json();
       if (version.current !== requestVersion) return;
@@ -51,7 +54,7 @@ export function NotificationProvider({ empresa, enabled, children }: {
       setError(false);
     } catch { if (version.current === requestVersion) setError(true); }
     finally { if (version.current === requestVersion) setLoading(false); }
-  }, [base, empresa, enabled, before]);
+  }, [base, empresa, enabled, requestedPage, size]);
 
   useEffect(() => {
     if (!enabled || !empresa) return;
@@ -90,14 +93,12 @@ export function NotificationProvider({ empresa, enabled, children }: {
   }, [base, enabled, empresa, refresh]);
 
   const read = useCallback((id: number) => { pending.current.add(id); }, []);
-  const more = () => {
-    const last = feed.items.at(-1)?.id;
-    if (last && !loading && feed.hasMore) { setLoading(true); setCursors(previous => [...previous, last]); }
+  const goToPage = (next: number) => {
+    if (loading || next === feed.page || next < 1 || next > feed.pageCount) return;
+    setLoading(true);
+    setRequestedPage(next);
   };
-  const previous = () => {
-    if (cursors.length > 1 && !loading) { setLoading(true); setCursors(value => value.slice(0, -1)); }
-  };
-  return <Context.Provider value={{ ...feed, available: enabled && !!empresa, empresa: empresa ?? "", loading: enabled && !!empresa && loading, error, connected, page: cursors.length, previous, refresh, more, read }}>{children}</Context.Provider>;
+  return <Context.Provider value={{ ...feed, size, resize, goToPage, available: enabled && !!empresa, empresa: empresa ?? "", loading: enabled && !!empresa && loading, error, connected, refresh, read }}>{children}</Context.Provider>;
 }
 
 export function NotificationBadge() {
@@ -163,21 +164,22 @@ function NotificationRow({ item, center }: { item: Notification; center: Center 
 export function NotificationList() {
   const center = useContext(Context);
   if (!center) return null;
-  return <main className="flex flex-1 flex-col gap-3 p-4"><Card>
+  return <main className="flex min-h-full flex-col gap-3 p-4"><Card className="flex flex-1 flex-col">
     <CardHeader><div className="flex flex-wrap items-center justify-between gap-3">
       <div className="flex flex-wrap items-center gap-3"><CardTitle>Notificações</CardTitle><ListMetrics items={[{ label: "Novas", value: center.unread, tone: "warning" }]} /></div>
       {center.available && <span className="flex items-center gap-2 text-xs text-muted-foreground"><span className={cn("size-2 rounded-full", center.connected ? "bg-emerald-500" : "bg-muted-foreground/40")} />{center.connected ? "Em tempo real" : "Conectando…"}</span>}
     </div></CardHeader>
-    <CardContent className="space-y-3">
+    <CardContent className="flex flex-1 flex-col space-y-3">
       {center.error && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">Não foi possível atualizar as notificações.<Button variant="outline" size="sm" onClick={() => void center.refresh()}>Tentar novamente</Button></div>}
       <div className="overflow-hidden rounded-lg border" aria-busy={center.loading}>
         <Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Atividade</TableHead><TableHead>Status</TableHead><TableHead>Responsável</TableHead><TableHead>Data e hora</TableHead><TableHead className="w-[140px] text-right">Ações</TableHead></TableRow></TableHeader>
           <TableBody>{center.loading ? <TableLoadingRows columns={5} /> : center.items.length ? center.items.map(item => <NotificationRow key={item.id} item={item} center={center} />) : <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted-foreground"><Bell className="mx-auto mb-3 size-6" />{center.loading ? "Carregando notificações…" : "Nenhuma notificação por enquanto."}</TableCell></TableRow>}</TableBody>
         </Table>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
-        <span>Página {center.page} · {center.items.length} registros</span>
-        <div className="flex gap-2"><Button variant="outline" size="sm" disabled={center.loading || center.page === 1} onClick={center.previous}>Anterior</Button><Button variant="outline" size="sm" disabled={center.loading || !center.hasMore} onClick={center.more}>Próxima</Button></div>
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+        <AdaptiveListSize size={center.size} onSizeChange={center.resize} maximum={13} loading={center.loading} />
+        <span>{center.items.length} registros nesta página</span>
+        <PaginationControl page={center.page} pageCount={center.pageCount} disabled={center.loading} onPageChange={center.goToPage} />
       </div>
     </CardContent>
   </Card></main>;

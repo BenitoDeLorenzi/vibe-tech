@@ -1,5 +1,9 @@
 "use client";
 
+import { ContractPreview } from "./contract-preview";
+import { FormSelect } from "@/components/form-select";
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import { startTransition, useActionState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
@@ -22,7 +26,8 @@ type LicencaRenewFormProps = {
 type LicencaRenewFormValues = {
   fim: string;
   inicio: string;
-  valor_anual: number | null;
+  dia_vencimento: number;
+  valor_mensal: number | null;
 };
 
 export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
@@ -35,15 +40,17 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
     defaultValues: {
       fim: defaultFim,
       inicio: defaultInicio,
-      valor_anual: licenca.valor_anual,
+      dia_vencimento: licenca.dia_vencimento,
+      valor_mensal: licenca.valor_mensal,
     },
   });
-  const valorAnual = useWatch({
+  const valorMensal = useWatch({
     control: form.control,
-    name: "valor_anual",
+    name: "valor_mensal",
   });
-  const valorMensal =
-    valorAnual !== null ? Math.round((valorAnual / 12) * 100) / 100 : null;
+  const inicioPreview = useWatch({ control: form.control, name: "inicio" });
+  const fimPreview = useWatch({ control: form.control, name: "fim" });
+  const diaPreview = useWatch({ control: form.control, name: "dia_vencimento" });
 
   useEffect(() => {
     if (state.success) {
@@ -59,7 +66,8 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
     formData.set("id", licenca.id);
     formData.set("inicio", values.inicio);
     formData.set("fim", values.fim);
-    formData.set("valor_anual", String(values.valor_anual ?? ""));
+    formData.set("dia_vencimento", String(values.dia_vencimento));
+    formData.set("valor_mensal", String(values.valor_mensal ?? ""));
 
     startTransition(() => {
       formAction(formData);
@@ -129,37 +137,38 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
 
           <Controller
             control={form.control}
-            name="valor_anual"
+            name="valor_mensal"
             rules={{
               validate: (value) =>
                 value !== null && value > 0
                   ? true
-                  : "Informe o valor anual.",
+                  : "Informe o valor mensal.",
             }}
             render={({ field, fieldState }) => (
               <Field data-invalid={fieldState.invalid}>
-                <FieldLabel htmlFor="valor_anual_renovacao">
-                  Valor anual do contrato
+                <FieldLabel htmlFor="valor_mensal_renovacao">
+                  Mensalidade
                 </FieldLabel>
                 <CurrencyInput
-                  id="valor_anual_renovacao"
+                  id="valor_mensal_renovacao"
                   name={field.name}
                   value={field.value}
                   onValueChange={field.onChange}
                   disabled={actionPending}
                   invalid={fieldState.invalid}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Nova cobrança mensal: 12x de {formatCurrency(valorMensal)}.
-                </p>
+                
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}
           />
+          <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />
+          <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={valorMensal} dia={diaPreview} />
         </FieldGroup>
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />
@@ -222,16 +231,6 @@ function closeParentDialog(formElement: HTMLFormElement | null) {
   closeButton?.click();
 }
 
-function formatCurrency(value: number | null) {
-  if (value === null) {
-    return "R$ 0,00";
-  }
-
-  return new Intl.NumberFormat("pt-BR", {
-    currency: "BRL",
-    style: "currency",
-  }).format(value);
-}
 
 function addDaysIsoDate(value: string, days: number) {
   const [year, month, day] = value.split("-").map(Number);
@@ -248,6 +247,7 @@ function addOneYearIsoDate(value: string) {
     nextDate.setUTCDate(0);
   }
 
+  nextDate.setUTCDate(nextDate.getUTCDate() - 1);
   return formatIsoDate(nextDate);
 }
 

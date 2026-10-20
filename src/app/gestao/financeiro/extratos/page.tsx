@@ -82,9 +82,10 @@ export default async function ExtratosPage({
             ) : null
           }
         >
-          <Table>
+          <div className="overflow-hidden rounded-lg border">
+            <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/50">
                 <TableHead>Data</TableHead>
                 <TableHead>Lançamento</TableHead>
                 <TableHead>Conta</TableHead>
@@ -159,6 +160,7 @@ export default async function ExtratosPage({
               )}
             </TableBody>
           </Table>
+          </div>
           <div className="mt-4 flex items-center justify-end gap-3 text-sm">
             <span>
               {extrato.total} lançamento(s) · Página {pagina}

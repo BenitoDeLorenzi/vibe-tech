@@ -1,5 +1,7 @@
 "use client";
 
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
 import {
   startTransition,
   useActionState,
@@ -122,6 +124,13 @@ const permissionGroups = [
     icon: BadgeCheck,
     label: "Oficinas",
     keys: ["workshops.read", "workshops.manage"],
+  },
+  {
+    description:
+      "Cadastro e edição de secretarias em prefeituras. Exclusão somente pelo Master.",
+    icon: BadgeCheck,
+    label: "Secretarias",
+    keys: ["departments.read", "departments.manage"],
   },
 ] satisfies PermissionGroup[];
 
@@ -463,6 +472,7 @@ export function UsuarioAcessosForm({
       )}
 
       <DialogFooter>
+        <FormDialogCancel disabled={pending} />
         <Button type="submit" className="gap-2" disabled={pending}>
           {pending ? (
             <Loader2 className="size-4 animate-spin" />

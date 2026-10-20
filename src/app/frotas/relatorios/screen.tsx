@@ -1,7 +1,9 @@
+import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
 import { ListMetrics } from "@/components/list-metrics";
+import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
@@ -75,6 +77,7 @@ type PageProps = {
     q?: string;
     status?: string;
     tipo?: string;
+    size?: string; page?: string;
   }>;
 };
 
@@ -118,10 +121,12 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
     profile.role === "bdl_admin"
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
+  const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "relatorios", params);
   const [data, relatorios] = await Promise.all([
-    loading ? getFrotasLoadingData(profile, prefeituraId) : getAbastecimentosData({ prefeituraId }),
+    loading ? getFrotasLoadingData(profile, prefeituraId) : getAbastecimentosData({ prefeituraId: databasePage.empresaId ?? prefeituraId, ids: [], lightweight: true }),
     loading ? Promise.resolve([]) : getRelatorios({
-      prefeituraId,
+      ids: databasePage.ids,
+      prefeituraId: databasePage.empresaId ?? prefeituraId,
       query: params.q,
       status: params.status,
       tipo: params.tipo,
@@ -156,6 +161,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
     const queryString = query.toString();
     return `/frotas/relatorios${queryString ? `?${queryString}` : ""}`;
   };
+  const reportPage = { ...databasePage, items: orderPageItems(relatorios, databasePage) };
 
   return (
     <FrotasShell
@@ -174,8 +180,8 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
       selectedPrefeituraId={data.selectedPrefeituraId}
       title="Relatórios"
     >
-      <main className="flex flex-1 flex-col gap-4 p-4">
-        <Card>
+      <main className="flex min-h-full flex-col gap-4 p-4">
+        <Card className="flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -184,12 +190,12 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
               <ListMetrics
                 loading={loading}
                 items={[
-                  { label: "Total", value: relatorios.length },
+                  { label: "Total", value: databasePage.total },
                 ]}
               />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-1 flex-col">
             {loading || relatorios.length ? (
               <div className="overflow-hidden rounded-lg border">
                 <Table>
@@ -208,7 +214,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? <TableLoadingRows columns={8} /> : relatorios.map((relatorio) => (
+                    {loading ? <TableLoadingRows columns={8} /> : reportPage.items.map((relatorio) => (
                       <RelatorioRow key={relatorio.id} relatorio={relatorio} canDelete={profile.role === "bdl_admin"} />
                     ))}
                   </TableBody>
@@ -222,6 +228,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
                 showPrefeituraField={profile.role === "bdl_admin"}
               />
             )}
+            {!loading && <ListPagination page={reportPage.page} pageCount={reportPage.pageCount} pathname="/frotas/relatorios" params={{ size: params.size, prefeitura: prefeituraId, q: params.q, status: params.status, tipo: params.tipo }} />}
           </CardContent>
         </Card>
       </main>

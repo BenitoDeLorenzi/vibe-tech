@@ -1,12 +1,29 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useRef } from "react";
+import { FormDialogCancel } from "@/components/form-dialog-cancel";
+
+import {
+  startTransition,
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { mask } from "remask";
-import { AlertCircle, ImageUp, Loader2, Plus } from "lucide-react";
+import {
+  AlertCircle,
+  Building2,
+  MapPin,
+  Loader2,
+  Plus,
+  Save,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { AvatarPhotoControl } from "@/components/avatar-photo-control";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { DialogFooter } from "@/components/ui/dialog";
 import {
@@ -66,6 +83,7 @@ const ufItems = [
 ];
 
 type PrefeituraFormValues = {
+  is_prefeitura: boolean;
   nome_fantasia: string;
   cep: string;
   cidade: string;
@@ -77,6 +95,7 @@ type PrefeituraFormValues = {
 
 type PrefeituraFormProps = {
   prefeitura?: {
+    is_prefeitura: boolean;
     nome_fantasia?: string | null;
     id: string;
     nome: string;
@@ -92,6 +111,29 @@ type PrefeituraFormProps = {
 
 export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
   const isEditing = Boolean(prefeitura);
+  const [avatar, setAvatar] = useState<File | null | undefined>(undefined);
+  const [avatarError, setAvatarError] = useState("");
+  const [preview, setPreview] = useState<string | null>(null);
+  useEffect(
+    () => () => {
+      if (preview) URL.revokeObjectURL(preview);
+    },
+    [preview],
+  );
+  function selectAvatar(file: File | null) {
+    if (
+      file &&
+      (!file.size ||
+        file.size > 3 * 1024 * 1024 ||
+        !["image/jpeg", "image/png", "image/webp"].includes(file.type))
+    ) {
+      setAvatarError("Escolha JPG, PNG ou WebP de até 3 MB.");
+      return;
+    }
+    setAvatarError("");
+    setAvatar(file);
+    setPreview(file ? URL.createObjectURL(file) : null);
+  }
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [state, formAction, actionPending] = useActionState(
@@ -100,6 +142,7 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
   );
   const form = useForm<PrefeituraFormValues>({
     defaultValues: {
+      is_prefeitura: prefeitura?.is_prefeitura ?? false,
       nome_fantasia: prefeitura?.nome_fantasia ?? "",
       cep: prefeitura?.cep ?? "",
       cidade: prefeitura?.cidade ?? "",
@@ -108,6 +151,11 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
       nome: prefeitura?.nome ?? "",
       uf: prefeitura?.uf ?? null,
     },
+  });
+
+  const [nomeFantasia, nomeOficial] = useWatch({
+    control: form.control,
+    name: ["nome_fantasia", "nome"],
   });
 
   useEffect(() => {
@@ -119,6 +167,7 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
 
       if (!isEditing) {
         form.reset({
+          is_prefeitura: false,
           nome_fantasia: "",
           cep: "",
           cidade: "",
@@ -146,7 +195,9 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
     formData.set("uf", values.uf ?? "");
     formData.set("cep", values.cep);
     formData.set("endereco", values.endereco);
-    formData.set("current_brasao_path", prefeitura?.brasao_path ?? "");
+    formData.set("is_prefeitura", String(values.is_prefeitura));
+    if (avatar instanceof File) formData.set("brasao", avatar);
+    if (avatar === null) formData.set("remove_brasao", "true");
 
     startTransition(() => {
       formAction(formData);
@@ -176,74 +227,83 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
 
       <fieldset disabled={actionPending} className="disabled:opacity-70">
         <FieldGroup className="gap-4">
-          <Field data-invalid={Boolean(form.formState.errors.nome)}>
-            <FieldLabel htmlFor="nome">Razão social / nome oficial</FieldLabel>
-            <Input
-              id="nome"
-              placeholder="Empresa de Santa Helena"
-              aria-invalid={Boolean(form.formState.errors.nome)}
-              {...form.register("nome", {
-                required: "Informe o nome da empresa.",
-              })}
-            />
-            <FieldError errors={[form.formState.errors.nome]} />
-          </Field>
+          <AvatarPhotoControl
+            nome={nomeFantasia || nomeOficial || "Empresa"}
+            source={avatar === undefined ? prefeitura?.brasao_url : preview}
+            pending={actionPending}
+            error={avatarError}
+            onSelect={selectAvatar}
+            onRemove={() => selectAvatar(null)}
+            label="logotipo da empresa"
+            contain
+            hint="Clique no avatar para alterar. A imagem será salva com o cadastro."
+          />
+          <div className="flex items-center gap-2 border-b pb-2 text-sm font-medium">
+            <Building2 className="size-4 text-muted-foreground" />
+            Dados da empresa
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field data-invalid={Boolean(form.formState.errors.nome)}>
+              <FieldLabel htmlFor="nome">
+                Razão social / nome oficial
+              </FieldLabel>
+              <Input
+                id="nome"
+                placeholder="Empresa de Santa Helena"
+                aria-invalid={Boolean(form.formState.errors.nome)}
+                {...form.register("nome", {
+                  required: "Informe o nome da empresa.",
+                })}
+              />
+              <FieldError errors={[form.formState.errors.nome]} />
+            </Field>
 
-          <Field data-invalid={Boolean(form.formState.errors.nome_fantasia)}>
-            <FieldLabel htmlFor="nome_fantasia">
-              Nome fantasia (opcional)
-            </FieldLabel>
-            <Input
-              id="nome_fantasia"
-              placeholder="Nome curto exibido no sidebar"
-              aria-invalid={Boolean(form.formState.errors.nome_fantasia)}
-              {...form.register("nome_fantasia", {
-                validate: (value) =>
-                  !value.trim() ||
-                  (value.trim().length >= 2 && value.trim().length <= 80) ||
-                  "Use de 2 a 80 caracteres.",
-              })}
-            />
-            <FieldError errors={[form.formState.errors.nome_fantasia]} />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="brasao">Logotipo da empresa</FieldLabel>
-            <div className="flex items-center gap-3 rounded-lg border bg-muted/20 p-3">
-              <div className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
-                {prefeitura?.brasao_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={prefeitura.brasao_url}
-                    alt={`Logotipo de ${prefeitura.nome}`}
-                    className="size-full object-contain p-1"
-                  />
-                ) : (
-                  <ImageUp className="size-5 text-muted-foreground" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <input
-                  type="hidden"
-                  name="current_brasao_path"
-                  value={prefeitura?.brasao_path ?? ""}
-                />
-                <Input
-                  id="brasao"
-                  name="brasao"
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
+            <Field data-invalid={Boolean(form.formState.errors.nome_fantasia)}>
+              <FieldLabel htmlFor="nome_fantasia">
+                Nome fantasia (opcional)
+              </FieldLabel>
+              <Input
+                id="nome_fantasia"
+                placeholder="Nome pelo qual a empresa é conhecida"
+                aria-invalid={Boolean(form.formState.errors.nome_fantasia)}
+                {...form.register("nome_fantasia", {
+                  validate: (value) =>
+                    !value.trim() ||
+                    (value.trim().length >= 2 && value.trim().length <= 80) ||
+                    "Use de 2 a 80 caracteres.",
+                })}
+              />
+              <FieldError errors={[form.formState.errors.nome_fantasia]} />
+            </Field>
+          </div>
+          <Controller
+            control={form.control}
+            name="is_prefeitura"
+            render={({ field }) => (
+              <div className="flex items-start gap-3 rounded-lg border bg-muted/20 p-3">
+                <Checkbox
+                  id="is_prefeitura"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
                   disabled={actionPending}
+                  className="mt-0.5"
+                  aria-describedby="prefeitura-description"
                 />
-                <p className="mt-1 truncate text-xs text-muted-foreground">
-                  {prefeitura?.brasao_url
-                    ? "Logotipo cadastrado. Envie uma nova imagem para substituir."
-                    : "PNG, JPG ou WebP até 3 MB."}
-                </p>
+                <div className="grid gap-1">
+                  <FieldLabel htmlFor="is_prefeitura">
+                    Esta empresa é uma prefeitura
+                  </FieldLabel>
+                  <p
+                    id="prefeitura-description"
+                    className="text-xs text-muted-foreground"
+                  >
+                    Marque para identificar uma administração municipal.
+                  </p>
+                </div>
               </div>
-            </div>
-          </Field>
-
-          <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+            )}
+          />
+          <div>
             <Field data-invalid={Boolean(form.formState.errors.cnpj)}>
               <FieldLabel htmlFor="cnpj">CNPJ</FieldLabel>
               <Input
@@ -267,7 +327,25 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
               />
               <FieldError errors={[form.formState.errors.cnpj]} />
             </Field>
+          </div>
 
+          <div className="flex items-center gap-2 border-b pb-2 text-sm font-medium">
+            <MapPin className="size-4 text-muted-foreground" />
+            Endereço
+          </div>
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
+            <Field data-invalid={Boolean(form.formState.errors.cidade)}>
+              <FieldLabel htmlFor="cidade">Cidade</FieldLabel>
+              <Input
+                id="cidade"
+                placeholder="Cidade"
+                aria-invalid={Boolean(form.formState.errors.cidade)}
+                {...form.register("cidade", {
+                  required: "Informe a cidade.",
+                })}
+              />
+              <FieldError errors={[form.formState.errors.cidade]} />
+            </Field>
             <Controller
               control={form.control}
               name="uf"
@@ -290,7 +368,7 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent align="center" alignItemWithTrigger={false}>
                       <SelectGroup>
                         <SelectLabel>Estados</SelectLabel>
                         {ufItems.map((item) => (
@@ -309,19 +387,6 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
               )}
             />
           </div>
-
-          <Field data-invalid={Boolean(form.formState.errors.cidade)}>
-            <FieldLabel htmlFor="cidade">Cidade</FieldLabel>
-            <Input
-              id="cidade"
-              placeholder="Cidade"
-              aria-invalid={Boolean(form.formState.errors.cidade)}
-              {...form.register("cidade", {
-                required: "Informe a cidade.",
-              })}
-            />
-            <FieldError errors={[form.formState.errors.cidade]} />
-          </Field>
 
           <div className="grid gap-3 sm:grid-cols-[150px_1fr]">
             <Field data-invalid={Boolean(form.formState.errors.cep)}>
@@ -365,9 +430,12 @@ export function PrefeituraForm({ prefeitura }: PrefeituraFormProps) {
       </fieldset>
 
       <DialogFooter>
+        <FormDialogCancel disabled={actionPending} />
         <Button type="submit" className="gap-2" disabled={actionPending}>
           {actionPending ? (
             <Loader2 className="size-4 animate-spin" />
+          ) : isEditing ? (
+            <Save className="size-4" />
           ) : (
             <Plus className="size-4" />
           )}

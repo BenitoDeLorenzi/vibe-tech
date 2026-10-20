@@ -12,13 +12,14 @@ export async function listarEmpresasLicenciadas(
       nome: string;
       nome_fantasia: string | null;
       brasao_url: string | null;
+      is_prefeitura: boolean;
     }
   >();
   for (let offset = 0; ; offset += 500) {
     const { data, error } = await db
       .from("licencas")
       .select(
-        "id,empresas!inner(id,nome,nome_fantasia,brasao_url,status),modulos!inner(slug,ativo)",
+        "id,empresas!inner(id,nome,nome_fantasia,brasao_url,is_prefeitura,status),modulos!inner(slug,ativo)",
       )
       .eq("status", "active")
       .lte("inicio", today)
@@ -38,6 +39,7 @@ export async function listarEmpresasLicenciadas(
         nome: string;
         nome_fantasia: string | null;
         brasao_url: string | null;
+        is_prefeitura: boolean;
       };
       empresas.set(empresa.id, empresa);
     }

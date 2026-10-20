@@ -68,9 +68,10 @@ export function SolicitacoesList({
           }}
         />
       </div>
-      <Table>
+      <div className="overflow-hidden rounded-lg border">
+            <Table>
         <TableHeader>
-          <TableRow>
+          <TableRow className="bg-muted/50">
             <TableHead>Solicitação</TableHead>
             <TableHead>Data</TableHead>
             <TableHead>Situação</TableHead>
@@ -169,6 +170,7 @@ export function SolicitacoesList({
           )}
         </TableBody>
       </Table>
+          </div>
     </Panel>
   );
 }
