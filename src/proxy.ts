@@ -14,7 +14,7 @@ export function proxy(request: NextRequest) {
 
   const url = request.nextUrl.clone();
   if (
-    ["/perfil", "/portal", "/login"].some(
+    ["/perfil", "/portal", "/login", "/esqueci-senha"].some(
       (path) => url.pathname === path || url.pathname.startsWith(path + "/"),
     )
   )

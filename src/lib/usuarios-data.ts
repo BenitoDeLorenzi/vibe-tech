@@ -8,11 +8,15 @@ export type Usuario = {
   cpf: string | null;
   created_at: string;
   email: string | null;
+  email_contato: string | null;
+  email_contato_verificado_em: string | null;
   id: string;
   nome: string;
   prefeitura_id: string | null;
   prefeitura_nome: string | null;
+  primeiro_acesso_concluido_em: string | null;
   role: UsuarioRole;
+  senha_inicial_alterada_em: string | null;
   username: string | null;
 };
 
@@ -21,13 +25,17 @@ type UsuarioRow = {
   cpf: string | null;
   created_at: string;
   email: string | null;
+  email_contato: string | null;
+  email_contato_verificado_em: string | null;
   id: string;
   nome: string;
   prefeitura_id: string | null;
+  primeiro_acesso_concluido_em: string | null;
   prefeituras: {
     nome: string;
   } | null;
   role: UsuarioRole;
+  senha_inicial_alterada_em: string | null;
   username: string | null;
 };
 
@@ -140,11 +148,11 @@ function buildUsuariosQuery(
   includeAccessFields: boolean,
 ) {
   const select = includeAccessFields
-    ? "id,nome,email,username,cpf,role,prefeitura_id,ativo,created_at,prefeituras:empresas!perfis_prefeitura_id_fkey(nome)"
+    ? "id,nome,email,email_contato,email_contato_verificado_em,primeiro_acesso_concluido_em,senha_inicial_alterada_em,username,cpf,role,prefeitura_id,ativo,created_at,prefeituras:empresas!perfis_prefeitura_id_fkey(nome)"
     : "id,nome,role,prefeitura_id,created_at,prefeituras:empresas!perfis_prefeitura_id_fkey(nome)";
   let query = supabase.from("perfis").select(select).order("created_at", {
     ascending: false,
-  });
+  }).is("excluido_em", null);
 
   if (params?.role && params.role !== "all") {
     query = query.eq("role", params.role);
@@ -171,11 +179,15 @@ function mapUsuariosRows(rows: UsuarioRow[]) {
     cpf: usuario.cpf ?? null,
     created_at: usuario.created_at,
     email: usuario.email ?? null,
+    email_contato: usuario.email_contato ?? null,
+    email_contato_verificado_em: usuario.email_contato_verificado_em ?? null,
     id: usuario.id,
     nome: usuario.nome,
     prefeitura_id: usuario.prefeitura_id,
     prefeitura_nome: usuario.prefeituras?.nome ?? null,
+    primeiro_acesso_concluido_em: usuario.primeiro_acesso_concluido_em ?? null,
     role: usuario.role,
+    senha_inicial_alterada_em: usuario.senha_inicial_alterada_em ?? null,
     username: usuario.username ?? null,
   }));
 }
@@ -324,7 +336,6 @@ function getAllowedPermissionKeys(role: UsuarioRole) {
       "gestao.manage",
       "vehicles.create",
       "vehicles.update",
-      "vehicles.delete",
       "vehicles.manage",
       "vehicles.read",
       "expirations.manage",
@@ -349,6 +360,7 @@ function getAllowedPermissionKeys(role: UsuarioRole) {
       "workshops.manage",
 
       "reports.read",
+      "reports.create",
       "vehicle_usage.read",
       "vehicle_usage.create",
       "vehicle_usage.return",
@@ -369,8 +381,23 @@ export function formatUsuarioRole(role: UsuarioRole) {
   return labels[role];
 }
 
-export function formatUsuarioStatus(ativo: boolean) {
-  return ativo ? "Ativo" : "Inativo";
+export type UsuarioStatus = "inactive" | "first_access" | "email_pending" | "active";
+
+export function getUsuarioStatus(usuario: Pick<Usuario, "ativo" | "primeiro_acesso_concluido_em" | "email_contato_verificado_em">): UsuarioStatus {
+  if (!usuario.ativo) return "inactive";
+  if (!usuario.primeiro_acesso_concluido_em) return "first_access";
+  if (!usuario.email_contato_verificado_em) return "email_pending";
+  return "active";
+}
+
+export function formatUsuarioStatus(status: UsuarioStatus) {
+  const labels: Record<UsuarioStatus, string> = {
+    inactive: "Inativo",
+    first_access: "Aguardando primeiro acesso",
+    email_pending: "E-mail pendente",
+    active: "Ativo",
+  };
+  return labels[status];
 }
 
 export function formatCpf(value: string | null) {
@@ -388,7 +415,10 @@ function isMissingProfileAccessColumnError(message: string) {
     message.includes("perfis.email") ||
     message.includes("perfis.username") ||
     message.includes("perfis.cpf") ||
-    message.includes("perfis.ativo")
+    message.includes("perfis.ativo") ||
+    message.includes("perfis.primeiro_acesso_concluido_em") ||
+    message.includes("perfis.senha_inicial_alterada_em") ||
+    message.includes("perfis.email_contato_verificado_em")
   );
 }
 

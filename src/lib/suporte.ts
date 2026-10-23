@@ -8,7 +8,7 @@ export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[
 
 export async function getSupportScope(params: URLSearchParams) {
   const profile = await getCurrentUserProfile();
-  if (!profile) return null;
+  if (!profile?.primeiro_acesso_concluido_em) return null;
   const master = params.get("mode") === "master";
   if (master) return profile.role === "bdl_admin" ? { profile, master, empresa: null } : null;
   if (!(await hasModuleAccess(profile, "frotas-publicas"))) return null;

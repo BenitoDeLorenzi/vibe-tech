@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { forbidden } from "next/navigation";
 import { Receipt, Clock, CheckCheck, CircleAlert, Ban } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { getFinanceiroData } from "@/lib/gestao-contas-data";
@@ -28,7 +28,7 @@ export default async function PagarPage({
   searchParams: Promise<{ q?: string; status?: string }>;
 }) {
   const { profile } = await getGestaoContext();
-  if (profile.role !== "bdl_admin") notFound();
+  if (profile.role !== "bdl_admin") forbidden();
   const [fin, params] = await Promise.all([getFinanceiroData(), searchParams]);
   const hoje = hojeFinanceiro();
   const rows = fin.pagar

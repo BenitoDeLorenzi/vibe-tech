@@ -24,6 +24,8 @@ export type FrotaPostoCredenciado = {
   created_at?: string;
   endereco: string | null;
   id: string;
+  primeiro_acesso_concluido_em?: string | null;
+  email_contato?: string | null;
   nome: string;
   prefeitura_id: string;
   prefeitura_nome?: string;
@@ -1428,7 +1430,7 @@ export async function getPostosCredenciadosData(params?: {
   let postosQuery = supabase
     .from("frota_postos_credenciados")
     .select(
-      "id,prefeitura_id,nome,cnpj,endereco,telefone,status,created_at,prefeituras:empresas(nome)",
+      "id,prefeitura_id,nome,cnpj,endereco,telefone,email_contato,primeiro_acesso_concluido_em,status,created_at,prefeituras:empresas(nome)",
     )
     .order("created_at", { ascending: false });
 

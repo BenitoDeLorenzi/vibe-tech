@@ -27,6 +27,7 @@ export type FrotasPermissionAccess = {
   canViewManutencao: boolean;
   canViewMotoristas: boolean;
   canViewRelatorios: boolean;
+  canCreateRelatorios: boolean;
   canViewUsoVeiculo: boolean;
   canViewVeiculos: boolean;
   isFullAccess: boolean;
@@ -57,6 +58,7 @@ const fullAccess: FrotasPermissionAccess = {
   canViewManutencao: true,
   canViewMotoristas: true,
   canViewRelatorios: true,
+  canCreateRelatorios: true,
   canViewUsoVeiculo: true,
   canViewVeiculos: true,
   isFullAccess: true,
@@ -87,6 +89,7 @@ const limitedAccess: FrotasPermissionAccess = {
   canViewManutencao: false,
   canViewMotoristas: false,
   canViewRelatorios: false,
+  canCreateRelatorios: false,
   canViewUsoVeiculo: false,
   canViewVeiculos: false,
   isFullAccess: false,
@@ -157,7 +160,8 @@ export const getFrotasPermissionAccess = cache(
       canViewAbastecimento: hasAnyPrefix(keys, "fuel."),
       canViewManutencao: hasAnyPrefix(keys, "maintenance."),
       canViewMotoristas: hasAnyPrefix(keys, "drivers."),
-      canViewRelatorios: keys.has("reports.read"),
+      canViewRelatorios: keys.has("reports.read") || keys.has("reports.create"),
+      canCreateRelatorios: keys.has("reports.create"),
       canViewUsoVeiculo: hasAnyPrefix(keys, "vehicle_usage."),
       canViewVeiculos: hasAnyPrefix(keys, "vehicles."),
       isFullAccess: false,

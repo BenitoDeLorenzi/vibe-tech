@@ -3,7 +3,7 @@ import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CadastroStatusButton } from "@/components/cadastro-status-button";
 import { updateOficinaStatus } from "../cadastro-actions";
-import { redirect } from "next/navigation";
+import { forbidden } from "next/navigation";
 import { Search, Wrench } from "lucide-react";
 import { requireUserProfile } from "@/lib/auth-data";
 import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
@@ -41,7 +41,7 @@ export default async function OficinasPage({
   const canManage =
     access.isFullAccess || access.keys.includes("workshops.manage");
   if (!canManage && !access.keys.includes("workshops.read"))
-    redirect("/frotas");
+    forbidden();
   const params = await searchParams;
   const data = loading ? await getFrotasLoadingData(profile, params.prefeitura) : await getFrotasData({
     contextOnly: true, lightweight: true,

@@ -1,4 +1,4 @@
-import { createHmac, pbkdf2Sync, timingSafeEqual } from "crypto";
+import { createHmac, pbkdf2Sync, randomBytes, timingSafeEqual } from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -12,10 +12,12 @@ export type PostoSession = {
   id: string;
   nome: string;
   prefeitura_id: string;
+  primeiro_acesso_concluido_em: string | null;
 };
 
 type PostoSessionPayload = PostoSession & {
   exp: number;
+  iat?: number;
 };
 
 type PostoAuthRow = PostoSession & {
@@ -28,6 +30,7 @@ export async function createPostoSession(posto: PostoSession) {
   const payload: PostoSessionPayload = {
     ...posto,
     exp: Date.now() + sessionDurationMs,
+    iat: Date.now(),
   };
 
   cookieStore.set(postoSessionCookie, encodeSession(payload), {
@@ -68,7 +71,7 @@ export async function getPostoSession() {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("frota_postos_credenciados")
-    .select("id,prefeitura_id,nome,cnpj,status")
+    .select("id,prefeitura_id,nome,cnpj,status,primeiro_acesso_concluido_em,sessao_revogada_em")
     .eq("id", payload.id)
     .maybeSingle();
 
@@ -77,9 +80,9 @@ export async function getPostoSession() {
     return null;
   }
 
-  const posto = data as PostoSession & { status: "active" | "inactive" };
+  const posto = data as PostoSession & { status: "active" | "inactive"; sessao_revogada_em: string | null };
 
-  if (posto.status !== "active") {
+  if (posto.status !== "active" || (posto.sessao_revogada_em && (payload.iat ?? 0) < Date.parse(posto.sessao_revogada_em))) {
     await clearPostoSession();
     return null;
   }
@@ -89,6 +92,7 @@ export async function getPostoSession() {
     id: posto.id,
     nome: posto.nome,
     prefeitura_id: posto.prefeitura_id,
+    primeiro_acesso_concluido_em: posto.primeiro_acesso_concluido_em,
   } satisfies PostoSession;
 }
 
@@ -99,6 +103,8 @@ export async function requirePostoSession() {
     redirect("/frotas/posto/login");
   }
 
+  if (!session.primeiro_acesso_concluido_em) redirect("/frotas/posto/primeiro-acesso");
+
   return session;
 }
 
@@ -108,7 +114,7 @@ export async function authenticatePosto(cnpj: string, password: string) {
   const maskedCnpj = maskCnpj(normalizedCnpj);
   const { data, error } = await supabase
     .from("frota_postos_credenciados")
-    .select("id,prefeitura_id,nome,cnpj,status,senha_hash")
+    .select("id,prefeitura_id,nome,cnpj,status,senha_hash,primeiro_acesso_concluido_em")
     .in("cnpj", [normalizedCnpj, maskedCnpj])
     .maybeSingle();
 
@@ -131,7 +137,15 @@ export async function authenticatePosto(cnpj: string, password: string) {
     id: posto.id,
     nome: posto.nome,
     prefeitura_id: posto.prefeitura_id,
+    primeiro_acesso_concluido_em: posto.primeiro_acesso_concluido_em,
   } satisfies PostoSession;
+}
+
+export function hashPostoPassword(password: string) {
+  const iterations = 120000;
+  const salt = randomBytes(16).toString("hex");
+  const hash = pbkdf2Sync(password, salt, iterations, 32, "sha256").toString("hex");
+  return `pbkdf2_sha256$${iterations}$${salt}$${hash}`;
 }
 
 function encodeSession(payload: PostoSessionPayload) {

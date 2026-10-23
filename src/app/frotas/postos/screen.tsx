@@ -6,11 +6,13 @@ import { deletePosto, updatePostoStatus } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
+import { forbidden } from "next/navigation";
 import {
   Building2,
   ExternalLink,
   Fuel,
   KeyRound,
+  Mail,
   MapPin,
   Pencil,
   Phone,
@@ -53,6 +55,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { requireUserProfile } from "@/lib/auth-data";
+import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
 import { getPostosCredenciadosData } from "@/lib/frotas-data";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +71,8 @@ type PageProps = {
 
 export default async function PostosPage({ searchParams, loading = false }: PageProps) {
   const profile = await requireUserProfile();
+  const access = await getFrotasPermissionAccess(profile);
+  if (!access.isFullAccess && !access.keys.includes("fuel_stations.read") && !access.keys.includes("fuel_stations.manage")) forbidden();
   const params = await searchParams;
   const prefeituraId =
     profile.role === "bdl_admin"
@@ -209,6 +214,10 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                               {posto.telefone ?? "-"}
                             </div>
                             <div className="flex items-center gap-2 text-muted-foreground">
+                              <Mail className="size-4" />
+                              {posto.email_contato ?? "E-mail pendente"}
+                            </div>
+                            <div className="flex items-center gap-2 text-muted-foreground">
                               <MapPin className="size-4" />
                               {posto.endereco ?? "-"}
                             </div>
@@ -216,7 +225,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                         </TableCell>
                         <TableCell>{posto.prefeitura_nome ?? "-"}</TableCell>
                         <TableCell>
-                          <PostoStatusBadge status={posto.status} />
+                          <PostoStatusBadge status={posto.status} firstAccessCompleted={Boolean(posto.primeiro_acesso_concluido_em)} />
                         </TableCell>
                         <TableCell>
                           <PostoActions
@@ -346,19 +355,22 @@ function PostoActions({
 
 function PostoStatusBadge({
   status,
+  firstAccessCompleted,
 }: {
   status: "active" | "inactive";
+  firstAccessCompleted: boolean;
 }) {
+  const pending = status === "active" && !firstAccessCompleted;
   return (
     <Badge
       variant="outline"
       className={
-        status === "active"
+        pending ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-50" : status === "active"
           ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
           : "border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
       }
     >
-      {status === "active" ? "Ativo" : "Inativo"}
+      {pending ? "Primeiro acesso pendente" : status === "active" ? "Ativo" : "Inativo"}
     </Badge>
   );
 }

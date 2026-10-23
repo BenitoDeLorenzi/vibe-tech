@@ -8,7 +8,7 @@ import { ListStatusActionButton } from "@/components/list-status-action-button";
 import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { forbidden } from "next/navigation";
 import {
   CalendarClock,
   CircleAlert,
@@ -94,7 +94,7 @@ const statusFilters = [
 export default async function ManutencaoPage({ searchParams, loading = false }: PageProps) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
-  if (!access.canViewManutencao) redirect("/frotas");
+  if (!access.canViewManutencao) forbidden();
 
   const params = await searchParams;
   const prefeituraId =

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { forbidden } from "next/navigation";
 import { ArrowLeftRight, CheckCheck, RotateCcw } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import {
@@ -26,7 +26,7 @@ export default async function ExtratosPage({
   searchParams: Promise<{ conta?: string; pagar?: string; pagina?: string }>;
 }) {
   const { profile } = await getGestaoContext();
-  if (profile.role !== "bdl_admin") notFound();
+  if (profile.role !== "bdl_admin") forbidden();
   const params = await searchParams;
   const pagina = Math.max(
     1,

@@ -7,7 +7,7 @@ import { ListStatusActionButton } from "@/components/list-status-action-button";
 import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { forbidden } from "next/navigation";
 import {
   Ban,
   CalendarClock,
@@ -96,7 +96,7 @@ export default async function UsoVeiculoPage({ searchParams, loading = false }: 
   const access = await getFrotasPermissionAccess(profile);
 
   if (!access.canViewUsoVeiculo) {
-    redirect("/frotas");
+    forbidden();
   }
 
   const params = await searchParams;

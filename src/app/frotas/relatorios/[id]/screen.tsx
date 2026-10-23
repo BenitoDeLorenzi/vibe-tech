@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import {
   ArrowLeft,
   FileText,
@@ -62,7 +62,7 @@ export default async function RelatorioDetailsPage({
   const access = await getFrotasPermissionAccess(profile);
 
   if (!access.canViewRelatorios) {
-    redirect("/frotas");
+    forbidden();
   }
 
   const [{ id }, query] = await Promise.all([params, searchParams]);

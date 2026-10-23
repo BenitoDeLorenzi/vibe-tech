@@ -17,6 +17,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Fuel,
+  FileBarChart2,
   KeyRound,
   Loader2,
   ShieldCheck,
@@ -49,7 +50,7 @@ type PermissionGroup = {
 
 const permissionGroups = [
   {
-    description: "Fechamentos e controle de estoque do estabelecimento.",
+    description: "Produtos, estoque, equipe e conferência de fechamentos. O financeiro é exclusivo do Master.",
     icon: ClipboardCheck,
     label: "Vibe Gestão",
     keys: ["gestao.manage"],
@@ -63,7 +64,6 @@ const permissionGroups = [
       "vehicles.create",
       "vehicles.update",
       "vehicles.manage",
-      "vehicles.delete",
     ],
   },
   {
@@ -132,6 +132,12 @@ const permissionGroups = [
     label: "Secretarias",
     keys: ["departments.read", "departments.manage"],
   },
+  {
+    description: "Consulta, impressão e geração de relatórios da frota.",
+    icon: FileBarChart2,
+    label: "Relatórios",
+    keys: ["reports.read", "reports.create"],
+  },
 ] satisfies PermissionGroup[];
 
 const groupedPermissionKeys = new Set(
@@ -199,21 +205,11 @@ export function UsuarioAcessosForm({
       const moduloPermissaoIds = new Set(
         modulo.permissoes.map((permissao) => permissao.id),
       );
-
-      setSelectedPermissaoIds((current) => {
-        const next = current.filter((id) => id !== permissaoId);
-        const hasModulePermission = next.some((id) =>
-          moduloPermissaoIds.has(id),
-        );
-
-        if (!hasModulePermission) {
-          setSelectedModuloIds((currentModules) =>
-            currentModules.filter((id) => id !== modulo.id),
-          );
-        }
-
-        return next;
-      });
+      const next = selectedPermissaoIds.filter((id) => id !== permissaoId);
+      setSelectedPermissaoIds(next);
+      if (!next.some((id) => moduloPermissaoIds.has(id))) {
+        setSelectedModuloIds((current) => current.filter((id) => id !== modulo.id));
+      }
       return;
     }
 
@@ -321,24 +317,24 @@ export function UsuarioAcessosForm({
       ) : null}
 
       {acessos.length ? (
-        <div className="max-h-[65vh] space-y-3 overflow-y-auto pr-1">
+        <div className="max-h-[65vh] space-y-4 overflow-y-auto pr-1">
           {acessos.map((modulo) => {
             const selectedCount = modulo.permissoes.filter((permissao) =>
               selectedPermissaoIds.includes(permissao.id),
             ).length;
             const moduloSelected =
               selectedModuloIds.includes(modulo.id) || selectedCount > 0;
-            const isFullAccess = selectedCount === modulo.permissoes.length;
+            const isFullAccess = modulo.permissoes.length > 0 && selectedCount === modulo.permissoes.length;
 
             return (
               <div
                 key={modulo.id}
                 className={cn(
-                  "overflow-hidden rounded-lg border transition-colors",
-                  moduloSelected && "border-primary/50 bg-primary/5",
+                  "overflow-hidden rounded-xl border bg-background transition-colors",
+                  moduloSelected && "border-primary/40",
                 )}
               >
-                <div className="flex flex-col gap-3 border-b bg-muted/30 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="font-medium">{modulo.nome}</div>
@@ -378,7 +374,7 @@ export function UsuarioAcessosForm({
                   </div>
                 </div>
 
-                <div className="grid gap-3 p-3">
+                <div className="divide-y px-4">
                   {[...permissionGroups, getOtherPermissionsGroup(modulo)].map(
                     (group) => {
                       const groupPermissions = modulo.permissoes.filter(
@@ -398,11 +394,11 @@ export function UsuarioAcessosForm({
                       return (
                         <div
                           key={group.label}
-                          className="rounded-lg border bg-background p-3"
+                          className="py-4"
                         >
                           <div className="mb-3 flex items-start justify-between gap-3">
                             <div className="flex min-w-0 items-start gap-3">
-                              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted/50">
+                              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                                 <GroupIcon className="size-4 text-muted-foreground" />
                               </div>
                               <div className="min-w-0">
@@ -417,42 +413,31 @@ export function UsuarioAcessosForm({
                             </Badge>
                           </div>
 
-                          <div className="grid gap-2 sm:grid-cols-2">
+                          <div className="divide-y rounded-lg border bg-background">
                             {groupPermissions.map((permissao) => {
                               const permissaoSelected =
                                 selectedPermissaoIds.includes(permissao.id);
 
                               return (
-                                <button
+                                <div
                                   key={permissao.id}
-                                  type="button"
                                   className={cn(
-                                    "flex min-h-12 items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted/50 disabled:cursor-not-allowed disabled:opacity-60",
-                                    permissaoSelected &&
-                                      "border-primary/50 bg-primary/5",
+                                    "flex min-h-14 items-center justify-between gap-4 px-3 py-2.5 transition-colors hover:bg-muted/40",
+                                    permissaoSelected && "bg-primary/5",
                                   )}
-                                  onClick={() =>
-                                    togglePermissao(modulo, permissao.id)
-                                  }
-                                  disabled={pending}
                                 >
-                                  <Checkbox
-                                    checked={permissaoSelected}
-                                    tabIndex={-1}
-                                    aria-hidden="true"
-                                    disabled={pending}
-                                  />
-                                  <span className="min-w-0">
+                                  <label htmlFor={`permissao-${permissao.id}`} className="min-w-0 flex-1 cursor-pointer">
                                     <span className="block text-sm font-medium text-foreground">
                                       {permissao.nome}
                                     </span>
                                     {permissao.descricao ? (
-                                      <span className="block line-clamp-2 text-xs text-muted-foreground">
+                                      <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
                                         {permissao.descricao}
                                       </span>
                                     ) : null}
-                                  </span>
-                                </button>
+                                  </label>
+                                  <Checkbox id={`permissao-${permissao.id}`} checked={permissaoSelected} onCheckedChange={() => togglePermissao(modulo, permissao.id)} aria-label={permissao.nome} disabled={pending} />
+                                </div>
                               );
                             })}
                           </div>

@@ -38,6 +38,7 @@ import { createUsuario, updateUsuario } from "./actions";
 type UsuarioFormValues = {
   ativo: string | null;
   cpf: string;
+  email_contato: string;
   nome: string;
   password: string;
   prefeitura_id: string | null;
@@ -56,7 +57,7 @@ const roleItems = [
 ];
 
 const statusItems = [
-  { label: "Ativo", value: "true" },
+  { label: "Habilitado", value: "true" },
   { label: "Inativo", value: "false" },
 ];
 
@@ -72,6 +73,7 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
     defaultValues: {
       ativo: usuario ? String(usuario.ativo) : "true",
       cpf: usuario?.cpf ? mask(usuario.cpf, "999.999.999-99") : "",
+      email_contato: usuario?.email_contato ?? "",
       nome: usuario?.nome ?? "",
       password: "",
       prefeitura_id: usuario?.prefeitura_id ?? null,
@@ -94,6 +96,7 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
         form.reset({
           ativo: "true",
           cpf: "",
+          email_contato: "",
           nome: "",
           password: "",
           prefeitura_id: null,
@@ -114,6 +117,7 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
 
     formData.set("ativo", values.ativo ?? "");
     formData.set("cpf", values.cpf.replace(/\D/g, ""));
+    if (isEditing) formData.set("email_contato", values.email_contato);
     formData.set("nome", values.nome);
     formData.set("password", values.password);
     formData.set("prefeitura_id", values.prefeitura_id ?? "");
@@ -153,6 +157,27 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
             />
             <FieldError errors={[form.formState.errors.nome]} />
           </Field>
+
+          {isEditing ? (
+            <Field data-invalid={Boolean(form.formState.errors.email_contato)}>
+              <FieldLabel htmlFor="email_contato">E-mail de recuperação</FieldLabel>
+              <Input
+                id="email_contato"
+                type="email"
+                autoComplete="off"
+                placeholder="usuario@exemplo.com"
+                aria-invalid={Boolean(form.formState.errors.email_contato)}
+                {...form.register("email_contato", {
+                  validate: (value) =>
+                    (!usuario?.email_contato && !value.trim()) ||
+                    (value.trim().length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) ||
+                    "Informe um e-mail válido.",
+                })}
+              />
+              <FieldError errors={[form.formState.errors.email_contato]} />
+              <p className="text-xs text-muted-foreground">Somente o Master pode alterar este endereço. Um novo e-mail precisa ser verificado.</p>
+            </Field>
+          ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Controller
@@ -200,10 +225,10 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
             <Controller
               control={form.control}
               name="ativo"
-              rules={{ required: "Selecione o status." }}
+              rules={{ required: "Selecione a situação do acesso." }}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="ativo">Status</FieldLabel>
+                  <FieldLabel htmlFor="ativo">Acesso</FieldLabel>
                   <Select
                     items={statusItems}
                     name={field.name}
@@ -221,7 +246,7 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectGroup>
-                        <SelectLabel>Status</SelectLabel>
+                        <SelectLabel>Acesso</SelectLabel>
                         {statusItems.map((item) => (
                           <SelectItem key={item.value} value={item.value}>
                             {item.label}
@@ -231,6 +256,7 @@ export function UsuarioForm({ prefeituras, usuario }: UsuarioFormProps) {
                     </SelectContent>
                   </Select>
                   <FieldError errors={[fieldState.error]} />
+                  <p className="text-xs text-muted-foreground">Habilitar permite o primeiro acesso; o status Ativo aparece após a confirmação do e-mail.</p>
                 </Field>
               )}
             />

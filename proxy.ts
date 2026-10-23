@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/login", "/api/plexi/vehicle-consults/webhook"];
+const PUBLIC_PATHS = ["/login", "/esqueci-senha", "/frotas/posto", "/api/plexi/vehicle-consults/webhook"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({

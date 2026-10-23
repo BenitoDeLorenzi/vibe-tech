@@ -16,6 +16,7 @@ export type FrotaActionState = {
   abastecimento?: FrotaAbastecimento;
   error?: string;
   success?: string;
+  temporaryPassword?: string;
 };
 
 const allowedStatuses = new Set<VeiculoStatus>([
@@ -1373,29 +1374,27 @@ export async function createPostoCredenciado(
   _previousState: FrotaActionState,
   formData: FormData,
 ): Promise<FrotaActionState> {
-  const prefeituraId = getRequiredValue(formData, "prefeitura_id");
+  const permissionError = await requireFrotasPermission("fuel_stations.manage");
+  if (permissionError) return { error: permissionError };
+  const profile = await requireUserProfile();
+  const prefeituraId = profile.role === "bdl_admin" ? getRequiredValue(formData, "prefeitura_id") : profile.prefeitura_id;
   const nome = getRequiredValue(formData, "nome");
   const cnpj = getRequiredValue(formData, "cnpj").replace(/\D/g, "");
-  const endereco = getOptionalValue(formData, "endereco");
-  const senha = getRequiredValue(formData, "senha");
+  const senha = randomBytes(12).toString("base64url");
   const telefone = getOptionalValue(formData, "telefone");
 
-  if (!prefeituraId || !nome || !cnpj || !senha) {
-    return { error: "Informe empresa, nome, CNPJ e senha do posto." };
+  if (!prefeituraId || !nome || !cnpj) {
+    return { error: "Informe empresa, nome e CNPJ do posto." };
   }
 
   if (cnpj.length !== 14) {
     return { error: "Informe um CNPJ válido para o posto." };
   }
 
-  if (senha.length < 6) {
-    return { error: "A senha do posto deve ter pelo menos 6 caracteres." };
-  }
-
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.from("frota_postos_credenciados").insert({
     cnpj,
-    endereco,
+    endereco: null,
     nome,
     prefeitura_id: prefeituraId,
     senha_hash: hashPassword(senha),
@@ -1409,15 +1408,18 @@ export async function createPostoCredenciado(
 
   revalidatePath("/frotas/abastecimento");
   revalidatePath("/frotas/postos");
-  return { success: "Posto de combustível cadastrado com sucesso." };
+  return { success: "Posto cadastrado. Entregue a senha provisória ao responsável pelo posto.", temporaryPassword: senha };
 }
 
 export async function updatePostoCredenciado(
   _previousState: FrotaActionState,
   formData: FormData,
 ): Promise<FrotaActionState> {
+  const permissionError = await requireFrotasPermission("fuel_stations.manage");
+  if (permissionError) return { error: permissionError };
+  const profile = await requireUserProfile();
   const id = getRequiredValue(formData, "id");
-  const prefeituraId = getRequiredValue(formData, "prefeitura_id");
+  const prefeituraId = profile.role === "bdl_admin" ? getRequiredValue(formData, "prefeitura_id") : profile.prefeitura_id;
   const nome = getRequiredValue(formData, "nome");
   const cnpj = getRequiredValue(formData, "cnpj").replace(/\D/g, "");
   const endereco = getOptionalValue(formData, "endereco");
@@ -1432,7 +1434,7 @@ export async function updatePostoCredenciado(
   }
 
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase
+  let query = supabase
     .from("frota_postos_credenciados")
     .update({
       cnpj,
@@ -1443,9 +1445,11 @@ export async function updatePostoCredenciado(
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+  if (profile.role !== "bdl_admin") query = query.eq("prefeitura_id", prefeituraId!);
+  const { data: updated, error } = await query.select("id").maybeSingle();
 
-  if (error) {
-    return { error: formatSupabaseError(error.message) };
+  if (error || !updated) {
+    return { error: formatSupabaseError(error?.message ?? "Posto não encontrado.") };
   }
 
   revalidatePath("/frotas/abastecimento");
@@ -1458,6 +1462,9 @@ export async function resetPostoCredenciadoSenha(
   _previousState: FrotaActionState,
   formData: FormData,
 ): Promise<FrotaActionState> {
+  const permissionError = await requireFrotasPermission("fuel_stations.manage");
+  if (permissionError) return { error: permissionError };
+  const profile = await requireUserProfile();
   const id = getRequiredValue(formData, "id");
   const senha = getRequiredValue(formData, "senha");
 
@@ -1470,20 +1477,29 @@ export async function resetPostoCredenciadoSenha(
   }
 
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase
+  let query = supabase
     .from("frota_postos_credenciados")
     .update({
       senha_hash: hashPassword(senha),
+      primeiro_acesso_concluido_em: null,
+      email_verificado_em: null,
+      sessao_revogada_em: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id);
+  if (profile.role !== "bdl_admin") {
+    if (!profile.prefeitura_id) return { error: "Empresa não encontrada." };
+    query = query.eq("prefeitura_id", profile.prefeitura_id);
+  }
+  const { data: updated, error } = await query.select("id").maybeSingle();
 
-  if (error) {
-    return { error: formatSupabaseError(error.message) };
+  if (error || !updated) {
+    return { error: formatSupabaseError(error?.message ?? "Posto não encontrado.") };
   }
 
+  await supabase.from("frota_posto_codigos").delete().eq("posto_id", id);
   revalidatePath("/frotas/postos");
-  return { success: "Senha redefinida com sucesso." };
+  return { success: "Senha provisória definida. O posto deverá concluir novamente o primeiro acesso." };
 }
 
 export async function updatePostoCredenciadoStatus(
@@ -2657,8 +2673,8 @@ async function resolveFuelCompletionActor(
     source === "administracao" ? await getCurrentUserProfile() : null;
   if (
     source === "posto"
-      ? !posto
-      : !profile || !(await hasFrotasPermission(profile, "fuel.complete"))
+      ? !posto?.primeiro_acesso_concluido_em
+      : !profile?.primeiro_acesso_concluido_em || !(await hasFrotasPermission(profile, "fuel.complete"))
   ) {
     return {
       error: "Você não tem permissão para executar esta ação. Entre novamente.",

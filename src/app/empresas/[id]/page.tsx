@@ -1,5 +1,6 @@
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
+import { UsuarioStatusBadge } from "@/components/usuario-status-badge";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
@@ -78,7 +79,6 @@ import {
 import {
   formatCpf,
   formatUsuarioRole,
-  formatUsuarioStatus,
   getUsuarios,
   type Usuario,
   type UsuarioRole,
@@ -606,7 +606,7 @@ function UsuariosTab({ usuarios }: { usuarios: Usuario[] }) {
                     <UsuarioRoleBadge role={usuario.role} />
                   </TableCell>
                   <TableCell>
-                    <UsuarioStatusBadge ativo={usuario.ativo} />
+                    <UsuarioStatusBadge usuario={usuario} />
                   </TableCell>
                   <TableCell>
                     {new Intl.DateTimeFormat("pt-BR").format(
@@ -881,24 +881,6 @@ function UsuarioRoleBadge({ role }: { role: UsuarioRole }) {
   return (
     <Badge variant="outline" className={styles[role]}>
       {formatUsuarioRole(role)}
-    </Badge>
-  );
-}
-
-function UsuarioStatusBadge({ ativo }: { ativo: boolean }) {
-  const Icon = ativo ? CircleCheck : CircleX;
-
-  return (
-    <Badge
-      variant="outline"
-      className={
-        ativo
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-          : "border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
-      }
-    >
-      <Icon className="size-3.5" />
-      {formatUsuarioStatus(ativo)}
     </Badge>
   );
 }

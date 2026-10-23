@@ -1,13 +1,12 @@
 import Link from "next/link";
-import { CircleDollarSign, Search } from "lucide-react";
+import { CircleDollarSign } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FormSelect } from "@/components/form-select";
+import { BillingFilters } from "./billing-filters";
 import {
   Table,
   TableBody,
@@ -122,66 +121,16 @@ export default async function CobrancasPage({
       icon={CircleDollarSign}
       profile={profile}
       title="Cobranças"
+      actions={
+        <BillingFilters
+          key={JSON.stringify([mes, params.q, params.modulo, params.status])}
+          mes={mes} currentMonth={today.slice(0, 7)} query={params.q ?? ""}
+          modulo={params.modulo ?? "all"} status={params.status ?? "all"} modulos={modulos}
+        />
+      }
     >
-      <main className="space-y-4 p-4">
-        <form className="flex flex-wrap items-end gap-3">
-          <label className="space-y-1 text-xs">
-            Competência
-            <Input
-              type="month"
-              name="mes"
-              defaultValue={mes}
-              className="w-40"
-            />
-          </label>
-          <label className="min-w-48 flex-1 space-y-1 text-xs">
-            Empresa
-            <Input
-              name="q"
-              placeholder="Nome ou CNPJ"
-              defaultValue={params.q}
-            />
-          </label>
-          <div className="w-44 space-y-1 text-xs">
-            <label>Módulo</label>
-            <FormSelect
-              aria-label="Módulo"
-              name="modulo"
-              defaultValue={params.modulo ?? "all"}
-              options={[
-                { value: "all", label: "Todos os módulos" },
-                ...modulos,
-              ]}
-            />
-          </div>
-          <div className="w-48 space-y-1 text-xs">
-            <label>Situação</label>
-            <FormSelect
-              aria-label="Situação"
-              name="status"
-              defaultValue={params.status ?? "all"}
-              options={[
-                { value: "all", label: "Todas" },
-                { value: "open", label: "Em aberto" },
-                { value: "partial", label: "Parciais" },
-                { value: "paid", label: "Pagas" },
-                { value: "overdue", label: "Atrasadas" },
-                { value: "cancelled", label: "Canceladas" },
-                { value: "previous", label: "Atrasadas anteriores" },
-              ]}
-            />
-          </div>
-          <Button type="submit">
-            <Search className="size-4" />
-            Filtrar
-          </Button>
-          <Link
-            href="/cobrancas"
-            className={buttonVariants({ variant: "outline" })}
-          >
-            Limpar
-          </Link>
-        </form>
+      <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
+
         {params.error && (
           <p role="alert" className="text-sm text-destructive">
             {params.error}
@@ -239,7 +188,7 @@ export default async function CobrancasPage({
                 <strong>{formatCurrency(sum(previous, saldo))}</strong>
               </span>
             </div>
-            <div className="overflow-x-auto rounded-lg border">
+            <div className="overflow-hidden rounded-lg border">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">

@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import { AvatarPhotoControl } from "@/components/avatar-photo-control";
 
 import { Controller, useForm } from "react-hook-form";
+import { mask } from "remask";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,18 +19,17 @@ import {
 export function DadosPerfilForm({
   nome,
   telefone,
-  email_contato,
 }: {
   nome: string;
   telefone: string;
-  email_contato: string;
 }) {
   const id = useId();
   const router = useRouter();
-  const form = useForm({ defaultValues: { nome, telefone, email_contato } });
+  const form = useForm({ defaultValues: { nome, telefone: formatPhone(telefone) } });
   const { errors, isSubmitting } = form.formState;
   return (
     <form
+      id="dados-perfil-form"
       noValidate
       className="space-y-4"
       onSubmit={form.handleSubmit(async (values) => {
@@ -49,8 +49,8 @@ export function DadosPerfilForm({
         }
       })}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field className="sm:col-span-2" data-invalid={Boolean(errors.nome)}>
+      <div className="grid gap-3">
+        <Field data-invalid={Boolean(errors.nome)}>
           <FieldLabel htmlFor={id + "nome"}>Nome completo</FieldLabel>
           <Input
             id={id + "nome"}
@@ -65,50 +65,41 @@ export function DadosPerfilForm({
           />
           <FieldError errors={[errors.nome]} />
         </Field>
-        <Field data-invalid={Boolean(errors.email_contato)}>
-          <FieldLabel htmlFor={id + "email"}>
-            E-mail de contato (opcional)
-          </FieldLabel>
-          <Input
-            id={id + "email"}
-            type="email"
-            autoComplete="email"
-            placeholder="voce@exemplo.com"
-            disabled={isSubmitting}
-            aria-invalid={Boolean(errors.email_contato)}
-            {...form.register("email_contato", {
-              validate: (value) =>
-                !value.trim() ||
-                (value.trim().length <= 254 &&
-                  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) ||
-                "Informe um e-mail válido.",
-            })}
-          />
-          <FieldError errors={[errors.email_contato]} />
-        </Field>
-        <Field data-invalid={Boolean(errors.telefone)}>
-          <FieldLabel htmlFor={id + "telefone"}>Telefone (opcional)</FieldLabel>
-          <Input
-            id={id + "telefone"}
-            type="tel"
-            autoComplete="tel"
-            disabled={isSubmitting}
-            aria-invalid={Boolean(errors.telefone)}
-            {...form.register("telefone", {
-              maxLength: { value: 30, message: "Use até 30 caracteres." },
-            })}
-          />
-          <FieldError errors={[errors.telefone]} />
-        </Field>
+        <Controller
+          control={form.control}
+          name="telefone"
+          rules={{ validate: (value) => {
+            const digits = value.replace(/\D/g, "");
+            return !digits || digits.length === 10 || digits.length === 11 || "Informe um telefone com DDD válido.";
+          } }}
+          render={({ field, fieldState }) => (
+            <Field data-invalid={fieldState.invalid}>
+              <FieldLabel htmlFor={id + "telefone"}>Telefone (opcional)</FieldLabel>
+              <Input
+                id={id + "telefone"}
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                placeholder="(00) 00000-0000"
+                maxLength={15}
+                disabled={isSubmitting}
+                aria-invalid={fieldState.invalid}
+                {...field}
+                onChange={(event) => field.onChange(formatPhone(event.target.value))}
+              />
+              <FieldError errors={[fieldState.error]} />
+            </Field>
+          )}
+        />
       </div>
       <FieldError errors={[errors.root]} />
-      <div className="flex justify-end">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Salvando…" : "Salvar dados"}
-        </Button>
-      </div>
     </form>
   );
+}
+
+function formatPhone(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  return mask(digits, digits.length > 10 ? "(99) 99999-9999" : "(99) 9999-9999");
 }
 
 export function FotoPerfilForm({

@@ -1,6 +1,6 @@
 import { getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { forbidden, notFound, redirect } from "next/navigation";
 import { Building2, Search, X } from "lucide-react";
 import { requireUserProfile } from "@/lib/auth-data";
 import { getModuleLicensedEmpresas } from "@/lib/empresa-access";
@@ -48,7 +48,7 @@ export default async function SecretariasPage({
     redirect(`/frotas/veiculos?prefeitura=${empresa.id}`);
   const manage =
     access.isFullAccess || access.keys.includes("departments.manage");
-  if (!manage && !access.keys.includes("departments.read")) notFound();
+  if (!manage && !access.keys.includes("departments.read")) forbidden();
   const databasePage = await getFrotaListPage(profile, "secretarias", { ...params, prefeitura: empresa.id });
   const rows = await getSecretarias(empresa.id, databasePage.ids);
   const secretariaPage = { ...databasePage, items: orderPageItems(rows, databasePage) };

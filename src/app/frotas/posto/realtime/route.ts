@@ -7,7 +7,7 @@ export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const session = await getPostoSession();
-  if (!session) return new Response(null, { status: 401 });
+  if (!session?.primeiro_acesso_concluido_em) return new Response(null, { status: 401 });
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return new Response(null, { status: 503 });
   const supabase = createSupabaseServerClient();
   const channel = supabase.channel(`posto-orders-${session.id}-${crypto.randomUUID()}`);

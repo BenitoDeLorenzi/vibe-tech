@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { forbidden } from "next/navigation";
 import { Wallet, Landmark, CreditCard, Clock } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { getFinanceiroData } from "@/lib/gestao-contas-data";
@@ -21,7 +21,7 @@ import { FinanceiroForm } from "../financeiro-form";
 import { SolicitacoesList } from "../solicitacoes-list";
 export default async function ContasPage() {
   const { profile, unidade } = await getGestaoContext();
-  if (profile.role !== "bdl_admin") notFound();
+  if (profile.role !== "bdl_admin") forbidden();
   const fin = await getFinanceiroData();
   const resumo = resumoContas(fin);
   return (

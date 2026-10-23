@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import {
   ArrowLeft,
   CircleAlert,
@@ -91,6 +91,7 @@ export default async function VeiculoDebitosPage({
 }: PageProps) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
+  if (!access.isFullAccess && !access.keys.includes("expirations.read") && !access.canManageVencimentos) forbidden();
 
   const routeParams = await params;
   const queryParams = await searchParams;

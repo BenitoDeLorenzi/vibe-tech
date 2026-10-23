@@ -32,7 +32,6 @@ type PostoCredenciadoValues = {
   endereco: string;
   nome: string;
   prefeitura_id: string;
-  senha: string;
   telefone: string;
 };
 
@@ -45,6 +44,7 @@ export function PostoCredenciadoForm({
   const isEditing = Boolean(posto);
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
+  const successRef = useRef<HTMLDivElement>(null);
   const [state, formAction, actionPending] = useActionState(
     isEditing ? updatePostoCredenciado : createPostoCredenciado,
     {}
@@ -55,13 +55,13 @@ export function PostoCredenciadoForm({
       endereco: posto?.endereco ?? "",
       nome: posto?.nome ?? "",
       prefeitura_id: posto?.prefeitura_id ?? selectedPrefeituraId ?? "",
-      senha: "",
       telefone: posto?.telefone ?? "",
     },
   });
 
   useEffect(() => {
     if (state.success) {
+      if (state.temporaryPassword) return;
       toast.success(state.success, {
         id: isEditing ? "posto-update-success" : "posto-create-success",
       });
@@ -73,12 +73,11 @@ export function PostoCredenciadoForm({
           endereco: "",
           nome: "",
           prefeitura_id: selectedPrefeituraId ?? "",
-          senha: "",
           telefone: "",
         });
       }
     }
-  }, [form, isEditing, router, selectedPrefeituraId, state.success]);
+  }, [form, isEditing, router, selectedPrefeituraId, state.success, state.temporaryPassword]);
 
   function submitForm(values: PostoCredenciadoValues) {
     const formData = new FormData();
@@ -89,15 +88,28 @@ export function PostoCredenciadoForm({
     formData.set("nome", values.nome);
     formData.set("cnpj", values.cnpj);
     formData.set("endereco", values.endereco);
-    if (!isEditing) {
-      formData.set("senha", values.senha);
-    }
     formData.set("telefone", values.telefone);
 
     startTransition(() => {
       formAction(formData);
     });
   }
+
+  if (state.temporaryPassword) return (
+    <div ref={successRef} className="space-y-4">
+      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+        <p className="font-semibold">Posto cadastrado</p>
+        <p className="mt-1">Copie a senha provisória e entregue-a ao responsável pelo posto. Ela será mostrada somente agora.</p>
+      </div>
+      <Field><FieldLabel htmlFor="posto-cnpj-criado">CNPJ de acesso</FieldLabel><Input id="posto-cnpj-criado" value={form.getValues("cnpj")} readOnly /></Field>
+      <Field><FieldLabel htmlFor="posto-senha-provisoria">Senha provisória</FieldLabel><Input id="posto-senha-provisoria" value={state.temporaryPassword} readOnly className="font-mono" /></Field>
+      <p className="text-xs text-muted-foreground">No primeiro login, o posto definirá uma nova senha, completará o endereço e confirmará o e-mail. Se perder esta senha, use a ação de redefinição na lista de postos.</p>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={() => navigator.clipboard.writeText(state.temporaryPassword!)}>Copiar senha</Button>
+        <Button type="button" onClick={() => { closeParentDialog(successRef.current); router.refresh(); }}>Concluir</Button>
+      </DialogFooter>
+    </div>
+  );
 
   return (
     <form
@@ -171,22 +183,7 @@ export function PostoCredenciadoForm({
               }
             />
           </div>
-          {!isEditing ? (
-            <TextField
-              control={form.control}
-              label="Senha de acesso do posto"
-              name="senha"
-              rules={{
-                minLength: {
-                  value: 6,
-                  message: "A senha deve ter pelo menos 6 caracteres.",
-                },
-                required: "Informe a senha de acesso do posto.",
-              }}
-              type="password"
-            />
-          ) : null}
-          <TextField control={form.control} label="Endereço" name="endereco" />
+          {isEditing ? <TextField control={form.control} label="Endereço" name="endereco" /> : null}
         </FieldGroup>
       </fieldset>
 
@@ -254,7 +251,7 @@ function TextField({
   );
 }
 
-function closeParentDialog(formElement: HTMLFormElement | null) {
+function closeParentDialog(formElement: HTMLElement | null) {
   const closeButton = formElement
     ?.closest('[data-slot="dialog-content"]')
     ?.querySelector<HTMLElement>('[data-slot="dialog-close"]');

@@ -30,7 +30,7 @@ export async function createRelatorio(
   formData: FormData
 ): Promise<RelatorioActionState> {
   const profile = await requireUserProfile();
-  const allowed = await hasFrotasPermission(profile, "reports.read");
+  const allowed = await hasFrotasPermission(profile, "reports.create");
 
   if (!allowed) {
     return { error: "Você não tem permissão para gerar relatórios." };

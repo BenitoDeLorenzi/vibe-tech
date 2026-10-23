@@ -5,6 +5,9 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 import type { UsuarioRole } from "@/lib/usuarios-data";
 
 export type CurrentUserProfile = {
+  primeiro_acesso_concluido_em: string | null;
+  senha_inicial_alterada_em: string | null;
+  email_contato_verificado_em: string | null;
   email_contato?: string | null;
   prefeitura_nome_fantasia?: string | null;
   ativo: boolean;
@@ -22,6 +25,9 @@ export type CurrentUserProfile = {
 };
 
 type PerfilRow = {
+  primeiro_acesso_concluido_em: string | null;
+  senha_inicial_alterada_em: string | null;
+  email_contato_verificado_em: string | null;
   email_contato: string | null;
   ativo: boolean | null;
   cpf: string | null;
@@ -54,7 +60,7 @@ export const getCurrentUserProfile = cache(async function getCurrentUserProfile(
   const { data, error } = await supabase
     .from("perfis")
     .select(
-      "id,nome,email,email_contato,username,cpf,telefone,avatar_path,role,prefeitura_id,ativo,prefeituras:empresas!perfis_prefeitura_id_fkey(nome,nome_fantasia,brasao_url)",
+      "id,nome,email,email_contato,email_contato_verificado_em,primeiro_acesso_concluido_em,senha_inicial_alterada_em,username,cpf,telefone,avatar_path,role,prefeitura_id,ativo,prefeituras:empresas!perfis_prefeitura_id_fkey(nome,nome_fantasia,brasao_url)",
     )
     .eq("id", user.id)
     .maybeSingle();
@@ -75,6 +81,9 @@ export const getCurrentUserProfile = cache(async function getCurrentUserProfile(
         .createSignedUrl(perfil.avatar_path, 3600)
     : null;
   return {
+    primeiro_acesso_concluido_em: perfil.primeiro_acesso_concluido_em,
+    senha_inicial_alterada_em: perfil.senha_inicial_alterada_em,
+    email_contato_verificado_em: perfil.email_contato_verificado_em,
     telefone: perfil.telefone,
     email_contato: perfil.email_contato,
     prefeitura_nome_fantasia: perfil.prefeituras?.nome_fantasia ?? null,
@@ -92,11 +101,21 @@ export const getCurrentUserProfile = cache(async function getCurrentUserProfile(
   } satisfies CurrentUserProfile;
 });
 
-export async function requireUserProfile() {
+export async function requireAuthenticatedProfile() {
   const profile = await getCurrentUserProfile();
 
   if (!profile) {
     redirect("/login");
+  }
+
+  return profile;
+}
+
+export async function requireUserProfile() {
+  const profile = await requireAuthenticatedProfile();
+
+  if (!profile.primeiro_acesso_concluido_em) {
+    redirect("/primeiro-acesso");
   }
 
   return profile;

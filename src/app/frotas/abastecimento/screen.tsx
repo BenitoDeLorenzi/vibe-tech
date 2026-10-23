@@ -8,6 +8,7 @@ import { ListStatusActionButton } from "@/components/list-status-action-button";
 import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
+import { forbidden } from "next/navigation";
 import {
   CalendarClock,
   CircleCheck,
@@ -92,6 +93,7 @@ const statusFilters = [
 export default async function AbastecimentoPage({ searchParams, loading = false }: PageProps) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
+  if (!access.canViewAbastecimento) forbidden();
 
   const params = await searchParams;
   const prefeituraId =

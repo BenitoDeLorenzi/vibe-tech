@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -274,15 +275,13 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                           <TableCell>
                             <div className="flex justify-end gap-1">
                               <Dialog>
-                                <DialogTrigger
-                                  className={buttonVariants({
-                                    variant: "ghost",
-                                    size: "icon-sm",
-                                  })}
-                                  title="Editar licença"
-                                >
-                                  <Pencil className="size-4" />
-                                </DialogTrigger>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label="Editar licença"
+                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                  ><Pencil className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Editar licença</TooltipContent>
+                                </Tooltip>
                                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
                                   <DialogHeader>
                                     <DialogTitle>Editar licença</DialogTitle>
@@ -296,15 +295,13 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                               </Dialog>
 
                               <Dialog>
-                                <DialogTrigger
-                                  className={buttonVariants({
-                                    variant: "ghost",
-                                    size: "icon-sm",
-                                  })}
-                                  title="Renovar licença"
-                                >
-                                  <RefreshCw className="size-4" />
-                                </DialogTrigger>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label="Renovar licença"
+                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                  ><RefreshCw className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Renovar licença</TooltipContent>
+                                </Tooltip>
                                 <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
                                   <DialogHeader>
                                     <DialogTitle>Renovar licença</DialogTitle>

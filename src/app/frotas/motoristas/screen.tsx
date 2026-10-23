@@ -6,7 +6,7 @@ import { deleteMotorista } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { forbidden } from "next/navigation";
 import {
   CalendarClock,
   CircleCheck,
@@ -88,7 +88,7 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
   const access = await getFrotasPermissionAccess(profile);
 
   if (!access.canViewMotoristas) {
-    redirect("/frotas");
+    forbidden();
   }
 
   const params = await searchParams;

@@ -3,6 +3,7 @@ import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import { EmpresaFilterCombobox } from "@/components/empresa-filter-combobox";
+import { UsuarioStatusBadge } from "@/components/usuario-status-badge";
 import {
   CircleCheck,
   CircleX,
@@ -30,6 +31,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -40,17 +42,19 @@ import {
 } from "@/components/ui/table";
 import {
   formatUsuarioRole,
-  formatUsuarioStatus,
   formatCpf,
   getUsuarioFormOptions,
+  getUsuarioStatus,
   getUsuariosAccessMap,
   getUsuarios,
   type UsuarioRole,
 } from "@/lib/usuarios-data";
 import { requireRole } from "@/lib/auth-data";
+import { cn } from "@/lib/utils";
 import { DeleteUsuarioForm } from "./delete-usuario-form";
 import { UsuarioAcessosForm } from "./usuario-acessos-form";
 import { UsuarioForm } from "./usuario-form";
+import { UsuarioStatusForm } from "./usuario-status-form";
 import { UsuariosToasts } from "./usuarios-toasts";
 
 export const dynamic = "force-dynamic";
@@ -59,6 +63,7 @@ type PageProps = {
   searchParams: Promise<{
     deleted?: string;
     error?: string;
+    status?: string;
     prefeitura?: string;
     empresa?: string;
     q?: string;
@@ -77,7 +82,9 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
     getUsuarioFormOptions(),
   ]);
   const accessMap = await getUsuariosAccessMap(usuarios);
-  const activeCount = usuarios.filter((usuario) => usuario.ativo).length;
+  const statuses = usuarios.map(getUsuarioStatus);
+  const activeCount = statuses.filter((status) => status === "active").length;
+  const pendingCount = statuses.filter((status) => status === "first_access" || status === "email_pending").length;
   const searchTerm = params.q?.trim();
   const hasActiveFilters = Boolean(
     searchTerm || (params.empresa ?? params.prefeitura),
@@ -152,7 +159,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
         </div>
       }
     >
-      <UsuariosToasts deleted={params.deleted} error={params.error} />
+      <UsuariosToasts deleted={params.deleted} error={params.error} status={params.status} />
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
         <Card>
           <ListPanelHeader
@@ -160,6 +167,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
               icon={Users}
               metrics={<ListMetrics items={[
                 { label: "Ativos", value: activeCount, tone: "success" },
+                { label: "Pendentes", value: pendingCount, tone: "warning" },
                 { label: "Total", value: usuarios.length },
               ]} />}
             />
@@ -195,7 +203,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                           {usuario.prefeitura_nome ?? "Vibe Tech"}
                         </TableCell>
                         <TableCell>
-                          <UsuarioStatusBadge ativo={usuario.ativo} />
+                          <UsuarioStatusBadge usuario={usuario} />
                         </TableCell>
                         <TableCell>
                           {new Intl.DateTimeFormat("pt-BR").format(
@@ -205,15 +213,13 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Dialog>
-                              <DialogTrigger
-                                className={buttonVariants({
-                                  variant: "ghost",
-                                  size: "icon-sm",
-                                })}
-                                title="Editar usuário"
-                              >
-                                <Pencil className="size-4" />
-                              </DialogTrigger>
+                              <Tooltip>
+                                <TooltipTrigger render={<DialogTrigger
+                                  aria-label="Editar usuário"
+                                  className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                ><Pencil className="size-4" /></DialogTrigger>} />
+                                <TooltipContent>Editar usuário</TooltipContent>
+                              </Tooltip>
                               <DialogContent className="sm:max-w-lg">
                                 <DialogHeader>
                                   <DialogTitle>Editar usuário</DialogTitle>
@@ -226,15 +232,13 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                             </Dialog>
 
                             <Dialog>
-                              <DialogTrigger
-                                className={buttonVariants({
-                                  variant: "ghost",
-                                  size: "icon-sm",
-                                })}
-                                title="Gerenciar permissões"
-                              >
-                                <ShieldCheck className="size-4" />
-                              </DialogTrigger>
+                              <Tooltip>
+                                <TooltipTrigger render={<DialogTrigger
+                                  aria-label="Gerenciar permissões"
+                                  className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                ><ShieldCheck className="size-4" /></DialogTrigger>} />
+                                <TooltipContent>Gerenciar permissões</TooltipContent>
+                              </Tooltip>
                               <DialogContent className="sm:max-w-3xl">
                                 <DialogHeader>
                                   <DialogTitle>
@@ -252,27 +256,57 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                               </DialogContent>
                             </Dialog>
 
-                            <Dialog>
-                              <DialogTrigger
-                                className={buttonVariants({
-                                  variant: "destructive",
-                                  size: "icon-sm",
-                                })}
-                                title="Excluir usuário"
-                              >
-                                <Trash2 className="size-4" />
-                              </DialogTrigger>
-                              <DialogContent className="sm:max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle>Excluir usuário</DialogTitle>
-                                  <DialogDescription>
-                                    Esta ação remove o acesso de {usuario.nome}
-                                    do portal.
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <DeleteUsuarioForm id={usuario.id} />
-                              </DialogContent>
-                            </Dialog>
+                            {usuario.id !== profile.id ? (
+                              <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label={usuario.ativo ? "Inativar usuário" : "Ativar usuário"}
+                                    className={cn(
+                                      buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                                      usuario.ativo
+                                        ? "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+                                        : "bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300",
+                                    )}
+                                  >{usuario.ativo ? <CircleX className="size-4" /> : <CircleCheck className="size-4" />}</DialogTrigger>} />
+                                  <TooltipContent>{usuario.ativo ? "Inativar usuário" : "Ativar usuário"}</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>{usuario.ativo ? "Inativar" : "Ativar"} usuário</DialogTitle>
+                                    <DialogDescription>
+                                      {usuario.ativo
+                                        ? `O acesso de ${usuario.nome} será bloqueado. Você poderá reativá-lo depois.`
+                                        : `O acesso de ${usuario.nome} será liberado novamente.`}
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <UsuarioStatusForm id={usuario.id} ativo={usuario.ativo} />
+                                </DialogContent>
+                              </Dialog>
+                            ) : null}
+
+                            {!usuario.ativo && usuario.id !== profile.id ? (
+                              <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label="Excluir usuário"
+                                    className={cn(
+                                      buttonVariants({ variant: "destructive", size: "icon-sm" }),
+                                      "bg-rose-500/10 text-rose-600 hover:bg-rose-500/20 dark:text-rose-400",
+                                    )}
+                                  ><Trash2 className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Excluir usuário</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Excluir usuário</DialogTitle>
+                                    <DialogDescription>
+                                      {usuario.nome} será removido da lista e não poderá acessar o portal. O histórico das operações será preservado.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DeleteUsuarioForm id={usuario.id} />
+                                </DialogContent>
+                              </Dialog>
+                            ) : null}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -316,7 +350,6 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
     </AdminShell>
   );
 }
-
 function UsuarioRoleBadge({ role }: { role: UsuarioRole }) {
   const styles: Record<UsuarioRole, string> = {
     bdl_admin: "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50",
@@ -329,24 +362,6 @@ function UsuarioRoleBadge({ role }: { role: UsuarioRole }) {
   return (
     <Badge variant="outline" className={styles[role]}>
       {formatUsuarioRole(role)}
-    </Badge>
-  );
-}
-
-function UsuarioStatusBadge({ ativo }: { ativo: boolean }) {
-  const Icon = ativo ? CircleCheck : CircleX;
-
-  return (
-    <Badge
-      variant="outline"
-      className={
-        ativo
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
-          : "border-zinc-200 bg-zinc-100 text-zinc-700 hover:bg-zinc-100"
-      }
-    >
-      <Icon className="size-3.5" />
-      {formatUsuarioStatus(ativo)}
     </Badge>
   );
 }

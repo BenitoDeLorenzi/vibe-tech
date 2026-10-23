@@ -11,6 +11,7 @@ export type LoginState = {
 
 type PerfilLoginRow = {
   ativo: boolean | null;
+  primeiro_acesso_concluido_em: string | null;
   role: UsuarioRole;
 };
 
@@ -33,6 +34,22 @@ export async function loginAction(
     return { error: "Informe um CPF com 11 dígitos." };
   }
 
+  const supabase = createSupabaseServerClient();
+  const { data: registeredUser, error: lookupError } = await supabase
+    .from("perfis")
+    .select("id")
+    .eq("cpf", cpf)
+    .is("excluido_em", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (lookupError) {
+    return { error: "Não foi possível verificar seu acesso. Tente novamente." };
+  }
+  if (!registeredUser) {
+    return { error: "Não há usuário cadastrado com este CPF" };
+  }
+
   const email = `${cpf}@${AUTH_DOMAIN}`;
 
   const authClient = await createSupabaseAuthServerClient();
@@ -42,14 +59,18 @@ export async function loginAction(
   });
 
   if (error || !data.user) {
-    return { error: "Usuário ou senha inválidos." };
+    return {
+      error: error?.code === "invalid_credentials"
+        ? "Senha incorreta. Confira e tente novamente."
+        : "Não foi possível entrar agora. Tente novamente em instantes.",
+    };
   }
 
-  const supabase = createSupabaseServerClient();
   const { data: perfil, error: perfilError } = await supabase
     .from("perfis")
-    .select("role,ativo")
+    .select("role,ativo,primeiro_acesso_concluido_em")
     .eq("id", data.user.id)
+    .is("excluido_em", null)
     .maybeSingle();
 
   if (perfilError || !perfil) {
@@ -64,7 +85,7 @@ export async function loginAction(
     return { error: "Este usuário está inativo. Fale com a Vibe Tech." };
   }
 
-  redirect("/portal");
+  redirect(perfilLogin.primeiro_acesso_concluido_em ? "/portal" : "/primeiro-acesso");
 }
 
 export async function logoutAction() {

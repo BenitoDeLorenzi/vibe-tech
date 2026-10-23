@@ -5,7 +5,7 @@ import { ListDeleteButton } from "@/components/list-delete-button";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { forbidden } from "next/navigation";
 import {
   Archive,
   CalendarClock,
@@ -113,7 +113,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
   const access = await getFrotasPermissionAccess(profile);
 
   if (!access.canViewRelatorios) {
-    redirect("/frotas");
+    forbidden();
   }
 
   const params = await searchParams;
@@ -170,6 +170,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
       actions={
         <RelatoriosToolbar
           buildFilterHref={buildFilterHref}
+          canCreate={access.canCreateRelatorios}
           data={data}
           params={params}
         />
@@ -222,6 +223,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
               </div>
             ) : (
               <EmptyReportsState
+                canCreate={access.canCreateRelatorios}
                 data={data}
                 profile={profile}
 
@@ -238,6 +240,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
 
 function RelatoriosToolbar({
   buildFilterHref,
+  canCreate,
   data,
   params,
 }: {
@@ -245,6 +248,7 @@ function RelatoriosToolbar({
     status?: string | null;
     tipo?: string | null;
   }) => string;
+  canCreate: boolean;
   data: Awaited<ReturnType<typeof getAbastecimentosData>>;
   params: Awaited<PageProps["searchParams"]>;
 }) {
@@ -310,9 +314,9 @@ function RelatoriosToolbar({
         })}
       </div>
 
-      <HeaderSeparator className="hidden xl:block" />
+      {canCreate && <HeaderSeparator className="hidden xl:block" />}
 
-      <Dialog>
+      {canCreate && <Dialog>
         <DialogTrigger
           className={buttonVariants({
             className: "h-9 shrink-0 gap-2",
@@ -334,7 +338,7 @@ function RelatoriosToolbar({
             veiculos={data.veiculos}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }
@@ -439,10 +443,12 @@ function RelatorioRow({ relatorio, canDelete }: { relatorio: FrotaRelatorio; can
 }
 
 function EmptyReportsState({
+  canCreate,
   data,
   profile,
   showPrefeituraField,
 }: {
+  canCreate: boolean;
   data: Awaited<ReturnType<typeof getAbastecimentosData>>;
   profile: Awaited<ReturnType<typeof requireUserProfile>>;
   showPrefeituraField: boolean;
@@ -456,10 +462,9 @@ function EmptyReportsState({
         Nenhum relatório criado
       </h3>
       <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Gere relatórios oficiais para conferência, impressão e envio aos setores
-        responsáveis da empresa.
+        {canCreate ? "Gere relatórios para conferência, impressão e envio aos setores responsáveis da empresa." : "Ainda não há relatórios disponíveis para consulta."}
       </p>
-      <Dialog>
+      {canCreate && <Dialog>
         <DialogTrigger
           className={buttonVariants({
             className: "mt-4 gap-2",
@@ -481,7 +486,7 @@ function EmptyReportsState({
             veiculos={data.veiculos}
           />
         </DialogContent>
-      </Dialog>
+      </Dialog>}
     </div>
   );
 }

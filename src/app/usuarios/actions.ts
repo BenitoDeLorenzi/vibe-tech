@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import { type UsuarioRole } from "@/lib/usuarios-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { CONTACT_EMAIL_IN_USE, isContactEmailInUse, isContactEmailUniqueViolation } from "@/lib/contact-email";
 
 export type UsuarioActionState = {
   error?: string;
@@ -27,6 +28,9 @@ export async function createUsuario(
 
   if ("error" in payload) {
     return payload;
+  }
+  if (!process.env.VIBE_GMAIL_APP_PASSWORD) {
+    return { error: "Configure o envio de e-mail antes de cadastrar novos usuários." };
   }
 
   const supabase = createSupabaseServerClient();
@@ -50,6 +54,7 @@ export async function createUsuario(
 
   const { error } = await supabase.from("perfis").insert({
     ativo: payload.ativo,
+    primeiro_acesso_concluido_em: null,
     cpf: payload.cpf,
     email: null,
     id: authData.user.id,
@@ -72,7 +77,7 @@ export async function updateUsuario(
   _previousState: UsuarioActionState,
   formData: FormData,
 ): Promise<UsuarioActionState> {
-  await requireRole(["bdl_admin"]);
+  const actor = await requireRole(["bdl_admin"]);
   const id = getRequiredValue(formData, "id");
 
   if (!id) {
@@ -84,8 +89,34 @@ export async function updateUsuario(
   if ("error" in payload) {
     return payload;
   }
+  const emailContato = (getOptionalValue(formData, "email_contato") ?? "").toLowerCase();
+  if (emailContato && (emailContato.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailContato))) {
+    return { error: "Informe um e-mail de recuperação válido." };
+  }
+  if (id === actor.id && !payload.ativo) {
+    return { error: "Você não pode inativar seu próprio acesso." };
+  }
 
   const supabase = createSupabaseServerClient();
+  const { data: currentUser, error: currentUserError } = await supabase
+    .from("perfis")
+    .select("id,email_contato")
+    .eq("id", id)
+    .is("excluido_em", null)
+    .maybeSingle();
+  if (currentUserError || !currentUser) {
+    return { error: "Usuário não encontrado." };
+  }
+  if (currentUser.email_contato && !emailContato) {
+    return { error: "O e-mail de recuperação não pode ser removido." };
+  }
+  if (emailContato && emailContato !== (currentUser.email_contato ?? "").toLowerCase()) {
+    try {
+      if (await isContactEmailInUse(emailContato, id)) return { error: CONTACT_EMAIL_IN_USE };
+    } catch {
+      return { error: "Não foi possível verificar o e-mail. Tente novamente." };
+    }
+  }
   const authEmail = buildAuthEmail(payload.cpf);
   const { error: authError } = await supabase.auth.admin.updateUserById(id, {
     email: authEmail,
@@ -106,6 +137,10 @@ export async function updateUsuario(
       ativo: payload.ativo,
       cpf: payload.cpf,
       email: null,
+      email_contato: emailContato || null,
+      ...(emailContato !== (currentUser.email_contato ?? "")
+        ? { email_contato_verificado_em: null }
+        : {}),
       nome: payload.nome,
       prefeitura_id: payload.prefeitura_id,
       role: payload.role,
@@ -114,7 +149,11 @@ export async function updateUsuario(
     .eq("id", id);
 
   if (error) {
-    return { error: formatSupabaseError(error.message) };
+    return { error: isContactEmailUniqueViolation(error) ? CONTACT_EMAIL_IN_USE : formatSupabaseError(error.message) };
+  }
+
+  if (emailContato !== (currentUser.email_contato ?? "")) {
+    await supabase.from("perfil_email_confirmacoes").delete().eq("usuario_id", id);
   }
 
   revalidateUsersPaths();
@@ -122,19 +161,90 @@ export async function updateUsuario(
 }
 
 export async function deleteUsuario(formData: FormData) {
-  await requireRole(["bdl_admin"]);
+  const actor = await requireRole(["bdl_admin"]);
   const id = getRequiredValue(formData, "id");
-  const supabase = createSupabaseServerClient();
-  const { error } = await supabase.auth.admin.deleteUser(id);
+  if (!id || id === actor.id) {
+    redirect(`/usuarios?error=${encodeURIComponent("Não é possível excluir este usuário.")}`);
+  }
 
-  if (error) {
-    redirect(
-      `/usuarios?error=${encodeURIComponent(formatSupabaseError(error.message))}`,
-    );
+  const supabase = createSupabaseServerClient();
+  const { data: usuario, error: lookupError } = await supabase
+    .from("perfis")
+    .select("ativo")
+    .eq("id", id)
+    .is("excluido_em", null)
+    .maybeSingle();
+  if (lookupError || !usuario) {
+    redirect(`/usuarios?error=${encodeURIComponent("Usuário não encontrado.")}`);
+  }
+  if (usuario.ativo) {
+    redirect(`/usuarios?error=${encodeURIComponent("Inative o usuário antes de excluí-lo.")}`);
+  }
+
+  // Mantém o perfil para não romper as referências históricas em outros módulos.
+  const { data: archived, error } = await supabase
+    .from("perfis")
+    .update({
+      ativo: false,
+      excluido_em: new Date().toISOString(),
+      cpf: null,
+      email: null,
+      email_contato: null,
+      telefone: null,
+      username: null,
+    })
+    .eq("id", id)
+    .eq("ativo", false)
+    .is("excluido_em", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !archived) {
+    redirect(`/usuarios?error=${encodeURIComponent(error ? formatSupabaseError(error.message) : "Inative o usuário antes de excluí-lo.")}`);
+  }
+
+  const { error: authError } = await supabase.auth.admin.deleteUser(id);
+  if (authError && !authError.message.includes("User not found")) {
+    // Libera o CPF para um novo cadastro quando o Auth não permite remoção física.
+    const { error: renameError } = await supabase.auth.admin.updateUserById(id, {
+      email: `${id}@excluidos.vibetechsistemas.invalid`,
+      user_metadata: {},
+    });
+    if (renameError) {
+      revalidateUsersPaths();
+      redirect(`/usuarios?error=${encodeURIComponent("Acesso removido, mas a credencial de autenticação precisa de revisão. Contate o suporte.")}`);
+    }
   }
 
   revalidateUsersPaths();
   redirect("/usuarios?deleted=1");
+}
+
+export async function setUsuarioAtivo(formData: FormData) {
+  const actor = await requireRole(["bdl_admin"]);
+  const id = getRequiredValue(formData, "id");
+  const ativo = getRequiredValue(formData, "ativo");
+  if (!id || !["true", "false"].includes(ativo)) {
+    redirect(`/usuarios?error=${encodeURIComponent("Dados de status inválidos.")}`);
+  }
+  if (id === actor.id && ativo === "false") {
+    redirect(`/usuarios?error=${encodeURIComponent("Você não pode inativar seu próprio acesso.")}`);
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("perfis")
+    .update({ ativo: ativo === "true" })
+    .eq("id", id)
+    .is("excluido_em", null)
+    .select("id")
+    .maybeSingle();
+  if (error || !data) {
+    redirect(`/usuarios?error=${encodeURIComponent(error ? formatSupabaseError(error.message) : "Usuário não encontrado.")}`);
+  }
+
+  revalidateUsersPaths();
+  redirect(`/usuarios?status=${ativo === "true" ? "activated" : "deactivated"}`);
 }
 
 export async function updateUsuarioAcessos(

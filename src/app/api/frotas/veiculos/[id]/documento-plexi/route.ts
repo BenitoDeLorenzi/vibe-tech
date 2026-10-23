@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const profile = await getCurrentUserProfile();
-  if (!profile) return new NextResponse("Sessão expirada.", { status: 401 });
+  if (!profile?.primeiro_acesso_concluido_em) return new NextResponse("Sessão expirada.", { status: 401 });
   if (!(await getFrotasPermissionAccess(profile)).canViewVeiculos) return new NextResponse("Acesso negado.", { status: 403 });
   const { id } = await params;
   const db = createSupabaseServerClient();

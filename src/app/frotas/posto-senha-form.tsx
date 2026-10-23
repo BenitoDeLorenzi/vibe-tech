@@ -58,7 +58,7 @@ export function PostoSenhaForm({ postoId, postoNome }: PostoSenhaFormProps) {
         <FieldGroup>
           <Field>
             <FieldLabel htmlFor={`posto-senha-${postoId}`}>
-              Nova senha para {postoNome}
+              Nova senha provisória para {postoNome}
             </FieldLabel>
             <Input
               id={`posto-senha-${postoId}`}
@@ -80,7 +80,7 @@ export function PostoSenhaForm({ postoId, postoNome }: PostoSenhaFormProps) {
           ) : (
             <CheckCircle2 className="size-4" />
           )}
-          {actionPending ? "Redefinindo..." : "Redefinir senha"}
+          {actionPending ? "Redefinindo..." : "Definir senha provisória"}
         </Button>
       </DialogFooter>
     </form>

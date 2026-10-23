@@ -6,12 +6,15 @@ import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
+import { forbidden } from "next/navigation";
 import {
+  AlertTriangle,
   Car,
   CircleCheck,
   CircleX,
   ClipboardCheck,
   LoaderCircle,
+  Clock3,
   Pencil,
   Search,
   Settings,
@@ -57,6 +60,7 @@ import {
 } from "@/lib/frotas-data";
 import { requireUserProfile } from "@/lib/auth-data";
 import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
+import { getVehicleDebtSummaries, type VehicleDebtSummary } from "@/lib/frotas-debt-summary";
 import { CopyValueButton } from "../copy-value-button";
 import { DeleteVeiculoForm } from "../delete-veiculo-form";
 import { FrotasShell } from "../frotas-shell";
@@ -84,14 +88,13 @@ const statusFilters = [
   { label: "Todos", status: undefined },
   { label: "Ativos", status: "active" },
   { label: "Manutenção", status: "maintenance" },
-  { label: "Consultando", status: "processing" },
-  { label: "Conferência pendente", status: "consult_error" },
   { label: "Inativos", status: "inactive" },
 ];
 
 export default async function FrotasPage({ searchParams, loading = false }: PageProps) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
+  if (!access.canViewVeiculos) forbidden();
 
   const params = await searchParams;
   const prefeituraId =
@@ -99,13 +102,16 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
       ? params.prefeitura
       : profile.prefeitura_id ?? undefined;
   const databasePage = loading ? emptyFleetPage : await getFrotaListPage(profile, "veiculos", params);
-  const data = loading ? await getFrotasLoadingData(profile, prefeituraId) : await getFrotasData({
-    ids: databasePage.ids,
-    lightweight: true,
-    prefeituraId: databasePage.empresaId ?? prefeituraId,
-    query: params.q,
-    status: params.status,
-  });
+  const [data, debtSummaries] = await Promise.all([
+    loading ? getFrotasLoadingData(profile, prefeituraId) : getFrotasData({
+      ids: databasePage.ids,
+      lightweight: true,
+      prefeituraId: databasePage.empresaId ?? prefeituraId,
+      query: params.q,
+      status: params.status,
+    }),
+    loading ? Promise.resolve({} as Record<string, VehicleDebtSummary>) : getVehicleDebtSummaries(databasePage.empresaId, databasePage.ids),
+  ]);
   const searchTerm = params.q?.trim();
   const vehiclePage = { ...databasePage, items: orderPageItems(data.veiculos, databasePage) };
   const buildFilterHref = (values: {
@@ -179,13 +185,15 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                           <TableHead>Combustível</TableHead>
                           <TableHead className="text-right">Quilometragem</TableHead>
                           <TableHead>Status</TableHead>
+                          <TableHead>Débitos</TableHead>
+                          <TableHead>Última atualização</TableHead>
                           <TableHead className="w-[92px] text-right">
                             Ações
                           </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {loading ? <TableLoadingRows columns={7} /> : vehiclePage.items.map((veiculo) => (
+                        {loading ? <TableLoadingRows columns={9} /> : vehiclePage.items.map((veiculo) => (
                           <TableRow key={veiculo.id}>
                             <TableCell>
                               <VeiculoAvatar fotoUrl={veiculo.foto_url} placa={veiculo.placa} className="size-12" />
@@ -246,6 +254,12 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                                   </p>
                                 ) : null}
                               </div>
+                            </TableCell>
+                            <TableCell>
+                              <VehicleDebtStatus summary={debtSummaries[veiculo.id]} vehicleId={veiculo.id} />
+                            </TableCell>
+                            <TableCell>
+                              <VehicleDebtLastUpdate summary={debtSummaries[veiculo.id]} />
                             </TableCell>
                             <TableCell>
                               <div className="flex justify-end gap-1">
@@ -353,6 +367,45 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
         </main>
     </FrotasShell>
   );
+}
+
+function VehicleDebtStatus({ summary, vehicleId }: { summary?: VehicleDebtSummary; vehicleId: string }) {
+  if (!summary?.atualizadoEm) {
+    return <span className="whitespace-nowrap text-xs text-muted-foreground">Sem dados</span>;
+  }
+
+  const overdue = summary.vencidos > 0;
+  const soon = summary.proximos > 0;
+  const recorded = summary.debitosConsulta > 0;
+  const Icon = overdue ? AlertTriangle : soon ? Clock3 : CircleCheck;
+  const label = overdue ? "Vencido" : soon ? "Próximo do vencimento" : recorded ? "Débito registrado" : "Sem pendências";
+  const className = overdue
+    ? "border-red-200 bg-red-50 text-red-700 hover:bg-red-50 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+    : soon
+      ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-50 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+      : recorded
+        ? "border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-50 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300"
+        : "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300";
+
+  return <Link href={`/frotas/veiculos/${vehicleId}/debitos`} aria-label={`${label}. Ver débitos do veículo.`}>
+    <Badge variant="outline" className={`whitespace-nowrap ${className}`}>
+      <Icon className="size-3.5" aria-hidden="true" />
+      {label}
+    </Badge>
+  </Link>;
+}
+
+function VehicleDebtLastUpdate({ summary }: { summary?: VehicleDebtSummary }) {
+  if (!summary?.atualizadoEm) {
+    return <span className="whitespace-nowrap text-xs text-muted-foreground">Sem atualização</span>;
+  }
+  const date = new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit", month: "2-digit", year: "numeric", timeZone: "America/Sao_Paulo",
+  }).format(new Date(summary.atualizadoEm));
+  return <div className="whitespace-nowrap">
+    <div className="font-medium tabular-nums">{date}</div>
+    <div className="text-xs text-muted-foreground">{summary.origemAtualizacao === "plexi" ? "Consulta Plexi" : "Atualização manual"}</div>
+  </div>;
 }
 
 function VeiculosToolbar({

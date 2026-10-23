@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { buttonVariants } from "@/components/ui/button";
 import { LicencaPagamentoForm } from "@/app/licencas/licenca-pagamento-form";
 import { LicencaParcelaForm } from "@/app/licencas/licenca-parcela-form";
@@ -35,13 +36,18 @@ export function BillingActions({
     <div className="flex justify-end gap-1">
       {p.status !== "cancelled" && balance > 0 && (
         <Dialog>
-          <DialogTrigger
-            aria-label="Registrar pagamento"
-            title="Registrar pagamento"
-            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-          >
-            <CircleDollarSign className="size-4" />
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DialogTrigger aria-label="Registrar pagamento"
+                  className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                >
+                  <CircleDollarSign className="size-4" />
+                </DialogTrigger>
+              }
+            />
+            <TooltipContent>Registrar pagamento</TooltipContent>
+          </Tooltip>
           <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Registrar pagamento</DialogTitle>
@@ -56,13 +62,18 @@ export function BillingActions({
       )}
       {p.status !== "cancelled" && !Number(p.valor_pago) && (
         <Dialog>
-          <DialogTrigger
-            aria-label="Ajustar cobrança"
-            title="Ajustar cobrança"
-            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-          >
-            <Pencil className="size-4" />
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DialogTrigger aria-label="Ajustar cobrança"
+                  className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                >
+                  <Pencil className="size-4" />
+                </DialogTrigger>
+              }
+            />
+            <TooltipContent>Ajustar cobrança</TooltipContent>
+          </Tooltip>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Ajustar cobrança</DialogTitle>
@@ -75,13 +86,18 @@ export function BillingActions({
         </Dialog>
       )}
       <Dialog>
-        <DialogTrigger
-          aria-label="Histórico da cobrança"
-          title="Histórico da cobrança"
-          className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-        >
-          <History className="size-4" />
-        </DialogTrigger>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <DialogTrigger aria-label="Histórico da cobrança"
+                className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+              >
+                <History className="size-4" />
+              </DialogTrigger>
+            }
+          />
+          <TooltipContent>Histórico da cobrança</TooltipContent>
+        </Tooltip>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Histórico da cobrança</DialogTitle>
@@ -107,16 +123,22 @@ export function BillingActions({
                   <span className="text-destructive">Estornado</span>
                 ) : (
                   <Dialog>
-                    <DialogTrigger
-                      aria-label="Estornar recebimento"
-                      className={buttonVariants({
-                        variant: "outline",
-                        size: "sm",
-                      })}
-                    >
-                      <RotateCcw className="size-3" />
-                      Estornar
-                    </DialogTrigger>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <DialogTrigger aria-label="Estornar recebimento"
+                            className={buttonVariants({
+                              variant: "outline",
+                              size: "sm",
+                            })}
+                          >
+                            <RotateCcw className="size-3" />
+                            Estornar
+                          </DialogTrigger>
+                        }
+                      />
+                      <TooltipContent>Estornar recebimento</TooltipContent>
+                    </Tooltip>
                     <DialogContent>
                       <DialogHeader>
                         <DialogTitle>
@@ -173,16 +195,21 @@ export function BillingActions({
       </Dialog>
       {p.status !== "cancelled" && !Number(p.valor_pago) && (
         <Dialog>
-          <DialogTrigger
-            aria-label="Cancelar cobrança"
-            title="Cancelar cobrança"
-            className={buttonVariants({
-              variant: "destructive",
-              size: "icon-sm",
-            })}
-          >
-            <Ban className="size-4" />
-          </DialogTrigger>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <DialogTrigger aria-label="Cancelar cobrança"
+                  className={buttonVariants({
+                    variant: "destructive",
+                    size: "icon-sm",
+                  })}
+                >
+                  <Ban className="size-4" />
+                </DialogTrigger>
+              }
+            />
+            <TooltipContent>Cancelar cobrança</TooltipContent>
+          </Tooltip>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Cancelar cobrança</DialogTitle>

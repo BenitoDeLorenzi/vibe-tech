@@ -1,7 +1,7 @@
 import { ListMetrics } from "@/components/list-metrics";
 import { VehicleOverview, VehicleOverviewHeader } from "./vehicle-overview";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { forbidden, notFound } from "next/navigation";
 import {
   ArrowLeft,
   Car,
@@ -95,6 +95,7 @@ type PageProps = {
 export default async function VeiculoGestaoPage({ params }: PageProps) {
   const profile = await requireUserProfile();
   const access = await getFrotasPermissionAccess(profile);
+  if (!access.canViewVeiculos) forbidden();
   const { id } = await params;
   const data = await getFrotasData({ veiculoId: id });
   const veiculo = data.veiculos[0];

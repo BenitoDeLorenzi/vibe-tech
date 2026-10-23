@@ -5,7 +5,7 @@ import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
 
 export async function getNotificationScope(empresa: string | null) {
   const profile = await getCurrentUserProfile();
-  if (!profile) return null;
+  if (!profile?.primeiro_acesso_concluido_em) return null;
   if (!(await hasModuleAccess(profile, "frotas-publicas"))) return null;
   const access = await getFrotasPermissionAccess(profile);
   const tipos = [

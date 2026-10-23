@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -302,27 +303,23 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Link
-                              href={`/empresas/${prefeitura.id}`}
-                              className={buttonVariants({
-                                variant: "ghost",
-                                size: "icon-sm",
-                              })}
-                              title="Gerenciar empresa"
-                            >
-                              <Settings className="size-4" />
-                            </Link>
+                            <Tooltip>
+                              <TooltipTrigger render={<Link
+                                href={`/empresas/${prefeitura.id}`}
+                                aria-label="Gerenciar empresa"
+                                className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                              ><Settings className="size-4" /></Link>} />
+                              <TooltipContent>Gerenciar empresa</TooltipContent>
+                            </Tooltip>
 
                             <Dialog>
-                              <DialogTrigger
-                                className={buttonVariants({
-                                  variant: "ghost",
-                                  size: "icon-sm",
-                                })}
-                                title="Editar empresa"
-                              >
-                                <Pencil className="size-4" />
-                              </DialogTrigger>
+                              <Tooltip>
+                                <TooltipTrigger render={<DialogTrigger
+                                  aria-label="Editar empresa"
+                                  className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                ><Pencil className="size-4" /></DialogTrigger>} />
+                                <TooltipContent>Editar empresa</TooltipContent>
+                              </Tooltip>
                               <DialogContent className="sm:max-w-2xl">
                                 <DialogHeader>
                                   <DialogTitle>Editar empresa</DialogTitle>
@@ -332,15 +329,13 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                             </Dialog>
 
                             <Dialog>
-                              <DialogTrigger
-                                className={buttonVariants({
-                                  variant: "destructive",
-                                  size: "icon-sm",
-                                })}
-                                title="Excluir empresa"
-                              >
-                                <Trash2 className="size-4" />
-                              </DialogTrigger>
+                              <Tooltip>
+                                <TooltipTrigger render={<DialogTrigger
+                                  aria-label="Excluir empresa"
+                                  className={buttonVariants({ variant: "destructive", size: "icon-sm" })}
+                                ><Trash2 className="size-4" /></DialogTrigger>} />
+                                <TooltipContent>Excluir empresa</TooltipContent>
+                              </Tooltip>
                               <DialogContent className="sm:max-w-md">
                                 <DialogHeader>
                                   <DialogTitle>Excluir empresa</DialogTitle>

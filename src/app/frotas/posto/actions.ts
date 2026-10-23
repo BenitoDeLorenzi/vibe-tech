@@ -34,7 +34,7 @@ export async function loginPostoAction(
   }
 
   await createPostoSession(posto);
-  redirect("/frotas/posto");
+  redirect(posto.primeiro_acesso_concluido_em ? "/frotas/posto" : "/frotas/posto/primeiro-acesso");
 }
 
 export async function logoutPostoAction() {

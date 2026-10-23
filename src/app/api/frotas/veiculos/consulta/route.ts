@@ -15,7 +15,7 @@ export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const profile = await getCurrentUserProfile();
-  if (!profile)
+  if (!profile?.primeiro_acesso_concluido_em)
     return json({ error: "Sua sessão expirou. Entre novamente." }, 401);
   let body: {
     secretariaId?: string;
