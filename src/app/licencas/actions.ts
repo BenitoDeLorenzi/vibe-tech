@@ -28,6 +28,14 @@ async function save(
     };
   if (mode !== "create" && !value(data, "id"))
     return { error: "Licença não encontrada." };
+  if (mode === "edit" && value(data, "status") === "cancelled")
+    return { error: "Use a ação Cancelar licença para registrar a justificativa e tratar as mensalidades." };
+  if (mode !== "create") {
+    const { data: current } = await createSupabaseServerClient().from("licencas")
+      .select("status").eq("id", value(data, "id")).single();
+    if (!current || current.status === "cancelled")
+      return { error: "Uma licença cancelada não pode ser editada ou renovada." };
+  }
   const { error } = await createSupabaseServerClient().rpc(
     "license_save_contract",
     {
@@ -65,6 +73,19 @@ export async function updateLicenca(_: LicencaActionState, data: FormData) {
 }
 export async function renewLicenca(_: LicencaActionState, data: FormData) {
   return save(data, "renew");
+}
+export async function cancelLicenca(_: LicencaActionState, data: FormData): Promise<LicencaActionState> {
+  const actor = await requireRole(["bdl_admin"]);
+  const id = value(data, "id");
+  const reason = value(data, "motivo");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Licença inválida." };
+  if (reason.length < 3) return { error: "Informe uma justificativa com pelo menos 3 caracteres." };
+  const { data: count, error } = await createSupabaseServerClient().rpc("license_cancel", {
+    p_actor: actor.id, p_id: id, p_reason: reason,
+  });
+  if (error) return { error: error.message };
+  refresh();
+  return { success: `Licença cancelada. ${count ?? 0} mensalidade(s) futura(s) sem recebimento cancelada(s).` };
 }
 export async function deleteLicenca() {
   await requireRole(["bdl_admin"]);

@@ -2,6 +2,7 @@ import "server-only";
 
 import { findInterBillingByYourNumber, retrieveInterBilling } from "@/lib/inter-client";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { processInterBillingEmailsForBill } from "@/lib/inter-billing-email";
 
 export async function syncInterBilling(id: string) {
   const db = createSupabaseServerClient();
@@ -36,5 +37,7 @@ export async function syncInterBilling(id: string) {
     },
   });
   if (applyError) throw new Error(`Não foi possível conciliar o boleto: ${applyError.message}`);
+  try { await processInterBillingEmailsForBill(id); }
+  catch (error) { console.error("Falha ao processar e-mails da cobrança Inter:", error); }
   return situacao;
 }

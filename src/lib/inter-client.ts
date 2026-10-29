@@ -5,6 +5,7 @@ import { request } from "node:https";
 const interOrigin = "https://cdpj.partners.bancointer.com.br";
 const tokenPath = "/oauth/v2/token";
 const scope = "boleto-cobranca.read boleto-cobranca.write";
+export const INTER_BILLING_SCHEDULE_DAYS = 30;
 
 type InterToken = {
   access_token: string;
@@ -124,6 +125,7 @@ export async function issueInterBilling(input: {
   valor: number;
   vencimento: string;
   pagador: InterPayer;
+  descricao: string;
 }): Promise<string> {
   const token = await getInterAccessToken();
   const { cert, key } = credentials();
@@ -131,8 +133,12 @@ export async function issueInterBilling(input: {
     seuNumero: input.seuNumero,
     valorNominal: input.valor,
     dataVencimento: input.vencimento,
-    numDiasAgenda: 30,
+    numDiasAgenda: INTER_BILLING_SCHEDULE_DAYS,
     pagador: input.pagador,
+    mensagem: {
+      linha1: input.descricao.slice(0, 70),
+      linha2: "Vibe Tech LTDA - solucoes tecnologicas",
+    },
     formasRecebimento: ["BOLETO", "PIX"],
   });
 
@@ -211,7 +217,7 @@ async function interBillingRequest(path: string, method: "GET" | "POST" | "PUT",
 }
 
 export type InterBillingDetail = {
-  cobranca?: { codigoSolicitacao?: string; seuNumero?: string; situacao?: string; valorTotalRecebido?: string | number; dataSituacao?: string };
+  cobranca?: { codigoSolicitacao?: string; seuNumero?: string; situacao?: string; valorTotalRecebido?: string | number; dataSituacao?: string; origemRecebimento?: string };
   boleto?: { nossoNumero?: string; linhaDigitavel?: string; codigoBarras?: string };
   pix?: { pixCopiaECola?: string };
 };

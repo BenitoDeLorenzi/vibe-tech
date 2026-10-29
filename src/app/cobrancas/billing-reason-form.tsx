@@ -71,7 +71,7 @@ export function BillingReasonForm({
       )}
       <DialogFooter>
         <FormDialogCancel disabled={pending} />
-        <Button variant="destructive" disabled={pending}>
+        <Button type="submit" variant="destructive" disabled={pending}>
           {pending
             ? "Salvando..."
             : receipt

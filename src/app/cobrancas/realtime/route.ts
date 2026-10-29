@@ -41,6 +41,8 @@ export async function GET(request: Request) {
       channel
         .on("postgres_changes", { schema: "public", table: "inter_cobrancas", event: "INSERT" }, changed)
         .on("postgres_changes", { schema: "public", table: "inter_cobrancas", event: "UPDATE" }, changed)
+        .on("postgres_changes", { schema: "public", table: "inter_cobranca_emails", event: "INSERT" }, changed)
+        .on("postgres_changes", { schema: "public", table: "inter_cobranca_emails", event: "UPDATE" }, changed)
         .on("postgres_changes", { schema: "public", table: "licenca_pagamentos", event: "UPDATE" }, changed)
         .subscribe(status => {
           if (status === "SUBSCRIBED") send("ready");

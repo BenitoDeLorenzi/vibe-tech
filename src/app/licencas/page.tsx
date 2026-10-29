@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import {
   CalendarDays,
+  Ban,
   CircleCheck,
   CircleX,
   Clock3,
@@ -53,6 +54,8 @@ import {
 import { requireRole } from "@/lib/auth-data";
 import { LicencaRenewForm } from "./licenca-renew-form";
 import { LicencaForm } from "./licenca-form";
+import { CancelLicencaForm } from "./cancel-licenca-form";
+import { todayInSaoPaulo } from "@/lib/license-schedule";
 import { LicencasToasts } from "./licencas-toasts";
 
 export const dynamic = "force-dynamic";
@@ -274,7 +277,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                           </TableCell>
                           <TableCell>
                             <div className="flex justify-end gap-1">
-                              <Dialog>
+                              {licenca.status !== "cancelled" && <Dialog>
                                 <Tooltip>
                                   <TooltipTrigger render={<DialogTrigger
                                     aria-label="Editar licença"
@@ -292,9 +295,9 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                                     prefeituras={formOptions.prefeituras}
                                   />
                                 </DialogContent>
-                              </Dialog>
+                              </Dialog>}
 
-                              <Dialog>
+                              {licenca.status !== "cancelled" && <Dialog>
                                 <Tooltip>
                                   <TooltipTrigger render={<DialogTrigger
                                     aria-label="Renovar licença"
@@ -313,7 +316,20 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                                   </DialogHeader>
                                   <LicencaRenewForm licenca={licenca} />
                                 </DialogContent>
-                              </Dialog>
+                              </Dialog>}
+                              {licenca.status !== "cancelled" && <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger aria-label="Cancelar licença" className={buttonVariants({ variant: "ghost", size: "icon-sm", className: "text-destructive hover:bg-destructive/10 hover:text-destructive" })}><Ban className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Cancelar licença</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Cancelar licença</DialogTitle>
+                                    <DialogDescription>{licenca.modulo_nome} · {licenca.prefeitura_nome}</DialogDescription>
+                                  </DialogHeader>
+                                  <CancelLicencaForm id={licenca.id} futureCount={licenca.pagamentos.filter(p => p.competencia > todayInSaoPaulo().slice(0, 7) + "-01" && (p.status === "open" || p.status === "overdue") && !Number(p.valor_pago)).length} />
+                                </DialogContent>
+                              </Dialog>}
                             </div>
                           </TableCell>
                         </TableRow>

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { syncInterBilling } from "@/lib/inter-billing-sync";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { ensureInterBillingWebhook } from "@/lib/inter-webhook";
+import { processPendingInterBillingEmails } from "@/lib/inter-billing-email";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -27,5 +28,8 @@ export async function GET(request: Request) {
     try { await syncInterBilling(bill.id); updated++; }
     catch { failed++; }
   }
-  return NextResponse.json({ updated, failed });
+  let emails = 0;
+  try { emails = await processPendingInterBillingEmails(); }
+  catch (error) { console.error("Falha ao processar fila de e-mails do Inter:", error); }
+  return NextResponse.json({ updated, failed, emails });
 }

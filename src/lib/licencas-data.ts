@@ -14,6 +14,7 @@ export type LicencaPagamento = {
     valor_recebido: number | null; recebido_em: string | null;
     consultado_em: string | null; created_at: string; cancelamento_motivo: string | null;
     eventos?: { id: string; tipo: string; situacao: string | null; detalhes: Record<string, string | number | null>; created_at: string }[];
+    emails?: { id: string; tipo: "boleto_empresa" | "pagamento_vibe"; status: string; destinatario: string | null; tentativas: number; ultimo_erro: string | null; enviado_em: string | null }[];
   }[];
   eventos?: {autor_id:string | null; autor_nome?:string; id:string; acao:string; created_at:string; detalhes:{ dados?:Record<string,string>; antes?:Record<string,string> }}[];
   recebimentos?: LicencaRecebimento[];
@@ -214,7 +215,7 @@ async function getLicencaPagamentosMap(licencaIds: string[]) {
   for (let batch = 0; batch < licencaIds.length; batch += 100) {
     for (let offset = 0; ; offset += 500) {
       const result = await supabase.from("licenca_pagamentos")
-        .select("id,contrato_id,licenca_id,prefeitura_id,modulo_id,numero_parcela,competencia,vencimento,valor,status,pago_em,valor_pago,forma_pagamento,documento,observacoes,created_at,recebimentos:licenca_recebimentos(*),eventos:licenca_cobranca_eventos(id,autor_id,acao,created_at,detalhes),inter_cobrancas(id,status,situacao,codigo_solicitacao,seu_numero,valor,vencimento,nosso_numero,linha_digitavel,pix_copia_e_cola,valor_recebido,recebido_em,consultado_em,created_at,cancelamento_motivo,eventos:inter_cobranca_eventos(id,tipo,situacao,detalhes,created_at))")
+        .select("id,contrato_id,licenca_id,prefeitura_id,modulo_id,numero_parcela,competencia,vencimento,valor,status,pago_em,valor_pago,forma_pagamento,documento,observacoes,created_at,recebimentos:licenca_recebimentos(*),eventos:licenca_cobranca_eventos(id,autor_id,acao,created_at,detalhes),inter_cobrancas(id,status,situacao,codigo_solicitacao,seu_numero,valor,vencimento,nosso_numero,linha_digitavel,pix_copia_e_cola,valor_recebido,recebido_em,consultado_em,created_at,cancelamento_motivo,eventos:inter_cobranca_eventos(id,tipo,situacao,detalhes,created_at),emails:inter_cobranca_emails(id,tipo,status,destinatario,tentativas,ultimo_erro,enviado_em))")
         .in("licenca_id", licencaIds.slice(batch, batch + 100)).order("id").range(offset, offset + 499);
       if (result.error) throw new Error(result.error.message);
       data.push(...(result.data ?? []) as LicencaPagamento[]);

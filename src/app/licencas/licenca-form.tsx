@@ -61,7 +61,6 @@ const statusOptions = [
   { value: "active", label: "Ativa" },
   { value: "suspended", label: "Suspensa" },
   { value: "expired", label: "Vencida" },
-  { value: "cancelled", label: "Cancelada" },
 ];
 
 export function LicencaForm({

@@ -8,6 +8,7 @@ import { syncInterBilling } from "@/lib/inter-billing-sync";
 import { ensureInterBillingWebhook } from "@/lib/inter-webhook";
 import { todayInSaoPaulo } from "@/lib/license-schedule";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { processInterBillingEmailsForBill } from "@/lib/inter-billing-email";
 
 export type InterIssueState = { error?: string; success?: string };
 
@@ -22,7 +23,7 @@ export async function issueInterBillingAction(
   const db = createSupabaseServerClient();
   const { data: payment, error: paymentError } = await db
     .from("licenca_pagamentos")
-    .select("id,prefeitura_id,status,valor,valor_pago,vencimento")
+    .select("id,prefeitura_id,modulo_id,competencia,status,valor,valor_pago,vencimento")
     .eq("id", id)
     .single();
   if (paymentError || !payment) return { error: "Mensalidade não encontrada." };
@@ -38,6 +39,8 @@ export async function issueInterBillingAction(
     .single();
   if (empresaError || !empresa || empresa.status !== "active")
     return { error: "A empresa pagadora está indisponível." };
+  const { data: module } = await db.from("modulos").select("nome").eq("id", payment.modulo_id).single();
+  if (!module?.nome) return { error: "O módulo da licença não foi encontrado." };
 
   const cpfCnpj = empresa.cnpj?.replace(/\D/g, "") ?? "";
   const cep = empresa.cep?.replace(/\D/g, "") ?? "";
@@ -80,6 +83,7 @@ export async function issueInterBillingAction(
       valor: Number(payment.valor),
       vencimento: payment.vencimento,
       pagador,
+      descricao: `Licenca ${module.nome} - mensalidade ${payment.competencia.slice(5, 7)}/${payment.competencia.slice(0, 4)}`,
     });
     const { error: saveError } = await db.from("inter_cobrancas")
       .update({ status: "submitted", codigo_solicitacao: codigo, updated_at: new Date().toISOString() })
@@ -155,4 +159,27 @@ export async function refreshStaleInterBillingsAction(): Promise<boolean> {
     revalidatePath("/empresas/[id]", "page");
   }
   return updated;
+}
+
+export async function retryInterBillingEmailAction(_previous: InterIssueState, data: FormData): Promise<InterIssueState> {
+  await requireRole(["bdl_admin"]);
+  const id = String(data.get("email_id") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "E-mail inválido." };
+  const db = createSupabaseServerClient();
+  const { data: email } = await db.from("inter_cobranca_emails")
+    .select("id,inter_cobranca_id,status").eq("id", id).single();
+  if (!email || email.status !== "failed") return { error: "Este e-mail não está disponível para reenvio." };
+  const { error: resetError } = await db.from("inter_cobranca_emails")
+    .update({ status: "pending", tentativas: 0, updated_at: new Date().toISOString() })
+    .eq("id", id).eq("status", "failed");
+  if (resetError) return { error: "Não foi possível preparar o reenvio." };
+  try { await processInterBillingEmailsForBill(email.inter_cobranca_id); }
+  catch { return { error: "Não foi possível processar o reenvio. Tente novamente." }; }
+  const { data: result } = await db.from("inter_cobranca_emails")
+    .select("status,ultimo_erro").eq("id", id).single();
+  revalidatePath("/cobrancas");
+  revalidatePath("/empresas/[id]", "page");
+  return result?.status === "sent"
+    ? { success: "E-mail reenviado ao destinatário." }
+    : { error: result?.ultimo_erro ?? "O e-mail ainda não pôde ser enviado." };
 }
