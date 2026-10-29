@@ -118,6 +118,8 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
     licenca.pagamentos.map((pagamento) => ({
       ...pagamento,
       modulo_nome: licenca.modulo_nome,
+      empresa_nome: licenca.prefeitura_nome,
+      empresa_pagador: licenca.prefeitura_pagador,
     })),
   );
   const receitaMensal = prefeituraLicencas
@@ -346,6 +348,11 @@ function PrefeituraSummary({ prefeitura }: { prefeitura: Prefeitura }) {
         </CardHeader>
         <CardContent className="grid gap-2">
           <CompactDetail label="Endereço" value={prefeitura.endereco ?? "-"} />
+          <CompactDetail label="Número" value={prefeitura.endereco_numero ?? "-"} />
+          <CompactDetail label="Bairro" value={prefeitura.bairro ?? "-"} />
+          <CompactDetail label="Complemento" value={prefeitura.endereco_complemento ?? "-"} />
+          <CompactDetail label="E-mail de cobrança" value={prefeitura.email_cobranca ?? "-"} />
+          <CompactDetail label="Telefone de cobrança" value={prefeitura.telefone_cobranca ?? "-"} />
           <CompactDetail
             label="Brasão"
             value={prefeitura.brasao_url ? "Cadastrado" : "Pendente"}
@@ -626,7 +633,7 @@ function UsuariosTab({ usuarios }: { usuarios: Usuario[] }) {
 function FinanceiroTab({
   pagamentos,
 }: {
-  pagamentos: Array<LicencaPagamento & { modulo_nome: string }>;
+  pagamentos: Array<LicencaPagamento & { modulo_nome: string; empresa_nome: string; empresa_pagador: Licenca["prefeitura_pagador"] }>;
 }) {
   const pagamentosOrdenados = [...pagamentos].sort((a, b) =>
     a.vencimento.localeCompare(b.vencimento),
@@ -690,7 +697,7 @@ function FinanceiroTab({
                       )}
                     </TableCell>
                     <TableCell>
-                      <BillingActions pagamento={pagamento} />
+                      <BillingActions pagamento={pagamento} empresa={pagamento.empresa_nome} pagador={pagamento.empresa_pagador} />
                     </TableCell>
                   </TableRow>
                 ))}

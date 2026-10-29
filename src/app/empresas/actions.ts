@@ -36,7 +36,7 @@ export async function createPrefeitura(
   formData: FormData,
 ): Promise<PrefeituraActionState> {
   await requireRole(["bdl_admin"]);
-  const parsed = parseEmpresa(formData);
+  const parsed = parseEmpresa(formData, true);
   if ("error" in parsed) return parsed;
   const supabase = createSupabaseServerClient();
   const id = randomUUID();
@@ -132,7 +132,7 @@ export async function updatePrefeitura(
   return { success: "Empresa atualizada com sucesso." };
 }
 
-function parseEmpresa(formData: FormData) {
+function parseEmpresa(formData: FormData, isCreating = false) {
   const nome = getOptionalValue(formData, "nome") ?? "";
   const nome_fantasia = getOptionalValue(formData, "nome_fantasia");
   const cnpj = getOptionalValue(formData, "cnpj") ?? "";
@@ -143,6 +143,14 @@ function parseEmpresa(formData: FormData) {
     return { error: "Nome fantasia deve ter de 2 a 80 caracteres." };
   if (nome.length < 2 || cnpj.replace(/\D/g, "").length !== 14)
     return { error: "Informe o nome da empresa e um CNPJ com 14 dígitos." };
+  const email_cobranca = getOptionalValue(formData, "email_cobranca");
+  const telefone_cobranca = getOptionalValue(formData, "telefone_cobranca");
+  if (email_cobranca && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email_cobranca))
+    return { error: "Informe um e-mail de cobrança válido." };
+  if (telefone_cobranca && ![10, 11].includes(telefone_cobranca.replace(/\D/g, "").length))
+    return { error: "Informe um telefone de cobrança válido." };
+  if (isCreating && (!getOptionalValue(formData, "endereco_numero") || !getOptionalValue(formData, "bairro") || !email_cobranca))
+    return { error: "Informe número, bairro e e-mail de cobrança." };
   return {
     values: {
       nome,
@@ -153,6 +161,11 @@ function parseEmpresa(formData: FormData) {
       uf: getOptionalValue(formData, "uf")?.toUpperCase(),
       cep: getOptionalValue(formData, "cep"),
       endereco: getOptionalValue(formData, "endereco"),
+      endereco_numero: getOptionalValue(formData, "endereco_numero"),
+      bairro: getOptionalValue(formData, "bairro"),
+      endereco_complemento: getOptionalValue(formData, "endereco_complemento"),
+      email_cobranca,
+      telefone_cobranca,
     },
   };
 }

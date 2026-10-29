@@ -6,6 +6,15 @@ export type LicencaPagamentoStatus = "open" | "paid" | "partial" | "overdue" | "
 
 export type LicencaPagamento = {
   contrato_id: string;
+  inter_cobrancas?: {
+    id: string; status: "submitting" | "submitted" | "uncertain" | "cancelling" | "cancelled" | "failed" | "expired";
+    situacao: string | null; codigo_solicitacao: string | null; seu_numero: string;
+    valor: number; vencimento: string; nosso_numero: string | null;
+    linha_digitavel: string | null; pix_copia_e_cola: string | null;
+    valor_recebido: number | null; recebido_em: string | null;
+    consultado_em: string | null; created_at: string; cancelamento_motivo: string | null;
+    eventos?: { id: string; tipo: string; situacao: string | null; detalhes: Record<string, string | number | null>; created_at: string }[];
+  }[];
   eventos?: {autor_id:string | null; autor_nome?:string; id:string; acao:string; created_at:string; detalhes:{ dados?:Record<string,string>; antes?:Record<string,string> }}[];
   recebimentos?: LicencaRecebimento[];
   competencia: string;
@@ -42,6 +51,19 @@ export type Licenca = {
   created_at: string;
   prefeitura_nome: string;
   prefeitura_cnpj: string;
+  prefeitura_pagador: {
+    nome: string;
+    cnpj: string;
+    endereco: string | null;
+    endereco_numero: string | null;
+    endereco_complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    cep: string | null;
+    email_cobranca: string | null;
+    telefone_cobranca: string | null;
+  } | null;
   modulo_nome: string;
   modulo_subdominio: string;
   dias_restantes: number;
@@ -68,6 +90,15 @@ type LicencaRow = {
   prefeituras: {
     nome: string;
     cnpj: string;
+    endereco: string | null;
+    endereco_numero: string | null;
+    endereco_complemento: string | null;
+    bairro: string | null;
+    cidade: string | null;
+    uf: string | null;
+    cep: string | null;
+    email_cobranca: string | null;
+    telefone_cobranca: string | null;
   } | null;
   modulos: {
     nome: string;
@@ -92,7 +123,7 @@ export async function getLicencas(params?: { query?: string; status?: string }) 
   let query = supabase
     .from("licencas")
     .select(
-      "id,prefeitura_id,modulo_id,status,inicio,fim,valor_anual,valor_mensal,dia_vencimento,created_at,licenca_contratos(id,inicio,fim,valor_mensal,dia_vencimento,legado),prefeituras:empresas(nome,cnpj),modulos(nome,subdominio)"
+      "id,prefeitura_id,modulo_id,status,inicio,fim,valor_anual,valor_mensal,dia_vencimento,created_at,licenca_contratos(id,inicio,fim,valor_mensal,dia_vencimento,legado),prefeituras:empresas(nome,cnpj,endereco,endereco_numero,endereco_complemento,bairro,cidade,uf,cep,email_cobranca,telefone_cobranca),modulos(nome,subdominio)"
     )
     .order("created_at", { ascending: false });
 
@@ -135,6 +166,7 @@ export async function getLicencas(params?: { query?: string; status?: string }) 
       created_at: licenca.created_at,
       prefeitura_nome: licenca.prefeituras?.nome ?? "-",
       prefeitura_cnpj: licenca.prefeituras?.cnpj ?? "-",
+      prefeitura_pagador: licenca.prefeituras,
       modulo_nome: licenca.modulos?.nome ?? "-",
       modulo_subdominio: licenca.modulos?.subdominio ?? "-",
       dias_restantes,
@@ -182,7 +214,7 @@ async function getLicencaPagamentosMap(licencaIds: string[]) {
   for (let batch = 0; batch < licencaIds.length; batch += 100) {
     for (let offset = 0; ; offset += 500) {
       const result = await supabase.from("licenca_pagamentos")
-        .select("id,contrato_id,licenca_id,prefeitura_id,modulo_id,numero_parcela,competencia,vencimento,valor,status,pago_em,valor_pago,forma_pagamento,documento,observacoes,created_at,recebimentos:licenca_recebimentos(*),eventos:licenca_cobranca_eventos(id,autor_id,acao,created_at,detalhes)")
+        .select("id,contrato_id,licenca_id,prefeitura_id,modulo_id,numero_parcela,competencia,vencimento,valor,status,pago_em,valor_pago,forma_pagamento,documento,observacoes,created_at,recebimentos:licenca_recebimentos(*),eventos:licenca_cobranca_eventos(id,autor_id,acao,created_at,detalhes),inter_cobrancas(id,status,situacao,codigo_solicitacao,seu_numero,valor,vencimento,nosso_numero,linha_digitavel,pix_copia_e_cola,valor_recebido,recebido_em,consultado_em,created_at,cancelamento_motivo,eventos:inter_cobranca_eventos(id,tipo,situacao,detalhes,created_at))")
         .in("licenca_id", licencaIds.slice(batch, batch + 100)).order("id").range(offset, offset + 499);
       if (result.error) throw new Error(result.error.message);
       data.push(...(result.data ?? []) as LicencaPagamento[]);
@@ -201,6 +233,8 @@ async function getLicencaPagamentosMap(licencaIds: string[]) {
     for (const receipt of payment.recebimentos ?? []) receipt.autor_nome = names.get(receipt.autor_id ?? "") ?? "Registro anterior";
     for (const event of payment.eventos ?? []) event.autor_nome = names.get(event.autor_id ?? "") ?? "Registro anterior";
     payment.eventos?.sort((a,b) => a.created_at.localeCompare(b.created_at));
+    payment.inter_cobrancas?.sort((a,b) => b.created_at.localeCompare(a.created_at));
+    for (const bill of payment.inter_cobrancas ?? []) bill.eventos?.sort((a,b) => a.created_at.localeCompare(b.created_at));
     payment.recebimentos?.sort((a,b) => a.pago_em.localeCompare(b.pago_em));
   }
   const today = getTodayIsoDate();

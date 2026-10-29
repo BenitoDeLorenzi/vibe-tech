@@ -14,6 +14,11 @@ export type Prefeitura = {
   uf: string | null;
   cep: string | null;
   endereco: string | null;
+  endereco_numero: string | null;
+  bairro: string | null;
+  endereco_complemento: string | null;
+  email_cobranca: string | null;
+  telefone_cobranca: string | null;
   status: PrefeituraStatus;
   created_at: string;
   licencas_ativas: number;
@@ -33,6 +38,11 @@ type PrefeituraRow = {
   uf: string | null;
   cep: string | null;
   endereco: string | null;
+  endereco_numero: string | null;
+  bairro: string | null;
+  endereco_complemento: string | null;
+  email_cobranca: string | null;
+  telefone_cobranca: string | null;
   status: PrefeituraStatus;
   created_at: string;
   licencas: Array<{
@@ -53,7 +63,7 @@ export async function getPrefeituras(params?: {
   let query = supabase
     .from("empresas")
     .select(
-      "id,nome,nome_fantasia,cnpj,is_prefeitura,brasao_path,brasao_url,cidade,uf,cep,endereco,status,created_at,licencas(status,fim,modulos(nome))",
+      "id,nome,nome_fantasia,cnpj,is_prefeitura,brasao_path,brasao_url,cidade,uf,cep,endereco,endereco_numero,bairro,endereco_complemento,email_cobranca,telefone_cobranca,status,created_at,licencas(status,fim,modulos(nome))",
     )
     .order("created_at", { ascending: false });
 
@@ -90,6 +100,11 @@ export async function getPrefeituras(params?: {
       uf: prefeitura.uf,
       cep: prefeitura.cep,
       endereco: prefeitura.endereco,
+      endereco_numero: prefeitura.endereco_numero,
+      bairro: prefeitura.bairro,
+      endereco_complemento: prefeitura.endereco_complemento,
+      email_cobranca: prefeitura.email_cobranca,
+      telefone_cobranca: prefeitura.telefone_cobranca,
       status: prefeitura.status,
       created_at: prefeitura.created_at,
       licencas_ativas: activeLicencas.length,

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CircleDollarSign } from "lucide-react";
+import { AlertCircle, CircleCheck, CircleDollarSign, CircleX, Clock3 } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
@@ -24,6 +24,7 @@ import {
 } from "@/lib/licencas-data";
 import { todayInSaoPaulo } from "@/lib/license-schedule";
 import { BillingActions } from "./billing-actions";
+import { InterAutoRefresh } from "./inter-auto-refresh";
 export const dynamic = "force-dynamic";
 export default async function CobrancasPage({
   searchParams,
@@ -69,6 +70,7 @@ export default async function CobrancasPage({
         ...p,
         empresa: l.prefeitura_nome,
         modulo: l.modulo_nome,
+        pagador: l.prefeitura_pagador,
       })),
     );
   const month = all.filter((p) => p.competencia.slice(0, 7) === mes);
@@ -81,6 +83,26 @@ export default async function CobrancasPage({
     rows.reduce((n, p) => n + fn(p), 0);
   const overdue = (p: (typeof all)[number]) =>
     saldo(p) > 0 && p.vencimento < today;
+  const situation = (p: (typeof all)[number]) => {
+    if (p.status === "cancelled") return "Cancelada";
+    if (p.status === "paid") return "Paga";
+    const bill = p.inter_cobrancas?.[0];
+    if (bill) {
+      if (bill.status === "uncertain") return "Conferir emissão";
+      if (bill.status === "cancelling") return "Cancelando boleto";
+      const bankStatus: Record<string, string> = {
+        RECEBIDO: "Paga", A_RECEBER: "A receber", MARCADO_RECEBIDO: "Recebimento pendente",
+        ATRASADO: "Vencida", CANCELADO: "Boleto cancelado", EXPIRADO: "Boleto expirado",
+        FALHA_EMISSAO: "Falha na emissão", EM_PROCESSAMENTO: "Registrando boleto", PROTESTO: "Em protesto",
+      };
+      if (bill.situacao && bankStatus[bill.situacao]) {
+        if (bill.situacao === "A_RECEBER" && overdue(p)) return "Vencida";
+        return bankStatus[bill.situacao];
+      }
+      if (bill.status === "submitted" || bill.status === "submitting") return "Registrando boleto";
+    }
+    return `${formatLicencaPagamentoStatus(p.status)}${p.status === "partial" && overdue(p) ? " · atrasada" : ""}`;
+  };
   const previous = all.filter((p) => p.competencia < `${mes}-01` && overdue(p));
   const cash = all
     .flatMap((p) => p.recebimentos ?? [])
@@ -173,6 +195,7 @@ export default async function CobrancasPage({
             }
           />
           <CardContent className="space-y-4">
+            <InterAutoRefresh enabled={all.some(p => p.status !== "paid" && p.inter_cobrancas?.some(b => !["cancelled", "failed", "expired"].includes(b.status)))} />
             <p className="text-xs text-muted-foreground">
               Indicadores da competência selecionada, conforme empresa e módulo.
               Canceladas não entram no total. Atraso é calculado pela data de
@@ -233,17 +256,10 @@ export default async function CobrancasPage({
                         </TableCell>
                         <TableCell>{formatCurrency(saldo(p))}</TableCell>
                         <TableCell>
-                          <Badge
-                            variant={overdue(p) ? "destructive" : "outline"}
-                          >
-                            {formatLicencaPagamentoStatus(p.status)}
-                            {p.status === "partial" && overdue(p)
-                              ? " · atrasada"
-                              : ""}
-                          </Badge>
+                          <BillingSituationBadge label={situation(p)} />
                         </TableCell>
                         <TableCell>
-                          <BillingActions pagamento={p} />
+                          <BillingActions pagamento={p} empresa={p.empresa} pagador={p.pagador} />
                         </TableCell>
                       </TableRow>
                     ))
@@ -294,4 +310,20 @@ export default async function CobrancasPage({
       </main>
     </AdminShell>
   );
+}
+
+function BillingSituationBadge({ label }: { label: string }) {
+  const paid = label === "Paga";
+  const danger = ["Vencida", "Em protesto", "Falha na emissão"].includes(label);
+  const waiting = ["Registrando boleto", "Cancelando boleto", "Conferir emissão", "Recebimento pendente"].includes(label);
+  const open = label === "A receber";
+  const neutral = ["Cancelada", "Boleto cancelado", "Boleto expirado"].includes(label);
+  const Icon = paid ? CircleCheck : danger ? AlertCircle : neutral ? CircleX : Clock3;
+  const style = paid
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+    : danger ? "border-red-200 bg-red-50 text-red-700"
+    : waiting ? "border-amber-200 bg-amber-50 text-amber-700"
+    : open ? "border-sky-200 bg-sky-50 text-sky-700"
+    : "border-zinc-200 bg-zinc-100 text-zinc-700";
+  return <Badge variant="outline" className={style}><Icon className="size-3.5" />{label}</Badge>;
 }
