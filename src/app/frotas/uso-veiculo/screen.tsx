@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CancellationDetails } from "@/components/cancellation-details";
@@ -550,22 +551,11 @@ function EmptyUsoState({
   veiculos: Awaited<ReturnType<typeof getUsoVeiculosData>>["veiculos"];
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <KeyRound className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhuma retirada registrada
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Registre a saída do veículo para controlar quem está usando a frota e
-        quando ele deve retornar à garagem.
-      </p>
-      {canCreate ? (
+    <FrotasEmptyState icon={KeyRound} title="Nenhuma retirada registrada" description="Registre a saída do veículo para controlar quem está usando a frota e quando ele deve retornar à garagem." action={canCreate ? (
         <Dialog>
           <DialogTrigger
             className={buttonVariants({
-              className: "mt-4 gap-2",
+              className: "gap-2",
             })}
           >
             <Plus className="size-4" />
@@ -578,8 +568,7 @@ function EmptyUsoState({
             <UsoVeiculoForm veiculos={veiculos} motoristas={motoristas} />
           </DialogContent>
         </Dialog>
-      ) : null}
-    </div>
+      ) : null} />
   );
 }
 

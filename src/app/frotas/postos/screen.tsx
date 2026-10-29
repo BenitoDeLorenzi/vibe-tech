@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
@@ -8,7 +9,6 @@ import { ListPagination } from "@/components/list-pagination";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import {
-  Building2,
   ExternalLink,
   Fuel,
   KeyRound,
@@ -242,18 +242,12 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                 </Table>
               </div>
             ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-                <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-                  <Building2 className="size-6 text-muted-foreground" />
-                </div>
-                <h3 className="mt-4 text-base font-semibold">
-                  Nenhum posto cadastrado
-                </h3>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Cadastre os postos credenciados da empresa para permitir a
-                  conclusão das ordens de abastecimento.
-                </p>
-              </div>
+              <FrotasEmptyState icon={Fuel} title="Nenhum posto cadastrado" description="Cadastre os postos credenciados da empresa para permitir a conclusão das ordens de abastecimento." action={<Dialog>
+                <DialogTrigger className={buttonVariants({ className: "gap-2" })}><Plus className="size-4" />Cadastrar posto</DialogTrigger>
+                <DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>Novo posto de combustível</DialogTitle></DialogHeader>
+                  <PostoCredenciadoForm prefeituras={data.prefeituras} selectedPrefeituraId={data.selectedPrefeituraId} showPrefeituraField={profile.role === "bdl_admin"} />
+                </DialogContent>
+              </Dialog>} />
             )}
             {!loading && <ListPagination page={stationPage.page} pageCount={stationPage.pageCount} pathname="/frotas/postos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>

@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CadastroStatusButton } from "@/components/cadastro-status-button";
@@ -192,17 +193,10 @@ export default async function OficinasPage({
                 </Table>
               </div>
             ) : (
-              <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-lg border bg-muted/20 p-8">
-                <Wrench className="size-8 text-muted-foreground" />
-                <p className="font-medium">
-                  {query
-                    ? "Nenhuma oficina encontrada"
-                    : "Nenhuma oficina cadastrada"}
-                </p>
-                {!query && canManage && data.selectedPrefeituraId ? (
-                  <OficinaDialog empresaId={data.selectedPrefeituraId} />
-                ) : null}
-              </div>
+              <FrotasEmptyState icon={Wrench}
+                title={query ? "Nenhuma oficina encontrada" : "Nenhuma oficina cadastrada"}
+                description={query ? "Ajuste os termos da busca para encontrar outra oficina." : "Cadastre uma oficina para organizar os serviços de manutenção da frota."}
+                action={!query && canManage && data.selectedPrefeituraId ? <OficinaDialog empresaId={data.selectedPrefeituraId} /> : null} />
             )}
             {oficinas.length > 0 && <ListPagination page={oficinaPage.page} pageCount={oficinaPage.pageCount} pathname="/frotas/oficinas" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>

@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListPagination } from "@/components/list-pagination";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
@@ -518,26 +519,14 @@ function EmptyFleetState({
   selectedPrefeituraId?: string;
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <Car className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhum veículo encontrado
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Cadastre o primeiro veículo da empresa selecionada ou ajuste os
-        filtros para visualizar outros registros.
-      </p>
-      {canCreate ? (
+    <FrotasEmptyState icon={Car} title="Nenhum veículo encontrado" description="Cadastre o primeiro veículo da empresa selecionada ou ajuste os filtros para visualizar outros registros." action={canCreate ? (
         <VeiculoCadastroDialog
           prefeituras={prefeituras}
           selectedPrefeituraId={selectedPrefeituraId}
           showPrefeituraField={showPrefeituraField}
           triggerLabel="Cadastrar veículo"
         />
-      ) : null}
-    </div>
+      ) : null} />
   );
 }
 

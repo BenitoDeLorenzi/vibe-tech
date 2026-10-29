@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CancellationDetails } from "@/components/cancellation-details";
@@ -707,26 +708,14 @@ function EmptyFuelState({
   veiculos: Awaited<ReturnType<typeof getAbastecimentosData>>["veiculos"];
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <Fuel className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhuma ordem de abastecimento
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Emita a primeira ordem para controlar abastecimento, quilometragem,
-        litros e impressão térmica.
-      </p>
-      {canCreate ? (
+    <FrotasEmptyState icon={Fuel} title="Nenhuma ordem de abastecimento" description="Emita a primeira ordem para controlar abastecimento, quilometragem, litros e impressão térmica." action={canCreate ? (
         <AbastecimentoCreateDialog
-          className="mt-4 gap-2"
+          className="gap-2"
           label="Emitir ordem"
           postos={postos} motoristas={motoristas}
           veiculos={veiculos}
         />
-      ) : null}
-    </div>
+      ) : null} />
   );
 }
 

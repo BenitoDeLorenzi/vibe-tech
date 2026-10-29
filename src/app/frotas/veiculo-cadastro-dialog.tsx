@@ -5,7 +5,7 @@ import { FormDialogCancel } from "@/components/form-dialog-cancel";
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Car, LoaderCircle, Search, TriangleAlert } from "lucide-react";
+import { LoaderCircle, Plus, Search, TriangleAlert } from "lucide-react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { PrefeituraCombobox } from "@/components/prefeitura-combobox";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -162,7 +162,7 @@ export function VeiculoCadastroDialog({
       <DialogTrigger
         className={buttonVariants({ className: "h-9 shrink-0 gap-2" })}
       >
-        <Car className="size-4" />
+        <Plus className="size-4" />
         {triggerLabel}
       </DialogTrigger>
       <DialogContent

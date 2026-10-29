@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
@@ -333,7 +334,7 @@ function MotoristasToolbar({
             <Link
               key={option.label}
               href={buildFilterHref({ status: option.status ?? null })}
-              className={buttonVariants({
+            className={buttonVariants({
                 variant: isActive ? "default" : "ghost",
                 size: "sm",
                 className: isActive
@@ -549,22 +550,11 @@ function EmptyMotoristasState({
   showPrefeituraField: boolean;
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <UserRoundCog className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhum motorista cadastrado
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Motoristas só são consolidados quando possuem CPF. Retiradas sem CPF
-        continuam no histórico, mas não viram cadastro.
-      </p>
-      {canCreate ? (
+    <FrotasEmptyState icon={UserRoundCog} title="Nenhum motorista cadastrado" description="Motoristas só são consolidados quando possuem CPF. Retiradas sem CPF continuam no histórico, mas não viram cadastro." action={canCreate ? (
         <Dialog>
           <DialogTrigger
-            className={buttonVariants({
-              className: "mt-4 gap-2",
+              className={buttonVariants({
+              className: "gap-2",
             })}
           >
             <Plus className="size-4" />
@@ -581,8 +571,7 @@ function EmptyMotoristasState({
             />
           </DialogContent>
         </Dialog>
-      ) : null}
-    </div>
+      ) : null} />
   );
 }
 

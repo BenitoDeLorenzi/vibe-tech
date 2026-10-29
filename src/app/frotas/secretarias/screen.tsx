@@ -1,4 +1,5 @@
 import { getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import Link from "next/link";
 import { forbidden, notFound, redirect } from "next/navigation";
 import { Building2, Search, X } from "lucide-react";
@@ -150,20 +151,10 @@ export default async function SecretariasPage({
                 </Table>
               </div>
             ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center gap-3 rounded-lg border bg-muted/20 p-8 text-center">
-                <Building2 className="size-8 text-muted-foreground" />
-                <h3 className="font-semibold">
-                  {params.q
-                    ? "Nenhuma secretaria encontrada"
-                    : "Nenhuma secretaria cadastrada"}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {params.q
-                    ? "Ajuste os termos da busca."
-                    : "Cadastre as secretarias desta prefeitura para vinculá-las aos veículos."}
-                </p>
-                {manage && <SecretariaDialog empresaId={empresa.id} />}
-              </div>
+              <FrotasEmptyState icon={Building2}
+                title={params.q ? "Nenhuma secretaria encontrada" : "Nenhuma secretaria cadastrada"}
+                description={params.q ? "Ajuste os termos da busca." : "Cadastre as secretarias desta prefeitura para vinculá-las aos veículos."}
+                action={manage && !params.q ? <SecretariaDialog empresaId={empresa.id} /> : null} />
             )}
             {rows.length > 0 && <ListPagination page={secretariaPage.page} pageCount={secretariaPage.pageCount} pathname="/frotas/secretarias" params={{ size: params.size, prefeitura: empresa.id, q: params.q }} />}
           </CardContent>

@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { CancellationDetails } from "@/components/cancellation-details";
@@ -617,22 +618,11 @@ function EmptyMaintenanceState({
   oficinas: Awaited<ReturnType<typeof getManutencoesData>>["oficinas"];
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <Wrench className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhuma manutenção registrada
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        Registre a primeira manutenção para acompanhar custos, documentos e
-        status operacional da frota.
-      </p>
-      {canCreate ? (
+    <FrotasEmptyState icon={Wrench} title="Nenhuma manutenção registrada" description="Registre a primeira manutenção para acompanhar custos, documentos e status operacional da frota." action={canCreate ? (
         <Dialog>
           <DialogTrigger
             className={buttonVariants({
-              className: "mt-4 gap-2",
+              className: "gap-2",
             })}
           >
             <Plus className="size-4" />
@@ -645,8 +635,7 @@ function EmptyMaintenanceState({
             <ManutencaoForm veiculos={veiculos} oficinas={oficinas} />
           </DialogContent>
         </Dialog>
-      ) : null}
-    </div>
+      ) : null} />
   );
 }
 

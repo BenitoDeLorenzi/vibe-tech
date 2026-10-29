@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
@@ -454,20 +455,10 @@ function EmptyReportsState({
   showPrefeituraField: boolean;
 }) {
   return (
-    <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-      <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-        <FileText className="size-6 text-muted-foreground" />
-      </div>
-      <h3 className="mt-4 text-base font-semibold">
-        Nenhum relatório criado
-      </h3>
-      <p className="mt-1 max-w-md text-sm text-muted-foreground">
-        {canCreate ? "Gere relatórios para conferência, impressão e envio aos setores responsáveis da empresa." : "Ainda não há relatórios disponíveis para consulta."}
-      </p>
-      {canCreate && <Dialog>
+    <FrotasEmptyState icon={FileText} title="Nenhum relatório criado" description={canCreate ? "Gere relatórios para conferência, impressão e envio aos setores responsáveis da empresa." : "Ainda não há relatórios disponíveis para consulta."} action={canCreate ? <Dialog>
         <DialogTrigger
           className={buttonVariants({
-            className: "mt-4 gap-2",
+            className: "gap-2",
           })}
         >
           <Plus className="size-4" />
@@ -486,8 +477,7 @@ function EmptyReportsState({
             veiculos={data.veiculos}
           />
         </DialogContent>
-      </Dialog>}
-    </div>
+      </Dialog> : null} />
   );
 }
 
