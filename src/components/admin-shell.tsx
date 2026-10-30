@@ -5,6 +5,7 @@ import { AdminSidebar } from "@/components/admin-sidebar";
 import { SupportLiveProvider } from "@/components/support/support-live";
 import { HeaderSeparator } from "@/components/header-separator";
 import { MobileLiveSearch } from "@/components/mobile-live-search";
+import { MobileBrandBar } from "@/components/mobile-brand-bar";
 import {
   SidebarInset,
   SidebarProvider,
@@ -47,12 +48,13 @@ export function AdminShell({
       <AdminSidebar active={active} profile={profile} />
 
       <SidebarInset className="min-h-0 overflow-hidden">
+        <MobileBrandBar section="Painel" />
         <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <HeaderSeparator />
           <div className="flex min-w-0 items-center gap-2">
             {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
-            <h1 className="min-w-0 truncate text-xl font-semibold tracking-normal">
+            <h1 className="min-w-0 truncate text-base font-semibold tracking-normal md:text-xl">
               {mobileTitle ? <><span className="sm:hidden">{mobileTitle}</span><span className="hidden sm:inline">{title}</span></> : title}
             </h1>
           </div>

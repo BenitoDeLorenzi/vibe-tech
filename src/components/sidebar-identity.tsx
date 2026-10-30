@@ -61,7 +61,7 @@ export function SidebarIdentity({
   onSelect,
   pending = false,
 }: {
-  moduleName: string;
+  moduleName?: string;
   icon?: ReactNode;
   name: string;
   description?: string;
@@ -91,9 +91,7 @@ export function SidebarIdentity({
   );
   return (
     <div className="space-y-2 py-1">
-      <p className="px-2 pt-1 text-xs font-medium tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">
-        {moduleName}
-      </p>
+      {moduleName ? <p className="px-2 pt-1 text-xs font-medium tracking-wide text-muted-foreground group-data-[collapsible=icon]:hidden">{moduleName}</p> : null}
       <SidebarMenu>
         <SidebarMenuItem>
           {options && onSelect ? (

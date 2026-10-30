@@ -9,6 +9,7 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FrotasCompanyScope } from "./frotas-persistent-frame";
 import { FrotasMobileFilters } from "./frotas-mobile-filters";
 import { MobileLiveSearch } from "@/components/mobile-live-search";
+import { MobileBrandBar } from "@/components/mobile-brand-bar";
 
 type FrotasShellProps = {
   loading?: boolean;
@@ -53,6 +54,7 @@ export async function FrotasShell({
   return (
     <>
       {!loading && <FrotasCompanyScope empresa={selectedPrefeituraId} />}
+      <MobileBrandBar section="Frotas" />
       <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
         <SidebarTrigger className="-ml-1" />
         <HeaderSeparator />

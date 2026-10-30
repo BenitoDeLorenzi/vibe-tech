@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Car } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
 import { SidebarIdentity } from "@/components/sidebar-identity";
 
@@ -43,9 +44,12 @@ export function FrotasPrefeituraContext({
   }
 
   return (
+    <div className="space-y-1">
+      <Link href="/frotas" className="flex h-12 items-center gap-2 rounded-lg px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0">
+        <Image src="/brand/vibe-tech-icon.png" alt="Vibe Frotas" width={32} height={32} className="size-8 shrink-0 rounded-lg object-contain" />
+        <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">Vibe Frotas</span>
+      </Link>
     <SidebarIdentity
-      moduleName="Vibe Frotas"
-      icon={<Car className="size-4 text-muted-foreground" />}
       name={
         prefeitura?.nome_fantasia ||
         prefeitura?.nome ||
@@ -69,5 +73,6 @@ export function FrotasPrefeituraContext({
       selectedId={prefeitura?.id}
       onSelect={isAdmin ? updatePrefeitura : undefined}
     />
+    </div>
   );
 }

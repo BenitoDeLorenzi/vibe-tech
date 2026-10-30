@@ -73,7 +73,6 @@ export function AdminSidebar({ active, profile }: AdminSidebarProps) {
     <Sidebar collapsible="icon" variant="inset">
       <SidebarHeader>
         <SidebarIdentity
-          moduleName="Vibe Tech"
           icon={<ShieldCheck className="size-4 text-muted-foreground" />}
           name="Vibe Tech"
           description="Portal administrativo"
