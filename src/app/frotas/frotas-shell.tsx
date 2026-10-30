@@ -7,9 +7,11 @@ import type { FrotaPrefeituraOption } from "@/lib/frotas-data";
 import { HeaderSeparator } from "@/components/header-separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FrotasCompanyScope } from "./frotas-persistent-frame";
+import { FrotasMobileFilters } from "./frotas-mobile-filters";
 
 type FrotasShellProps = {
   loading?: boolean;
+  mobileList?: boolean;
   active:
     | "dashboard"
     | "veiculos"
@@ -35,23 +37,27 @@ type FrotasShellProps = {
 
 export async function FrotasShell({
   loading = false,
+  mobileList = false,
+  active,
   actions,
   children,
   icon: Icon,
+  prefeituras,
   profile,
   selectedPrefeituraId,
   title,
 }: FrotasShellProps) {
   if (!(await hasModuleAccess(profile, "frotas-publicas"))) redirect("/portal");
+  const isList = mobileList;
   return (
     <>
       {!loading && <FrotasCompanyScope empresa={selectedPrefeituraId} />}
       <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
         <SidebarTrigger className="-ml-1" />
         <HeaderSeparator />
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-2 md:shrink-0">
           {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
-          <h1 className="truncate text-xl font-semibold tracking-normal">
+          <h1 className="truncate text-base font-semibold tracking-normal md:text-xl">
             {title}
           </h1>
         </div>
@@ -59,9 +65,10 @@ export async function FrotasShell({
           <div
             inert={loading}
             aria-busy={loading}
-            className="ml-auto flex min-w-0 flex-1 items-center justify-end"
+            className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-2"
           >
-            {actions}
+              {isList && <FrotasMobileFilters route={active} companies={prefeituras} companyId={selectedPrefeituraId} canChooseCompany={profile.role === "bdl_admin"} />}
+              <div className={isList ? "frotas-route-actions" : undefined}>{actions}</div>
           </div>
         ) : null}
       </header>

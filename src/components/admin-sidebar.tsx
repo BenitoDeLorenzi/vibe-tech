@@ -5,12 +5,12 @@ import {
 import Link from "next/link";
 import { SupportBadge } from "@/components/support/support-live";
 import { SidebarIdentity } from "@/components/sidebar-identity";
+import { AdminSidebarLink } from "@/components/admin-sidebar-link";
 import {
   CircleDollarSign,
   Building2,
   Headset,
   Car,
-  ClipboardList,
   ExternalLink,
   KeyRound,
   LayoutDashboard,
@@ -44,7 +44,6 @@ type AdminSidebarProps = {
     | "licencas"
     | "cobrancas"
     | "usuarios"
-    | "modulos"
     | "atendimentos"
     | "integracoes";
   profile: CurrentUserProfile;
@@ -65,12 +64,6 @@ const navModulos = [
 
 const navAdministracao = [
   { key: "atendimentos", label: "Atendimentos", href: "/atendimentos", icon: Headset },
-  {
-    key: "modulos",
-    label: "Catálogo de módulos",
-    href: "/modulos",
-    icon: ClipboardList,
-  },
   { key: "configuracoes", label: "Configurações", href: "#", icon: Settings },
   { key: "seguranca", label: "Segurança", href: "#", icon: ShieldCheck },
 ] as const;
@@ -99,7 +92,7 @@ export function AdminSidebar({ active, profile }: AdminSidebarProps) {
                     className={sidebarNavClass}
                     isActive={active === item.key}
                     tooltip={item.label}
-                    render={<Link href={item.href} />}
+                    render={<AdminSidebarLink href={item.href} />}
                   >
                     <item.icon />
                     <span>{item.label}</span>

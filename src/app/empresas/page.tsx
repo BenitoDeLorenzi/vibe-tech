@@ -1,5 +1,8 @@
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
+import { AdminMobileFilters } from "@/components/admin-mobile-filters";
+import { AdminMobileList } from "@/components/admin-mobile-list";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import {
@@ -107,6 +110,12 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
       title="Empresas"
       actions={
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
+          <AdminMobileFilters key={`${params.q ?? ""}:${params.status ?? ""}`} pathname="/empresas" title="Empresas" query={params.q} status={params.status} statusOptions={filterOptions.map(option => ({ value: option.status ?? "all", label: option.label }))} />
+          <Dialog>
+            <DialogTrigger aria-label="Nova empresa" className={buttonVariants({ size: "icon", className: "md:hidden" })}><Plus className="size-4" /></DialogTrigger>
+            <DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Nova empresa</DialogTitle></DialogHeader><PrefeituraForm /></DialogContent>
+          </Dialog>
+          <div className="hidden min-w-0 items-center justify-end gap-2 md:flex">
           <form className="flex min-w-0 shrink-0 justify-end gap-2">
             <div className="relative min-w-0 w-[320px]">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -181,6 +190,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
               <PrefeituraForm />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       }
     >
@@ -191,8 +201,8 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
         updated={params.updated}
       />
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
-        <Card>
-          <ListPanelHeader
+        <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0 md:gap-(--card-spacing) md:overflow-hidden md:bg-card md:py-(--card-spacing) md:ring-1">
+          <ListPanelHeader mobileMetricsOnly
               title="Empresas cadastradas"
               icon={Building2}
               metrics={<ListMetrics items={[
@@ -200,9 +210,16 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                 { label: "Total", value: prefeituras.length },
               ]} />}
             />
-          <CardContent>
+          <CardContent className="px-0 md:px-(--card-spacing)">
             {prefeituras.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <>
+              <AdminMobileList key={`${params.q ?? ""}:${params.status ?? ""}`} items={prefeituras.map(prefeitura => <AdminMobileCard key={prefeitura.id}
+                title={<Link href={`/empresas/${prefeitura.id}`}>{prefeitura.nome}</Link>}
+                subtitle={prefeitura.nome_fantasia ? `${prefeitura.nome_fantasia} · ${prefeitura.cnpj}` : prefeitura.cnpj}
+                badge={<PrefeituraStatusBadge status={prefeitura.status} />}
+                details={[{ label: "Localização", value: prefeitura.cidade || prefeitura.uf ? `${prefeitura.cidade ?? "-"} / ${prefeitura.uf ?? "-"}` : "-" }, { label: "Licenças", value: `${prefeitura.licencas_ativas} ativa(s)` }, { label: "Módulos", value: prefeitura.modulos_contratados.length ? prefeitura.modulos_contratados.join(", ") : "Sem módulo ativo" }, { label: "Próximo vencimento", value: prefeitura.proximo_vencimento ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(new Date(`${prefeitura.proximo_vencimento}T00:00:00.000Z`)) : "-" }]}
+                actions={<EmpresaActions prefeitura={prefeitura} />} />)} />
+              <div className="hidden overflow-hidden rounded-lg border md:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -302,6 +319,53 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                           <PrefeituraStatusBadge status={prefeitura.status} />
                         </TableCell>
                         <TableCell>
+                          <EmpresaActions prefeitura={prefeitura} />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              </>
+            ) : (
+              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
+                <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
+                  <Building2 className="size-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold">
+                  Nenhuma empresa encontrada
+                </h3>
+                <p className="mt-1 max-w-md text-sm text-muted-foreground">
+                  Cadastre a primeira empresa ou ajuste os filtros para
+                  visualizar outros registros.
+                </p>
+                <Dialog>
+                  <DialogTrigger
+                    className={buttonVariants({
+                      className: "mt-4 gap-2",
+                    })}
+                  >
+                    <Plus className="size-4" />
+                    Cadastrar empresa
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Nova empresa</DialogTitle>
+                    </DialogHeader>
+                    <PrefeituraForm />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </AdminShell>
+  );
+}
+
+function EmpresaActions({ prefeitura }: { prefeitura: Awaited<ReturnType<typeof getPrefeituras>>[number] }) {
+  return (
                           <div className="flex justify-end gap-1">
                             <Tooltip>
                               <TooltipTrigger render={<Link
@@ -349,46 +413,6 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                               </DialogContent>
                             </Dialog>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            ) : (
-              <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
-                <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
-                  <Building2 className="size-6 text-muted-foreground" />
-                </div>
-                <h3 className="mt-4 text-base font-semibold">
-                  Nenhuma empresa encontrada
-                </h3>
-                <p className="mt-1 max-w-md text-sm text-muted-foreground">
-                  Cadastre a primeira empresa ou ajuste os filtros para
-                  visualizar outros registros.
-                </p>
-                <Dialog>
-                  <DialogTrigger
-                    className={buttonVariants({
-                      className: "mt-4 gap-2",
-                    })}
-                  >
-                    <Plus className="size-4" />
-                    Cadastrar empresa
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Nova empresa</DialogTitle>
-                    </DialogHeader>
-                    <PrefeituraForm />
-                  </DialogContent>
-                </Dialog>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-    </AdminShell>
   );
 }
 

@@ -7,6 +7,7 @@ import { CancelFrotaDialog } from "@/components/cancel-frota-dialog";
 import { DeleteManutencaoButton } from "./delete-manutencao-button";
 import { ListStatusActionButton } from "@/components/list-status-action-button";
 import { ListPagination } from "@/components/list-pagination";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
@@ -144,6 +145,7 @@ export default async function ManutencaoPage({ searchParams, loading = false }: 
   return (
     <FrotasShell
       loading={loading}
+      mobileList
       active="manutencao"
       actions={
         <ManutencaoToolbar
@@ -160,7 +162,7 @@ export default async function ManutencaoPage({ searchParams, loading = false }: 
       title="Manutenção"
     >
       <main className="flex min-h-full flex-col gap-3 p-4">
-        <Card className="flex flex-1 flex-col">
+        <Card className="frotas-list-card flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -181,7 +183,7 @@ export default async function ManutencaoPage({ searchParams, loading = false }: 
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {loading || data.manutencoes.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={maintenancePage.page} pageCount={maintenancePage.pageCount} total={maintenancePage.total} count={maintenancePage.items.length} pathname="/frotas/manutencao" params={{ prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -249,7 +251,7 @@ export default async function ManutencaoPage({ searchParams, loading = false }: 
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </div></FrotasResponsiveTable>
             ) : (
               <EmptyMaintenanceState
                 canCreate={access.canCreateManutencao}

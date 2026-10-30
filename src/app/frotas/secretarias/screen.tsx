@@ -8,6 +8,7 @@ import { getModuleLicensedEmpresas } from "@/lib/empresa-access";
 import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
 import { getSecretarias } from "@/lib/secretarias-data";
 import { ListPanelHeader } from "@/components/list-panel-header";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,7 @@ export default async function SecretariasPage({
   const secretariaPage = { ...databasePage, items: orderPageItems(rows, databasePage) };
   return (
     <FrotasShell
+      mobileList
       active="secretarias"
       title="Secretarias"
       icon={Building2}
@@ -98,8 +100,9 @@ export default async function SecretariasPage({
       }
     >
       <main className="flex min-h-full flex-col gap-3 p-4">
-        <Card className="flex flex-1 flex-col">
+        <Card className="frotas-list-card flex flex-1 flex-col">
           <ListPanelHeader
+            mobileMetricsOnly
             title="Secretarias cadastradas"
             icon={Building2}
             metrics={
@@ -110,7 +113,7 @@ export default async function SecretariasPage({
           />
           <CardContent className="flex flex-1 flex-col">
             {rows.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={secretariaPage.page} pageCount={secretariaPage.pageCount} total={secretariaPage.total} count={secretariaPage.items.length} pathname="/frotas/secretarias" params={{ prefeitura: empresa.id, q: params.q }}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -149,7 +152,7 @@ export default async function SecretariasPage({
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </div></FrotasResponsiveTable>
             ) : (
               <FrotasEmptyState icon={Building2}
                 title={params.q ? "Nenhuma secretaria encontrada" : "Nenhuma secretaria cadastrada"}

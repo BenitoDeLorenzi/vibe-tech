@@ -18,12 +18,12 @@ type AdminShellProps = {
     | "licencas"
     | "cobrancas"
     | "usuarios"
-    | "modulos"
     | "atendimentos"
     | "integracoes";
   actions?: ReactNode;
   children: ReactNode;
   icon?: LucideIcon;
+  mobileTitle?: string;
   profile: CurrentUserProfile;
   title: string;
 };
@@ -33,6 +33,7 @@ export function AdminShell({
   actions,
   children,
   icon: Icon,
+  mobileTitle,
   profile,
   title,
 }: AdminShellProps) {
@@ -44,10 +45,10 @@ export function AdminShell({
         <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <HeaderSeparator />
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
-            <h1 className="truncate text-xl font-semibold tracking-normal">
-              {title}
+            <h1 className="min-w-0 truncate text-xl font-semibold tracking-normal">
+              {mobileTitle ? <><span className="sm:hidden">{mobileTitle}</span><span className="hidden sm:inline">{title}</span></> : title}
             </h1>
           </div>
           {actions ? (

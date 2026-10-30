@@ -13,6 +13,7 @@ import { getOficinasForEmpresa } from "@/lib/oficinas-data";
 import { FrotasShell } from "../frotas-shell";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { HeaderSeparator } from "@/components/header-separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,6 +59,7 @@ export default async function OficinasPage({
   return (
     <FrotasShell
       loading={loading}
+      mobileList
       active="oficinas"
       title="Oficinas"
       icon={Wrench}
@@ -96,7 +98,7 @@ export default async function OficinasPage({
       }
     >
       <main className="flex min-h-full flex-col gap-3 p-4">
-        <Card className="flex flex-1 flex-col">
+        <Card className="frotas-list-card flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -120,7 +122,7 @@ export default async function OficinasPage({
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {loading || oficinas.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={oficinaPage.page} pageCount={oficinaPage.pageCount} total={oficinaPage.total} count={oficinaPage.items.length} pathname="/frotas/oficinas" params={{ prefeitura: data.selectedPrefeituraId, q: params.q }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -191,7 +193,7 @@ export default async function OficinasPage({
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </div></FrotasResponsiveTable>
             ) : (
               <FrotasEmptyState icon={Wrench}
                 title={query ? "Nenhuma oficina encontrada" : "Nenhuma oficina cadastrada"}

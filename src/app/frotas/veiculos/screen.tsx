@@ -1,6 +1,8 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { FrotasEmptyState } from "@/components/frotas-empty-state";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { ListPanelHeader } from "@/components/list-panel-header";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { ListPagination } from "@/components/list-pagination";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
@@ -146,6 +148,7 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
   return (
     <FrotasShell
       loading={loading}
+      mobileList
       active="veiculos"
       actions={
         <VeiculosToolbar
@@ -166,8 +169,8 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
       <VehicleLookupSync prefeituraId={data.selectedPrefeituraId} vehicleIds={data.veiculos.filter((vehicle) => vehicle.status === "processing").map((vehicle) => vehicle.id)} />
       <FrotasToasts deleted={params.deleted} error={params.error} />
         <main className="flex min-h-full flex-col gap-3 p-4">
-            <Card className="flex flex-1 flex-col">
-              <ListPanelHeader title="Veículos cadastrados" icon={Car} metrics={<ListMetrics
+            <Card className="frotas-list-card flex flex-1 flex-col">
+              <ListPanelHeader mobileMetricsOnly title="Veículos cadastrados" icon={Car} metrics={<ListMetrics
                 loading={loading}
                     items={[
                       { label: "Ativos", value: (databasePage.statuses.active ?? 0), tone: "success" },
@@ -176,7 +179,25 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                   />} />
               <CardContent className="flex flex-1 flex-col">
                 {loading || data.veiculos.length ? (
-                  <div className="overflow-hidden rounded-lg border">
+                  <FrotasResponsiveTable page={vehiclePage.page} pageCount={vehiclePage.pageCount} total={vehiclePage.total} count={vehiclePage.items.length} pathname="/frotas/veiculos" params={{ prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} loading={loading}>
+                    <div className="space-y-3 md:hidden">
+                      {!loading && vehiclePage.items.map((veiculo) => (
+                        <AdminMobileCard
+                          key={veiculo.id}
+                          title={<Link href={`/frotas/veiculos/${veiculo.id}`} className="flex items-center gap-2"><VeiculoAvatar fotoUrl={veiculo.foto_url} placa={veiculo.placa} className="size-8 shrink-0" /><span className="min-w-0 truncate">{veiculo.modelo || "Dados cadastrais pendentes"}</span></Link>}
+                          subtitle={<span className="flex flex-wrap items-center gap-x-3"><span>Placa {veiculo.placa}</span><span>Renavam {veiculo.renavam ?? "-"}</span></span>}
+                          badge={<VehicleStatusBadge status={veiculo.status} lookupStatus={veiculo.consulta_status} />}
+                          details={[
+                            { label: "Combustível", value: veiculo.combustivel ?? "-" },
+                            { label: "Quilometragem", value: veiculo.quilometragem != null ? `${veiculo.quilometragem.toLocaleString("pt-BR")} km` : "Não informada" },
+                            { label: "Débitos", value: <VehicleDebtStatus summary={debtSummaries[veiculo.id]} vehicleId={veiculo.id} /> },
+                            { label: "Última atualização", value: <VehicleDebtLastUpdate summary={debtSummaries[veiculo.id]} /> },
+                          ]}
+                          actions={<VehicleActions veiculo={veiculo} access={access} data={data} profile={profile} />}
+                        />
+                      ))}
+                    </div>
+                    <div className="frotas-mobile-table hidden overflow-hidden rounded-lg border md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
@@ -262,7 +283,35 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                             <TableCell>
                               <VehicleDebtLastUpdate summary={debtSummaries[veiculo.id]} />
                             </TableCell>
-                            <TableCell>
+                            <TableCell><VehicleActions veiculo={veiculo} access={access} data={data} profile={profile} /></TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div></FrotasResponsiveTable>
+                ) : (
+                  <EmptyFleetState
+                    canCreate={access.canCreateVeiculos}
+                    prefeituras={data.prefeituras}
+                    showPrefeituraField={profile.role === "bdl_admin"}
+                    selectedPrefeituraId={data.selectedPrefeituraId}
+                  />
+                )}
+                {!loading && <ListPagination page={vehiclePage.page} pageCount={vehiclePage.pageCount} pathname="/frotas/veiculos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
+              </CardContent>
+            </Card>
+        </main>
+    </FrotasShell>
+  );
+}
+
+function VehicleActions({ veiculo, access, data, profile }: {
+  veiculo: Awaited<ReturnType<typeof getFrotasData>>["veiculos"][number];
+  access: Awaited<ReturnType<typeof getFrotasPermissionAccess>>;
+  data: Awaited<ReturnType<typeof getFrotasData>>;
+  profile: Awaited<ReturnType<typeof requireUserProfile>>;
+}) {
+  return (
                               <div className="flex justify-end gap-1">
 
                                 <Tooltip>
@@ -348,25 +397,6 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                                   </Dialog>
                                 ) : null}
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <EmptyFleetState
-                    canCreate={access.canCreateVeiculos}
-                    prefeituras={data.prefeituras}
-                    showPrefeituraField={profile.role === "bdl_admin"}
-                    selectedPrefeituraId={data.selectedPrefeituraId}
-                  />
-                )}
-                {!loading && <ListPagination page={vehiclePage.page} pageCount={vehiclePage.pageCount} pathname="/frotas/veiculos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
-              </CardContent>
-            </Card>
-        </main>
-    </FrotasShell>
   );
 }
 

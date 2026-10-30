@@ -16,12 +16,14 @@ const metricIcons = { money: CircleDollarSign, gauge: Gauge };
 export function ListMetrics({
   items,
   loading = false,
+  mobileThreeColumns = false,
 }: {
   loading?: boolean;
+  mobileThreeColumns?: boolean;
   items: Array<{ label: string; value: number | string; tone?: keyof typeof metricStyles; icon?: keyof typeof metricIcons }>;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2" aria-label="Resumo da lista">
+    <div className={cn("flex flex-wrap items-center gap-2", mobileThreeColumns && "grid w-full grid-cols-3 gap-1.5 md:flex md:w-auto max-md:[&_[data-slot=badge]]:!h-auto max-md:[&_[data-slot=badge]]:min-h-11 max-md:[&_[data-slot=badge]]:w-full max-md:[&_[data-slot=badge]]:flex-col max-md:[&_[data-slot=badge]]:justify-center max-md:[&_[data-slot=badge]]:gap-0 max-md:[&_[data-slot=badge]_svg]:hidden")} aria-label="Resumo da lista">
       {items.map(({ label, value, tone, icon }) => (
         <ListMetric key={label} label={label} value={value} tone={tone} icon={icon ? metricIcons[icon] : undefined} loading={loading} />
       ))}

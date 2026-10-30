@@ -4,7 +4,7 @@ import { AdaptiveListSize } from "@/components/adaptive-list-size";
 import { createContext, useContext, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, CheckCheck, CircleCheck, Clock3, Headset, LoaderCircle, MessageCircle, Paperclip, Plus, RotateCcw, Search, Send, X } from "lucide-react";
+import { ArrowLeft, CheckCheck, CircleCheck, Clock3, Headset, ListFilter, LoaderCircle, MessageCircle, Paperclip, Plus, RotateCcw, Search, Send, X } from "lucide-react";
 import { HeaderSeparator } from "@/components/header-separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,6 +19,11 @@ import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { TableLoadingRows } from "@/components/table-loading";
 import { PaginationControl } from "@/components/pagination-control";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
+import { FormSelect } from "@/components/form-select";
+import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { mobileDrawerContentClassName } from "@/lib/mobile-drawer";
 import { cn } from "@/lib/utils";
 import { useSupportLive } from "./support-live";
 
@@ -64,21 +69,34 @@ function useSupportWorkspace() {
 export function SupportToolbar({ master = false }: { master?: boolean }) {
   const params = useSearchParams();
   const { query, setQuery, search, setSearch, status, setStatus, setPage, setLoading, setNewOpen } = useSupportWorkspace();
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileQuery, setMobileQuery] = useState(search);
+  const [mobileStatus, setMobileStatus] = useState(status);
   const { refresh } = useSupportLive();
   if (params.get("conversa")) return null;
   const filter = () => { setSearch(query.trim()); setPage(1); setLoading(true); refresh(); };
   return <div className="flex w-full min-w-0 items-center justify-end gap-2">
+    <div className="md:hidden"><Drawer open={mobileOpen} onOpenChange={setMobileOpen} showSwipeHandle>
+      <DrawerTrigger render={<Button type="button" variant="outline" size="icon" className="relative" aria-label="Filtrar atendimentos" onClick={() => { setMobileQuery(search); setMobileStatus(status); }} />}>
+        <ListFilter className="size-4" />{(search || status) && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden="true" />}
+      </DrawerTrigger>
+      <DrawerContent className={mobileDrawerContentClassName}><DrawerHeader className="border-b text-left"><DrawerTitle>Filtrar atendimentos</DrawerTitle><DrawerDescription>Busque chamados e escolha a situação.</DrawerDescription></DrawerHeader>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4"><label className="block space-y-2 text-sm font-medium">Buscar<Input value={mobileQuery} onChange={event => setMobileQuery(event.target.value)} placeholder="Assunto, empresa ou usuário" /></label><div className="space-y-2 text-sm font-medium"><label>Situação</label><FormSelect aria-label="Situação" value={mobileStatus || "all"} onValueChange={value => setMobileStatus(value === "all" ? "" : value)} options={[{ value: "all", label: "Todos" }, ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label }))]} /></div></div>
+        <DrawerFooter className="flex-row gap-2 border-t bg-popover p-4"><Button type="button" variant="outline" className="flex-1" onClick={() => { setQuery(""); setSearch(""); setStatus(""); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Limpar</Button><Button type="button" className="flex-1" onClick={() => { setQuery(mobileQuery); setSearch(mobileQuery.trim()); setStatus(mobileStatus); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Aplicar filtros</Button></DrawerFooter>
+      </DrawerContent>
+    </Drawer></div>
     <form className="hidden min-w-0 flex-1 justify-end gap-2 2xl:flex" onSubmit={event => { event.preventDefault(); filter(); }}>
       <div className="relative min-w-0 w-[320px] shrink"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Buscar atendimentos" placeholder={master ? "Buscar assunto, empresa ou usuário" : "Buscar chamado"} className="h-9 pl-9" value={query} onChange={event => setQuery(event.target.value)} /></div>
       {search || status ? <Button type="button" variant="outline" className="h-9 gap-2" onClick={() => { setQuery(""); setSearch(""); setStatus(""); setPage(1); setLoading(true); refresh(); }}><X className="size-4" />Limpar</Button> : <Button type="submit" variant="outline" className="h-9"><Search className="size-4" />Filtrar</Button>}
     </form>
     <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 xl:flex">{[{ value: "", label: "Todos" }, ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: value === "resolved" ? "Resolvidos" : meta.label }))].map(option => <Button key={option.value} variant={status === option.value ? "default" : "ghost"} size="sm" className={status === option.value ? "h-7 shrink-0 px-2 text-xs shadow-sm" : "h-7 shrink-0 px-2 text-xs text-muted-foreground"} onClick={() => { setStatus(option.value); setPage(1); setLoading(true); refresh(); }}>{option.label}</Button>)}</div>
-    {!master && <><HeaderSeparator className="hidden 2xl:block" /><Button className="h-9 shrink-0 gap-2" onClick={() => setNewOpen(true)}><Plus className="size-4" />Abrir chamado</Button></>}
+    {!master && <><HeaderSeparator className="hidden 2xl:block" /><Button className="size-9 shrink-0 gap-0 p-0 md:w-auto md:gap-2 md:px-3" aria-label="Abrir chamado" onClick={() => setNewOpen(true)}><Plus className="size-4" /><span className="sr-only md:not-sr-only">Abrir chamado</span></Button></>}
   </div>;
 }
 
 export function SupportCenter({ master = false, userId }: { master?: boolean; userId: string }) {
   const { base, revision, unread, connected, refresh } = useSupportLive();
+  const isMobile = useIsMobile();
   const params = useSearchParams();
   const selected = params.get("conversa");
   const { newOpen, setNewOpen, setPage, search, status, page, loading, setLoading } = useSupportWorkspace();
@@ -89,12 +107,12 @@ export function SupportCenter({ master = false, userId }: { master?: boolean; us
   useEffect(() => {
     if (selected) return;
     const controller = new AbortController();
-    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page), size: String(size) })}`, { cache: "no-store", signal: controller.signal })
+    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page), size: String(isMobile ? 10 : size) })}`, { cache: "no-store", signal: controller.signal })
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
-      .then(result => { setPage(result.page); setData(result); setError(""); setLoading(false); })
+      .then(result => { setPage(result.page); setData(previous => isMobile && page > 1 ? { ...result, items: [...new Map([...previous.items, ...result.items].map(item => [item.id, item])).values()] } : result); setError(""); setLoading(false); })
       .catch(error => { if (!controller.signal.aborted) { setError(error.message); setLoading(false); } });
     return () => controller.abort();
-  }, [base, search, status, page, size, revision, selected, setLoading, setPage]);
+  }, [base, search, status, page, size, isMobile, revision, selected, setLoading, setPage]);
   const open = (id: string | null) => {
     const current = new URL(window.location.href);
     if (id) current.searchParams.set("conversa", id); else current.searchParams.delete("conversa");
@@ -103,15 +121,24 @@ export function SupportCenter({ master = false, userId }: { master?: boolean; us
 
   return <main className={cn("flex min-h-full flex-col gap-3 p-4", selected && "h-full overflow-hidden")}>
     {selected ? <TicketChat key={selected} id={selected} master={master} userId={userId} onBack={() => open(null)} /> : <>
-      <Card className="flex flex-1 flex-col"><ListPanelHeader title={master ? "Atendimentos" : "Meus chamados"} icon={Headset} metrics={<><ListMetrics loading={loading} items={[{ label: "Total", value: data.total }, { label: "Mensagens novas", value: unread, tone: "warning" }]} /><LiveStatus connected={connected} /></>} />
-        <CardContent className="flex flex-1 flex-col space-y-3">
+      <div className="flex flex-1 flex-col [--card-spacing:--spacing(4)] md:gap-(--card-spacing) md:overflow-hidden md:rounded-xl md:bg-card md:py-(--card-spacing) md:text-card-foreground md:ring-1 md:ring-foreground/10"><ListPanelHeader mobileMetricsOnly title={master ? "Atendimentos" : "Meus chamados"} icon={Headset} metrics={<><ListMetrics loading={loading} items={[{ label: "Novas", value: unread, tone: "warning" }, { label: "Total", value: data.total }]} /><div className="hidden md:block"><LiveStatus connected={connected} /></div></>} />
+        <CardContent className="flex flex-1 flex-col space-y-3 px-0 md:px-(--card-spacing)">
           {error && <ErrorNotice message={error} retry={refresh} />}
-          <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Assunto</TableHead>{master && <><TableHead>Empresa</TableHead><TableHead>Usuário</TableHead></>}<TableHead>Última atividade</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>
+          <div className="space-y-3 md:hidden">{loading && !data.items.length ? <div className="py-10 text-center text-sm text-muted-foreground"><LoaderCircle className="mx-auto mb-2 size-5 animate-spin" />Carregando atendimentos…</div> : data.items.length ? data.items.map(ticket => <AdminMobileCard key={ticket.id}
+            title={<span className="flex items-center gap-2"><MessageCircle className="size-4 shrink-0 text-muted-foreground" />{ticket.assunto}{ticket.novas > 0 && <Badge className="bg-red-600 text-white">{ticket.novas}</Badge>}</span>}
+            subtitle={master ? `${ticket.empresa} · ${ticket.usuario}` : ticket.empresa}
+            badge={<StatusBadge status={ticket.status} />}
+            details={[{ label: "Última atividade", value: date(ticket.updated_at) }]}
+            actions={<Button type="button" variant="outline" size="sm" onClick={() => open(ticket.id)}><MessageCircle className="size-4" />Abrir chat</Button>} />) : <div className="flex min-h-[320px] flex-col items-center justify-center p-8 text-center"><div className="flex size-12 items-center justify-center rounded-lg border bg-background"><Headset className="size-6 text-muted-foreground" /></div><h3 className="mt-4 text-base font-semibold">Nenhum atendimento encontrado</h3><p className="mt-1 max-w-md text-sm text-muted-foreground">{search || status ? "Ajuste os filtros para visualizar outros chamados." : master ? "Os chamados das empresas aparecerão aqui." : "Precisa de ajuda? Abra um chamado para a equipe Vibe Tech."}</p></div>}
+            {!loading && data.items.length < data.total && <Button type="button" variant="outline" className="w-full" onClick={() => { setPage(page + 1); setLoading(true); }}>Mostrar mais</Button>}
+            {data.items.length > 0 && <p className="text-center text-xs text-muted-foreground">Mostrando {data.items.length} de {data.total}</p>}
+          </div>
+          <div className="hidden overflow-hidden rounded-lg border md:block"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Assunto</TableHead>{master && <><TableHead>Empresa</TableHead><TableHead>Usuário</TableHead></>}<TableHead>Última atividade</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>
             {loading ? <TableLoadingRows columns={master ? 6 : 4} /> : data.items.length ? data.items.map(ticket => <TableRow key={ticket.id} className={cn(ticket.novas > 0 && "bg-blue-500/5")}><TableCell><div className="flex items-center gap-2"><MessageCircle className="size-4 shrink-0 text-muted-foreground" /><span className="max-w-80 truncate font-medium">{ticket.assunto}</span>{ticket.novas > 0 && <Badge className="bg-red-600 text-white">{ticket.novas}</Badge>}</div></TableCell>{master && <><TableCell>{ticket.empresa}</TableCell><TableCell>{ticket.usuario}</TableCell></>}<TableCell className="whitespace-nowrap tabular-nums">{date(ticket.updated_at)}</TableCell><TableCell><StatusBadge status={ticket.status} /></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => open(ticket.id)}><MessageCircle />Abrir chat</Button></TableCell></TableRow>) : <TableRow><TableCell colSpan={master ? 6 : 4} className="h-40 text-center text-muted-foreground"><Headset className="mx-auto mb-3 size-7" />{search || status ? "Nenhum chamado encontrado." : master ? "Nenhum chamado por enquanto." : "Precisa de ajuda? Abra um chamado para a equipe Vibe Tech."}</TableCell></TableRow>}
           </TableBody></Table></div>
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground"><AdaptiveListSize size={size} onSizeChange={resize} maximum={25} loading={loading} /><span>{data.total} registros</span><PaginationControl page={page} pageCount={Math.max(1, Math.ceil(data.total / size))} disabled={loading} onPageChange={next => { setPage(next); setLoading(true); }} /></div>
+          <div className="mt-auto hidden flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground md:flex"><AdaptiveListSize size={size} onSizeChange={resize} maximum={25} loading={loading} /><span>{data.total} registros</span><PaginationControl page={page} pageCount={Math.max(1, Math.ceil(data.total / size))} disabled={loading} onPageChange={next => { setPage(next); setLoading(true); }} /></div>
         </CardContent>
-      </Card>
+      </div>
     </>}
     <Dialog open={newOpen} onOpenChange={setNewOpen}><DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Abrir chamado</DialogTitle></DialogHeader>{newOpen && <Composer isNew onCancel={() => setNewOpen(false)} onSent={id => { setNewOpen(false); refresh(); open(id); }} />}</DialogContent></Dialog>
   </main>;

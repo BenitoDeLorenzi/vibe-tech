@@ -5,6 +5,7 @@ import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import {
@@ -167,6 +168,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
   return (
     <FrotasShell
       loading={loading}
+      mobileList
       active="relatorios"
       actions={
         <RelatoriosToolbar
@@ -183,7 +185,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
       title="Relatórios"
     >
       <main className="flex min-h-full flex-col gap-4 p-4">
-        <Card className="flex flex-1 flex-col">
+        <Card className="frotas-list-card flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
@@ -199,7 +201,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {loading || relatorios.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={reportPage.page} pageCount={reportPage.pageCount} total={reportPage.total} count={reportPage.items.length} pathname="/frotas/relatorios" params={{ prefeitura: prefeituraId, q: params.q, status: params.status, tipo: params.tipo }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -221,7 +223,7 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </div></FrotasResponsiveTable>
             ) : (
               <EmptyReportsState
                 canCreate={access.canCreateRelatorios}

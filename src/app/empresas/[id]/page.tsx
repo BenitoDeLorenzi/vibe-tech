@@ -136,20 +136,20 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
             href="/empresas"
             className={buttonVariants({
               variant: "outline",
-              className: "h-9 gap-2",
+              className: "size-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3",
             })}
           >
             <ArrowLeft className="size-4" />
-            Voltar
+            <span className="hidden sm:inline">Voltar</span>
           </Link>
           <Dialog>
             <DialogTrigger
               className={buttonVariants({
-                className: "h-9 gap-2",
+                className: "size-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3",
               })}
             >
               <Pencil className="size-4" />
-              Editar
+              <span className="hidden sm:inline">Editar</span>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
               <DialogHeader>
@@ -161,10 +161,11 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
         </div>
       }
       icon={Building2}
+      mobileTitle="Empresa"
       profile={profile}
       title={title}
     >
-      <main className="flex flex-1 flex-col gap-3 p-4">
+      <main className="flex flex-1 flex-col gap-3 p-3 sm:p-4">
         <PrefeituraHero
           licencas={prefeituraLicencas}
           prefeitura={prefeitura}
@@ -174,32 +175,34 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
         />
 
         <Tabs defaultValue="resumo" className="w-full">
-          <TabsList className="w-full">
+          <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
+          <TabsList className="w-max min-w-full justify-start sm:w-full">
             <TabsTrigger value="resumo">
-              <Building2 className="size-4" />
+              <Building2 className="hidden size-4 sm:block" />
               Resumo
             </TabsTrigger>
             <TabsTrigger value="licencas">
-              <KeyRound className="size-4" />
+              <KeyRound className="hidden size-4 sm:block" />
               Licenças
             </TabsTrigger>
             <TabsTrigger value="modulos">
-              <Layers3 className="size-4" />
+              <Layers3 className="hidden size-4 sm:block" />
               Módulos
             </TabsTrigger>
             <TabsTrigger value="usuarios">
-              <Users className="size-4" />
+              <Users className="hidden size-4 sm:block" />
               Usuários
             </TabsTrigger>
             <TabsTrigger value="financeiro">
-              <CircleDollarSign className="size-4" />
+              <CircleDollarSign className="hidden size-4 sm:block" />
               Financeiro
             </TabsTrigger>
             <TabsTrigger value="auditoria">
-              <FileClock className="size-4" />
+              <FileClock className="hidden size-4 sm:block" />
               Auditoria
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="resumo">
             <PrefeituraSummary prefeitura={prefeitura} />
@@ -256,11 +259,11 @@ function PrefeituraHero({
   );
 
   return (
-    <Card>
-      <CardContent className="p-3">
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <CardContent className="p-3 max-sm:px-0">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex min-w-0 items-center gap-4">
-            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30">
+          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+            <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted/30 sm:size-20">
               {prefeitura.brasao_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -274,12 +277,12 @@ function PrefeituraHero({
             </div>
             <div className="min-w-0 space-y-2">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-xl font-semibold">
+                <h2 className="min-w-0 break-words text-base font-semibold sm:truncate sm:text-xl">
                   {prefeitura.nome}
                 </h2>
                 <PrefeituraStatusBadge status={prefeitura.status} />
               </div>
-              <div className="text-sm text-muted-foreground">
+              <div className="text-xs text-muted-foreground sm:text-sm">
                 {prefeitura.cidade ?? "-"} / {prefeitura.uf ?? "-"} ·{" "}
                 {prefeitura.cnpj}
               </div>
@@ -296,7 +299,7 @@ function PrefeituraHero({
             </div>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:w-[430px]">
+          <div className="grid grid-cols-2 gap-2 lg:w-[430px]">
             <MetricTile
               label="Licenças ativas"
               value={String(activeLicencas.length)}
@@ -320,7 +323,7 @@ function PrefeituraHero({
 function PrefeituraSummary({ prefeitura }: { prefeitura: Prefeitura }) {
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <Card>
+      <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
         <CardHeader className="pb-3">
           <CardTitle>Cadastro</CardTitle>
           <CardDescription>Dados principais da empresa.</CardDescription>
@@ -339,7 +342,7 @@ function PrefeituraSummary({ prefeitura }: { prefeitura: Prefeitura }) {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
         <CardHeader className="pb-3">
           <CardTitle>Endereço e identidade</CardTitle>
           <CardDescription>
@@ -379,17 +382,17 @@ function LicencasTab({
   prefeitura: Prefeitura;
 }) {
   return (
-    <Card>
-      <ListPanelHeader title="Licenças" icon={KeyRound} metrics={<>
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <ListPanelHeader title="Licenças" icon={KeyRound} mobileMetricsOnly metrics={<>
         <ListMetrics items={[{ label: "Total", value: licencas.length }]} />
         <Dialog>
             <DialogTrigger
               className={buttonVariants({
-                className: "h-9 gap-2",
+                className: "size-8 gap-2 px-0 sm:h-9 sm:w-auto sm:px-3",
               })}
             >
               <Plus className="size-4" />
-              Nova licença
+              <span className="hidden sm:inline">Nova licença</span>
             </DialogTrigger>
             <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
@@ -405,10 +408,10 @@ function LicencasTab({
             </DialogContent>
           </Dialog>
       </>} />
-      <CardContent>
+      <CardContent className="max-sm:px-0">
         {licencas.length ? (
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
+          <div className="overflow-hidden rounded-lg border max-sm:overflow-visible max-sm:border-0">
+            <Table className="company-detail-table">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Módulo</TableHead>
@@ -422,13 +425,13 @@ function LicencasTab({
               <TableBody>
                 {licencas.map((licenca) => (
                   <TableRow key={licenca.id}>
-                    <TableCell>
+                    <TableCell data-label="Módulo">
                       <div className="font-medium">{licenca.modulo_nome}</div>
                       <div className="text-xs text-muted-foreground">
                         {licenca.modulo_subdominio}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Vigência">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 text-sm">
                           <CalendarDays className="size-4 text-muted-foreground" />
@@ -441,7 +444,7 @@ function LicencasTab({
                         />
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Cobrança">
                       <div className="font-medium">
                         {formatCurrency(licenca.valor_mensal)}/mês
                       </div>
@@ -449,7 +452,7 @@ function LicencasTab({
                         Mensalidade integral por período contratado
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Parcelas">
                       <div className="flex flex-wrap gap-1">
                         <Badge variant="outline">
                           {licenca.parcelas_pagas} pagas
@@ -467,10 +470,10 @@ function LicencasTab({
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Status">
                       <LicencaStatusBadge status={licenca.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Ações">
                       <LicencaActions licenca={licenca} />
                     </TableCell>
                   </TableRow>
@@ -546,9 +549,9 @@ function ModulosTab({
   }
 
   return (
-    <Card>
-      <ListPanelHeader title="Módulos" icon={Layers3} metrics={<ListMetrics items={[{ label: "Total", value: modulos.length }]} />} />
-      <CardContent>
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <ListPanelHeader title="Módulos" icon={Layers3} mobileMetricsOnly metrics={<ListMetrics items={[{ label: "Total", value: modulos.length }]} />} />
+      <CardContent className="max-sm:px-0">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {modulos.map((modulo) => (
             <div key={modulo.nome} className="rounded-lg border p-3">
@@ -587,11 +590,11 @@ function UsuariosTab({ usuarios }: { usuarios: Usuario[] }) {
   }
 
   return (
-    <Card>
-      <ListPanelHeader title="Usuários" icon={Users} metrics={<ListMetrics items={[{ label: "Total", value: usuarios.length }]} />} />
-      <CardContent>
-        <div className="overflow-hidden rounded-lg border">
-          <Table>
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <ListPanelHeader title="Usuários" icon={Users} mobileMetricsOnly metrics={<ListMetrics items={[{ label: "Total", value: usuarios.length }]} />} />
+      <CardContent className="max-sm:px-0">
+        <div className="overflow-hidden rounded-lg border max-sm:overflow-visible max-sm:border-0">
+          <Table className="company-detail-table">
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>Usuário</TableHead>
@@ -603,19 +606,19 @@ function UsuariosTab({ usuarios }: { usuarios: Usuario[] }) {
             <TableBody>
               {usuarios.map((usuario) => (
                 <TableRow key={usuario.id}>
-                  <TableCell>
+                  <TableCell data-label="Usuário">
                     <div className="font-medium">{usuario.nome}</div>
                     <div className="text-xs text-muted-foreground">
                       CPF {formatCpf(usuario.cpf)}
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Acesso">
                     <UsuarioRoleBadge role={usuario.role} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Status">
                     <UsuarioStatusBadge usuario={usuario} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell data-label="Criado em">
                     {new Intl.DateTimeFormat("pt-BR").format(
                       new Date(usuario.created_at),
                     )}
@@ -640,12 +643,12 @@ function FinanceiroTab({
   );
 
   return (
-    <Card>
-      <ListPanelHeader title="Parcelas mensais" icon={CircleDollarSign} metrics={<ListMetrics items={[{ label: "Total", value: pagamentosOrdenados.length }]} />} />
-      <CardContent>
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <ListPanelHeader title="Parcelas mensais" icon={CircleDollarSign} mobileMetricsOnly metrics={<ListMetrics items={[{ label: "Total", value: pagamentosOrdenados.length }]} />} />
+      <CardContent className="max-sm:px-0">
         {pagamentosOrdenados.length ? (
-          <div className="overflow-hidden rounded-lg border">
-            <Table>
+          <div className="overflow-hidden rounded-lg border max-sm:overflow-visible max-sm:border-0">
+            <Table className="company-detail-table">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Parcela</TableHead>
@@ -660,16 +663,16 @@ function FinanceiroTab({
               <TableBody>
                 {pagamentosOrdenados.map((pagamento) => (
                   <TableRow key={pagamento.id}>
-                    <TableCell className="font-medium">
+                    <TableCell data-label="Parcela" className="font-medium">
                       {pagamento.numero_parcela}
                     </TableCell>
-                    <TableCell>{pagamento.modulo_nome}</TableCell>
-                    <TableCell>{formatDate(pagamento.vencimento)}</TableCell>
-                    <TableCell>{formatCurrency(pagamento.valor)}</TableCell>
-                    <TableCell>
+                    <TableCell data-label="Módulo">{pagamento.modulo_nome}</TableCell>
+                    <TableCell data-label="Vencimento">{formatDate(pagamento.vencimento)}</TableCell>
+                    <TableCell data-label="Valor">{formatCurrency(pagamento.valor)}</TableCell>
+                    <TableCell data-label="Status">
                       <PagamentoStatusBadge status={pagamento.status} />
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Pagamento">
                       {pagamento.pago_em ? (
                         <div className="flex min-w-[260px] flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                           <span>{formatDate(pagamento.pago_em)}</span>
@@ -696,7 +699,7 @@ function FinanceiroTab({
                         </span>
                       )}
                     </TableCell>
-                    <TableCell>
+                    <TableCell data-label="Ações">
                       <BillingActions pagamento={pagamento} empresa={pagamento.empresa_nome} pagador={pagamento.empresa_pagador} />
                     </TableCell>
                   </TableRow>
@@ -726,7 +729,7 @@ function EmptyTab({
   title: string;
 }) {
   return (
-    <Card>
+    <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
       <CardContent className="flex min-h-[260px] flex-col items-center justify-center p-8 text-center">
         <div className="flex size-12 items-center justify-center rounded-lg border bg-muted/30">
           <Icon className="size-6 text-muted-foreground" />

@@ -1,5 +1,8 @@
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
+import { AdminMobileFilters } from "@/components/admin-mobile-filters";
+import { AdminMobileList } from "@/components/admin-mobile-list";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
 import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import {
@@ -119,6 +122,9 @@ export default async function LicencasPage({ searchParams }: PageProps) {
       title="Licenças"
       actions={
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
+          <AdminMobileFilters key={`${params.q ?? ""}:${params.status ?? ""}`} pathname="/licencas" title="Licenças" query={params.q} status={params.status} statusOptions={filterOptions.map(option => ({ value: option.status ?? "all", label: option.label }))} />
+          <Dialog><DialogTrigger aria-label="Nova licença" className={buttonVariants({ size: "icon", className: "md:hidden" })}><Plus className="size-4" /></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>Nova licença</DialogTitle></DialogHeader><LicencaForm defaultFim={defaultFim} defaultInicio={defaultInicio} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} /></DialogContent></Dialog>
+          <div className="hidden min-w-0 items-center justify-end gap-2 md:flex">
           <form className="flex min-w-0 shrink-0 justify-end gap-2">
             <div className="relative min-w-0 w-[320px]">
               <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -204,13 +210,14 @@ export default async function LicencasPage({ searchParams }: PageProps) {
               />
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       }
     >
       <LicencasToasts deleted={params.deleted} error={params.error} />
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
-          <Card>
-            <ListPanelHeader
+          <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0 md:gap-(--card-spacing) md:overflow-hidden md:bg-card md:py-(--card-spacing) md:ring-1">
+            <ListPanelHeader mobileMetricsOnly
               title="Licenças cadastradas"
               icon={KeyRound}
               metrics={<ListMetrics items={[
@@ -218,9 +225,15 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                 { label: "Total", value: licencas.length },
               ]} />}
             />
-            <CardContent>
+            <CardContent className="px-0 md:px-(--card-spacing)">
               {licencas.length ? (
-                <div className="overflow-hidden rounded-lg border">
+                <>
+                <AdminMobileList key={`${params.q ?? ""}:${params.status ?? ""}`} items={licencas.map(licenca => <AdminMobileCard key={licenca.id}
+                  title={licenca.prefeitura_nome} subtitle={`${licenca.modulo_nome} · ${licenca.prefeitura_cnpj}`}
+                  badge={<LicencaStatusBadge status={licenca.status} />}
+                  details={[{ label: "Vigência", value: `${formatDate(licenca.inicio)} a ${formatDate(licenca.fim)}` }, { label: "Mensalidade", value: formatCurrency(licenca.valor_mensal) }, { label: "Situação", value: <LicencaVigenciaBadge diasRestantes={licenca.dias_restantes} status={licenca.vigencia_status} /> }]}
+                  actions={<LicencaActions licenca={licenca} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} />} />)} />
+                <div className="hidden overflow-hidden rounded-lg border md:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
@@ -276,67 +289,14 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                             <LicencaStatusBadge status={licenca.status} />
                           </TableCell>
                           <TableCell>
-                            <div className="flex justify-end gap-1">
-                              {licenca.status !== "cancelled" && <Dialog>
-                                <Tooltip>
-                                  <TooltipTrigger render={<DialogTrigger
-                                    aria-label="Editar licença"
-                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-                                  ><Pencil className="size-4" /></DialogTrigger>} />
-                                  <TooltipContent>Editar licença</TooltipContent>
-                                </Tooltip>
-                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-                                  <DialogHeader>
-                                    <DialogTitle>Editar licença</DialogTitle>
-                                  </DialogHeader>
-                                  <LicencaForm
-                                    licenca={licenca}
-                                    modulos={formOptions.modulos}
-                                    prefeituras={formOptions.prefeituras}
-                                  />
-                                </DialogContent>
-                              </Dialog>}
-
-                              {licenca.status !== "cancelled" && <Dialog>
-                                <Tooltip>
-                                  <TooltipTrigger render={<DialogTrigger
-                                    aria-label="Renovar licença"
-                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
-                                  ><RefreshCw className="size-4" /></DialogTrigger>} />
-                                  <TooltipContent>Renovar licença</TooltipContent>
-                                </Tooltip>
-                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle>Renovar licença</DialogTitle>
-                                    <DialogDescription>
-                                      Novo período de{" "}
-                                      {licenca.modulo_nome} para{" "}
-                                      {licenca.prefeitura_nome}.
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <LicencaRenewForm licenca={licenca} />
-                                </DialogContent>
-                              </Dialog>}
-                              {licenca.status !== "cancelled" && <Dialog>
-                                <Tooltip>
-                                  <TooltipTrigger render={<DialogTrigger aria-label="Cancelar licença" className={buttonVariants({ variant: "ghost", size: "icon-sm", className: "text-destructive hover:bg-destructive/10 hover:text-destructive" })}><Ban className="size-4" /></DialogTrigger>} />
-                                  <TooltipContent>Cancelar licença</TooltipContent>
-                                </Tooltip>
-                                <DialogContent className="sm:max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle>Cancelar licença</DialogTitle>
-                                    <DialogDescription>{licenca.modulo_nome} · {licenca.prefeitura_nome}</DialogDescription>
-                                  </DialogHeader>
-                                  <CancelLicencaForm id={licenca.id} futureCount={licenca.pagamentos.filter(p => p.competencia > todayInSaoPaulo().slice(0, 7) + "-01" && (p.status === "open" || p.status === "overdue") && !Number(p.valor_pago)).length} />
-                                </DialogContent>
-                              </Dialog>}
-                            </div>
+                            <LicencaActions licenca={licenca} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} />
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
+                </>
               ) : (
                 <div className="flex min-h-[320px] flex-col items-center justify-center rounded-lg border bg-muted/20 p-8 text-center">
                   <div className="flex size-12 items-center justify-center rounded-lg border bg-background">
@@ -376,6 +336,66 @@ export default async function LicencasPage({ searchParams }: PageProps) {
           </Card>
         </main>
     </AdminShell>
+  );
+}
+
+function LicencaActions({ licenca, modulos, prefeituras }: { licenca: Awaited<ReturnType<typeof getLicencas>>[number]; modulos: Awaited<ReturnType<typeof getLicencaFormOptions>>["modulos"]; prefeituras: Awaited<ReturnType<typeof getLicencaFormOptions>>["prefeituras"] }) {
+  return (
+                            <div className="flex justify-end gap-1">
+                              {licenca.status !== "cancelled" && <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label="Editar licença"
+                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                  ><Pencil className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Editar licença</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+                                  <DialogHeader>
+                                    <DialogTitle>Editar licença</DialogTitle>
+                                  </DialogHeader>
+                                  <LicencaForm
+                                    licenca={licenca}
+                                    modulos={modulos}
+                                    prefeituras={prefeituras}
+                                  />
+                                </DialogContent>
+                              </Dialog>}
+
+                              {licenca.status !== "cancelled" && <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger
+                                    aria-label="Renovar licença"
+                                    className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+                                  ><RefreshCw className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Renovar licença</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Renovar licença</DialogTitle>
+                                    <DialogDescription>
+                                      Novo período de{" "}
+                                      {licenca.modulo_nome} para{" "}
+                                      {licenca.prefeitura_nome}.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <LicencaRenewForm licenca={licenca} />
+                                </DialogContent>
+                              </Dialog>}
+                              {licenca.status !== "cancelled" && <Dialog>
+                                <Tooltip>
+                                  <TooltipTrigger render={<DialogTrigger aria-label="Cancelar licença" className={buttonVariants({ variant: "ghost", size: "icon-sm", className: "text-destructive hover:bg-destructive/10 hover:text-destructive" })}><Ban className="size-4" /></DialogTrigger>} />
+                                  <TooltipContent>Cancelar licença</TooltipContent>
+                                </Tooltip>
+                                <DialogContent className="sm:max-w-md">
+                                  <DialogHeader>
+                                    <DialogTitle>Cancelar licença</DialogTitle>
+                                    <DialogDescription>{licenca.modulo_nome} · {licenca.prefeitura_nome}</DialogDescription>
+                                  </DialogHeader>
+                                  <CancelLicencaForm id={licenca.id} futureCount={licenca.pagamentos.filter(p => p.competencia > todayInSaoPaulo().slice(0, 7) + "-01" && (p.status === "open" || p.status === "overdue") && !Number(p.valor_pago)).length} />
+                                </DialogContent>
+                              </Dialog>}
+                            </div>
   );
 }
 

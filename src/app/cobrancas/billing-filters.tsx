@@ -34,7 +34,7 @@ export function BillingFilters({ mes, query, modulo, status, modulos, currentMon
     return `/cobrancas?${params}`;
   };
   return (
-    <div className="flex w-full min-w-0 items-center justify-end gap-2 overflow-x-auto">
+    <div className="hidden w-full min-w-0 items-center justify-end gap-2 overflow-x-auto md:flex">
       <form id="billing-filters" action="/cobrancas" className="flex min-w-0 shrink-0 justify-end gap-2">
         <div className="relative w-[320px] min-w-0">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

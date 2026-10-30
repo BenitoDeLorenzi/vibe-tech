@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ListMetrics } from "@/components/list-metrics";
 import { PaginationControl } from "@/components/pagination-control";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 type Notification = {
   tipo: "abastecimento" | "manutencao" | "uso_veiculo" | "suporte";
@@ -32,12 +33,14 @@ const Context = createContext<Center | null>(null);
 export function NotificationProvider({ empresa, enabled, children }: {
   empresa?: string; enabled: boolean; children: ReactNode;
 }) {
+  const mobile = useIsMobile();
   const [feed, setFeed] = useState<Feed>({ items: [], unread: 0, total: 0, page: 1, pageCount: 1 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [connected, setConnected] = useState(false);
   const [requestedPage, setRequestedPage] = useState(1);
   const [size, setSize] = useState(13);
+  const effectiveSize = mobile ? 10 : size;
   const resize = useCallback((next: number) => { setSize(next); setRequestedPage(1); setLoading(true); }, []);
   const pending = useRef(new Set<number>());
   const base = `/frotas/notificacoes/feed?empresa=${encodeURIComponent(empresa ?? "")}`;
@@ -46,15 +49,15 @@ export function NotificationProvider({ empresa, enabled, children }: {
     if (!enabled || !empresa) return;
     const requestVersion = ++version.current;
     try {
-      const response = await fetch(`${base}&size=${size}&page=${requestedPage}`, { cache: "no-store" });
+      const response = await fetch(`${base}&size=${effectiveSize}&page=${requestedPage}`, { cache: "no-store" });
       if (!response.ok) throw new Error("feed");
       const next: Feed = await response.json();
       if (version.current !== requestVersion) return;
-      setFeed(next);
+      setFeed(previous => mobile && requestedPage > 1 ? { ...next, items: [...new Map([...previous.items, ...next.items].map(item => [item.id, item])).values()] } : next);
       setError(false);
     } catch { if (version.current === requestVersion) setError(true); }
     finally { if (version.current === requestVersion) setLoading(false); }
-  }, [base, empresa, enabled, requestedPage, size]);
+  }, [base, empresa, enabled, requestedPage, effectiveSize, mobile]);
 
   useEffect(() => {
     if (!enabled || !empresa) return;
@@ -164,19 +167,21 @@ function NotificationRow({ item, center }: { item: Notification; center: Center 
 export function NotificationList() {
   const center = useContext(Context);
   if (!center) return null;
-  return <main className="flex min-h-full flex-col gap-3 p-4"><Card className="flex flex-1 flex-col">
+  return <main className="flex min-h-full flex-col gap-3 p-4"><Card className="frotas-list-card flex flex-1 flex-col">
     <CardHeader><div className="flex flex-wrap items-center justify-between gap-3">
-      <div className="flex flex-wrap items-center gap-3"><CardTitle>Notificações</CardTitle><ListMetrics items={[{ label: "Novas", value: center.unread, tone: "warning" }]} /></div>
-      {center.available && <span className="flex items-center gap-2 text-xs text-muted-foreground"><span className={cn("size-2 rounded-full", center.connected ? "bg-emerald-500" : "bg-muted-foreground/40")} />{center.connected ? "Em tempo real" : "Conectando…"}</span>}
+      <div className="hidden md:flex"><CardTitle>Notificações</CardTitle></div><ListMetrics items={[{ label: "Novas", value: center.unread, tone: "warning" }]} />
+      {center.available && <span className="hidden items-center gap-2 text-xs text-muted-foreground md:flex"><span className={cn("size-2 rounded-full", center.connected ? "bg-emerald-500" : "bg-muted-foreground/40")} />{center.connected ? "Em tempo real" : "Conectando…"}</span>}
     </div></CardHeader>
     <CardContent className="flex flex-1 flex-col space-y-3">
       {center.error && <div role="alert" className="flex items-center justify-between gap-3 text-sm text-destructive">Não foi possível atualizar as notificações.<Button variant="outline" size="sm" onClick={() => void center.refresh()}>Tentar novamente</Button></div>}
-      <div className="overflow-hidden rounded-lg border" aria-busy={center.loading}>
+      <div data-fleet-route="/frotas/notificacoes" className="frotas-mobile-table overflow-hidden rounded-lg border" aria-busy={center.loading}>
         <Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Atividade</TableHead><TableHead>Status</TableHead><TableHead>Responsável</TableHead><TableHead>Data e hora</TableHead><TableHead className="w-[140px] text-right">Ações</TableHead></TableRow></TableHeader>
           <TableBody>{center.loading ? <TableLoadingRows columns={5} /> : center.items.length ? center.items.map(item => <NotificationRow key={item.id} item={item} center={center} />) : <TableRow><TableCell colSpan={5} className="h-40 text-center text-muted-foreground"><Bell className="mx-auto mb-3 size-6" />{center.loading ? "Carregando notificações…" : "Nenhuma notificação por enquanto."}</TableCell></TableRow>}</TableBody>
         </Table>
       </div>
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground">
+      {!center.loading && center.items.length < center.total && <Button type="button" variant="outline" className="w-full md:hidden" onClick={() => center.goToPage(center.page + 1)}>Mostrar mais</Button>}
+      {center.items.length > 0 && <p className="text-center text-xs text-muted-foreground md:hidden">Mostrando {center.items.length} de {center.total}</p>}
+      <div className="mt-auto hidden flex-wrap items-center justify-between gap-3 text-sm text-muted-foreground md:flex">
         <AdaptiveListSize size={center.size} onSizeChange={center.resize} maximum={13} loading={center.loading} />
         <span>{center.items.length} registros nesta página</span>
         <PaginationControl page={center.page} pageCount={center.pageCount} disabled={center.loading} onPageChange={center.goToPage} />

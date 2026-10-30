@@ -4,6 +4,166 @@
 
 @custom-variant dark (&:is(.dark *));
 
+body {
+  position: relative;
+}
+
+@media (max-width: 639px) {
+  .company-detail-table {
+    display: block;
+  }
+
+  .company-detail-table thead {
+    display: none;
+  }
+
+  .company-detail-table tbody {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .company-detail-table tbody tr {
+    display: grid;
+    gap: 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    background: var(--card);
+    padding: 0.875rem;
+  }
+
+  .company-detail-table tbody td {
+    display: flex;
+    min-width: 0;
+    height: auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .company-detail-table tbody td::before {
+    flex: none;
+    content: attr(data-label);
+    color: var(--muted-foreground);
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-align: left;
+  }
+
+  .company-detail-table tbody td:first-child {
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.65rem;
+    font-weight: 600;
+  }
+
+  .company-detail-table tbody td:last-child {
+    border-top: 1px solid var(--border);
+    padding-top: 0.65rem;
+  }
+
+  .company-detail-table tbody td > div {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .frotas-route-actions { flex: 0 0 auto; min-width: 0; }
+  .frotas-route-actions form { display: none; }
+  .frotas-route-actions [data-slot="sidebar-separator"] { display: none; }
+  .frotas-route-actions button:not([data-slot="dialog-close"]) {
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    gap: 0;
+    font-size: 0;
+  }
+  .frotas-route-actions button svg { width: 1rem; height: 1rem; }
+  .frotas-list-card { overflow: visible; gap: 0; padding-block: 0; background: transparent; box-shadow: none; --tw-ring-shadow: none; }
+  .frotas-list-card > [data-slot="card-header"] { padding: 0 0 .75rem; }
+  .frotas-list-card > [data-slot="card-header"] > div > div:first-child { display: none; }
+  .frotas-list-card > [data-slot="card-header"] [data-slot="badge"] { height: 1.75rem; gap: .25rem; padding-inline: .5rem; font-size: .7rem; }
+  .frotas-list-card > [data-slot="card-header"] [data-slot="badge"] svg { width: .75rem; height: .75rem; }
+  .frotas-list-card > [data-slot="card-content"] { padding-inline: 0; }
+  .frotas-list-card nav[aria-label="Paginação"] { display: none; }
+  .frotas-mobile-table { overflow: visible; border: 0; border-radius: 0; }
+  .frotas-mobile-table [data-slot="table-container"] { overflow: visible; }
+  .frotas-mobile-table [data-slot="table"],
+  .frotas-mobile-table [data-slot="table-body"] { display: block; width: 100%; }
+  .frotas-mobile-table [data-slot="table-header"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .frotas-mobile-table [data-slot="table-body"] { display: grid; gap: .75rem; }
+  .frotas-mobile-table [data-slot="table-body"] [data-slot="table-row"] {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-xl);
+    background: var(--card);
+    box-shadow: 0 1px 2px rgb(0 0 0 / .04);
+    overflow: hidden;
+  }
+  .frotas-mobile-table [data-slot="table-cell"] { display: flex; min-width: 0; max-width: 100%; align-items: flex-start; justify-content: space-between; gap: .75rem; padding: .3rem 1rem; white-space: normal; text-align: right; font-size: .875rem; }
+  .frotas-mobile-table [data-slot="table-cell"] [class*="min-w-"] { min-width: 0; }
+  .frotas-mobile-table [data-slot="table-row"] [data-slot="table-cell"]:first-child {
+    display: block;
+    padding: .875rem 1rem;
+    text-align: left;
+    font-weight: 500;
+  }
+  .frotas-mobile-table [data-slot="table-row"] [data-slot="table-cell"]:nth-child(2) { border-top: 1px solid var(--border); padding-top: .65rem; }
+  .frotas-mobile-table [data-slot="table-row"] [data-slot="table-cell"]:last-child:not(:first-child) { padding-bottom: .65rem; }
+  .frotas-mobile-table [data-slot="table-cell"]:not(:first-child):not(:last-child)::before,
+  .frotas-mobile-table [data-slot="table-cell"]:last-child:not(:has(button, a[aria-label]))::before {
+    display: block;
+    flex: none;
+    color: var(--muted-foreground);
+    font-size: .75rem;
+    line-height: 1.25rem;
+    text-align: left;
+  }
+  [data-fleet-route="/frotas/uso-veiculo"] td:nth-child(2)::before { content: "Motorista"; }
+  [data-fleet-route="/frotas/uso-veiculo"] td:nth-child(3)::before { content: "Saída"; }
+  [data-fleet-route="/frotas/uso-veiculo"] td:nth-child(4)::before { content: "Retorno"; }
+  [data-fleet-route="/frotas/uso-veiculo"] td:nth-child(5)::before { content: "Quilometragem"; }
+  [data-fleet-route="/frotas/uso-veiculo"] td:nth-child(6)::before { content: "Status"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(2)::before { content: "Oficina"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(3)::before { content: "Tipo"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(4)::before { content: "Serviço"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(5)::before { content: "Entrada"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(6)::before { content: "Valor"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(7)::before { content: "Status"; }
+  [data-fleet-route="/frotas/manutencao"] td:nth-child(8)::before { content: "Anexos"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(2)::before { content: "Veículo"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(3)::before { content: "Posto"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(4)::before { content: "Combustível"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(5)::before { content: "Valor"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(6)::before { content: "Emissão"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(7)::before { content: "Validade"; }
+  [data-fleet-route="/frotas/abastecimento"] td:nth-child(8)::before { content: "Status"; }
+  [data-fleet-route="/frotas/motoristas"] td:nth-child(2)::before { content: "Empresa"; }
+  [data-fleet-route="/frotas/motoristas"] td:nth-child(3)::before { content: "Histórico"; }
+  [data-fleet-route="/frotas/motoristas"] td:nth-child(4)::before { content: "Situação"; }
+  [data-fleet-route="/frotas/motoristas"] td:nth-child(5)::before { content: "Status"; }
+  [data-fleet-route="/frotas/oficinas"] td:nth-child(2)::before { content: "Contato"; }
+  [data-fleet-route="/frotas/oficinas"] td:nth-child(3)::before { content: "Endereço"; }
+  [data-fleet-route="/frotas/oficinas"] td:nth-child(4)::before { content: "Especialidades"; }
+  [data-fleet-route="/frotas/oficinas"] td:nth-child(5)::before { content: "Status"; }
+  [data-fleet-route="/frotas/postos"] td:nth-child(2)::before { content: "Contato"; }
+  [data-fleet-route="/frotas/postos"] td:nth-child(3)::before { content: "Empresa"; }
+  [data-fleet-route="/frotas/postos"] td:nth-child(4)::before { content: "Status"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(2)::before { content: "Criado por"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(3)::before { content: "Emissão"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(4)::before { content: "Período"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(5)::before { content: "Registros"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(6)::before { content: "Valor"; }
+  [data-fleet-route="/frotas/relatorios"] td:nth-child(7)::before { content: "Status"; }
+  [data-fleet-route="/frotas/notificacoes"] td:nth-child(2)::before { content: "Status"; }
+  [data-fleet-route="/frotas/notificacoes"] td:nth-child(3)::before { content: "Responsável"; }
+  [data-fleet-route="/frotas/notificacoes"] td:nth-child(4)::before { content: "Data e hora"; }
+  .frotas-mobile-table [data-slot="table-cell"]:last-child:has(button, a[aria-label]) { display: flex; justify-content: flex-end; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 20%, transparent); padding: .5rem .75rem; }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

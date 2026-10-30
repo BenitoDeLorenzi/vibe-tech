@@ -6,6 +6,7 @@ import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
 import { deletePosto, updatePostoStatus } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
 import { ListPagination } from "@/components/list-pagination";
+import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
 import {
@@ -92,6 +93,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
   return (
     <FrotasShell
       loading={loading}
+      mobileList
       active="postos"
       actions={
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
@@ -164,7 +166,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
       title="Postos de Combustível"
     >
       <main className="flex min-h-full flex-col gap-3 p-4">
-        <Card className="flex flex-1 flex-col">
+        <Card className="frotas-list-card flex flex-1 flex-col">
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex items-center gap-3">
@@ -185,7 +187,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {loading || data.postos.length ? (
-              <div className="overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={stationPage.page} pageCount={stationPage.pageCount} total={stationPage.total} count={stationPage.items.length} pathname="/frotas/postos" params={{ prefeitura: data.selectedPrefeituraId, q: params.q }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -240,7 +242,7 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                     ))}
                   </TableBody>
                 </Table>
-              </div>
+              </div></FrotasResponsiveTable>
             ) : (
               <FrotasEmptyState icon={Fuel} title="Nenhum posto cadastrado" description="Cadastre os postos credenciados da empresa para permitir a conclusão das ordens de abastecimento." action={<Dialog>
                 <DialogTrigger className={buttonVariants({ className: "gap-2" })}><Plus className="size-4" />Cadastrar posto</DialogTrigger>

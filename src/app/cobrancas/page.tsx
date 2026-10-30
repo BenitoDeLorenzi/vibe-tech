@@ -3,6 +3,9 @@ import { AlertCircle, CircleCheck, CircleDollarSign, CircleX, Clock3 } from "luc
 import { AdminShell } from "@/components/admin-shell";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
+import { AdminMobileFilters } from "@/components/admin-mobile-filters";
+import { AdminMobileList } from "@/components/admin-mobile-list";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -144,11 +147,14 @@ export default async function CobrancasPage({
       profile={profile}
       title="Cobranças"
       actions={
+        <><AdminMobileFilters key={`${mes}:${params.q ?? ""}:${params.modulo ?? ""}:${params.status ?? ""}`} pathname="/cobrancas" title="Cobranças" query={params.q} status={params.status ?? "all"} statusOptions={[
+          { value: "all", label: "Todas" }, { value: "open", label: "Em aberto" }, { value: "partial", label: "Parciais" }, { value: "paid", label: "Pagas" }, { value: "overdue", label: "Atrasadas" }, { value: "cancelled", label: "Canceladas" }, { value: "previous", label: "Atrasadas anteriores" },
+        ]} module={params.modulo ?? "all"} moduleOptions={modulos} month={mes} currentMonth={today.slice(0, 7)} />
         <BillingFilters
           key={JSON.stringify([mes, params.q, params.modulo, params.status])}
           mes={mes} currentMonth={today.slice(0, 7)} query={params.q ?? ""}
           modulo={params.modulo ?? "all"} status={params.status ?? "all"} modulos={modulos}
-        />
+        /></>
       }
     >
       <main className="flex flex-1 flex-col gap-3 p-4 md:p-4">
@@ -158,12 +164,13 @@ export default async function CobrancasPage({
             {params.error}
           </p>
         )}
-        <Card>
-          <ListPanelHeader
+        <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0 md:gap-(--card-spacing) md:overflow-hidden md:bg-card md:py-(--card-spacing) md:ring-1">
+          <ListPanelHeader mobileMetricsOnly
             title={`Mensalidades · ${mes.split("-").reverse().join("/")}`}
             icon={CircleDollarSign}
             metrics={
               <ListMetrics
+                mobileThreeColumns
                 items={[
                   {
                     label: "Cobrado",
@@ -177,15 +184,6 @@ export default async function CobrancasPage({
                     tone: "success",
                   },
                   {
-                    label: "A vencer",
-                    value: formatCurrency(
-                      sum(
-                        active.filter((p) => !overdue(p)),
-                        saldo,
-                      ),
-                    ),
-                  },
-                  {
                     label: "Vencido",
                     value: formatCurrency(sum(active.filter(overdue), saldo)),
                     tone: "danger",
@@ -194,14 +192,14 @@ export default async function CobrancasPage({
               />
             }
           />
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-0 md:px-(--card-spacing)">
             <InterAutoRefresh enabled={all.some(p => p.status !== "paid" && p.inter_cobrancas?.some(b => !["cancelled", "failed", "expired"].includes(b.status)))} />
-            <p className="text-xs text-muted-foreground">
+            <p className="hidden text-xs text-muted-foreground md:block">
               Indicadores da competência selecionada, conforme empresa e módulo.
               Canceladas não entram no total. Atraso é calculado pela data de
               hoje.
             </p>
-            <div className="flex flex-wrap gap-4 rounded-lg border bg-muted/30 p-3 text-sm">
+            <div className="hidden flex-wrap gap-4 rounded-lg border bg-muted/30 p-3 text-sm md:flex">
               <span>
                 Recebimentos em {mes.split("-").reverse().join("/")}:{" "}
                 <strong>{formatCurrency(cash)}</strong>
@@ -211,7 +209,14 @@ export default async function CobrancasPage({
                 <strong>{formatCurrency(sum(previous, saldo))}</strong>
               </span>
             </div>
-            <div className="overflow-hidden rounded-lg border">
+            <AdminMobileList key={`${mes}:${params.q ?? ""}:${params.modulo ?? ""}:${params.status ?? ""}`} items={filtered.map(p => <AdminMobileCard key={p.id}
+              title={<Link href={`/empresas/${p.prefeitura_id}`}>{p.empresa}</Link>}
+              subtitle={`${p.modulo} · ${p.competencia.slice(0, 7).split("-").reverse().join("/")}`}
+              badge={<BillingSituationBadge label={situation(p)} />}
+              details={[{ label: "Vencimento", value: formatDate(p.vencimento) }, { label: "Cobrado", value: formatCurrency(p.valor) }, { label: "Recebido", value: formatCurrency(Number(p.valor_pago ?? 0)) }, { label: "Saldo", value: formatCurrency(saldo(p)) }]}
+              actions={<BillingActions pagamento={p} empresa={p.empresa} pagador={p.pagador} />} />)} />
+            {!filtered.length && <p className="py-10 text-center text-sm text-muted-foreground md:hidden">Nenhuma cobrança para os filtros selecionados.</p>}
+            <div className="hidden overflow-hidden rounded-lg border md:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -276,7 +281,7 @@ export default async function CobrancasPage({
                 </TableBody>
               </Table>
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <div className="hidden items-center justify-between text-xs text-muted-foreground md:flex">
               <span>
                 {filtered.length} cobranças · Página {page} de {pages}
               </span>
