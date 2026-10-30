@@ -96,6 +96,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
   return (
     <AdminShell
       active="usuarios"
+      mobileSearch="Buscar usuário"
       icon={Users}
       profile={profile}
       title="Usuários"

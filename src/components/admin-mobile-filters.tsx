@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FormSelect } from "@/components/form-select";
 import { mobileDrawerContentClassName } from "@/lib/mobile-drawer";
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
@@ -27,17 +26,16 @@ export function AdminMobileFilters({ pathname, title, query = "", status = "", s
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState(query);
   const [selectedStatus, setSelectedStatus] = useState(status);
   const [selectedCompany, setSelectedCompany] = useState(company);
   const [selectedModule, setSelectedModule] = useState(module);
   const [selectedMonth, setSelectedMonth] = useState(month);
-  const active = Boolean(query.trim() || status && status !== "all" || company || module && module !== "all" || month && month !== currentMonth);
+  const active = Boolean(status && status !== "all" || company || module && module !== "all" || month && month !== currentMonth);
 
   function apply(clear = false) {
     const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
     if (!clear) {
-      if (search.trim()) params.set("q", search.trim());
       if (selectedStatus && selectedStatus !== "all") params.set("status", selectedStatus);
       if (selectedCompany) params.set("empresa", selectedCompany);
       if (selectedModule && selectedModule !== "all") params.set("modulo", selectedModule);
@@ -56,7 +54,6 @@ export function AdminMobileFilters({ pathname, title, query = "", status = "", s
       <DrawerContent className={mobileDrawerContentClassName}>
         <DrawerHeader className="border-b text-left"><DrawerTitle>Filtrar {title.toLowerCase()}</DrawerTitle><DrawerDescription>Escolha os critérios para atualizar a lista.</DrawerDescription></DrawerHeader>
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-          <label className="block space-y-2 text-sm font-medium">Buscar<Input value={search} onChange={event => setSearch(event.target.value)} placeholder="Nome, CPF ou CNPJ" /></label>
           {statusOptions.length > 0 && <div className="space-y-2 text-sm font-medium"><label>Situação</label><FormSelect aria-label="Situação" value={selectedStatus || "all"} onValueChange={setSelectedStatus} options={statusOptions} /></div>}
           {companyOptions.length > 0 && <div className="space-y-2 text-sm font-medium"><label>Empresa</label><FormSelect aria-label="Empresa" value={selectedCompany || "all"} onValueChange={value => setSelectedCompany(value === "all" ? "" : value)} options={[{ value: "all", label: "Todas as empresas" }, ...companyOptions]} /></div>}
           {moduleOptions.length > 0 && <div className="space-y-2 text-sm font-medium"><label>Módulo</label><FormSelect aria-label="Módulo" value={selectedModule || "all"} onValueChange={setSelectedModule} options={[{ value: "all", label: "Todos os módulos" }, ...moduleOptions]} /></div>}

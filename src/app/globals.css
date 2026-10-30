@@ -23,12 +23,12 @@ body {
   }
 
   .company-detail-table tbody tr {
-    display: grid;
-    gap: 0.6rem;
+    display: block;
+    overflow: hidden;
     border: 1px solid var(--border);
     border-radius: 0.75rem;
     background: var(--card);
-    padding: 0.875rem;
+    box-shadow: 0 1px 2px rgb(0 0 0 / .04);
   }
 
   .company-detail-table tbody td {
@@ -37,8 +37,8 @@ body {
     height: auto;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 0;
+    gap: .75rem;
+    padding: .3rem 1rem;
     text-align: right;
     white-space: normal;
   }
@@ -53,15 +53,31 @@ body {
   }
 
   .company-detail-table tbody td:first-child {
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.65rem;
+    display: block;
+    padding: .875rem 1rem;
     font-weight: 600;
+    text-align: left;
   }
 
-  .company-detail-table tbody td:last-child {
+  .company-detail-table tbody td:first-child::before { display: none; }
+
+  .company-detail-table tbody td:nth-child(2) {
     border-top: 1px solid var(--border);
-    padding-top: 0.65rem;
+    padding-top: .65rem;
   }
+
+  .company-detail-table tbody td:last-child { padding-bottom: .65rem; }
+
+  .company-detail-actions-table tbody td:last-child {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: .35rem;
+    border-top: 1px solid var(--border);
+    background: color-mix(in oklab, var(--muted) 20%, transparent);
+    padding: .5rem .75rem;
+  }
+
+  .company-detail-actions-table tbody td:last-child::before { display: none; }
 
   .company-detail-table tbody td > div {
     min-width: 0;
@@ -69,6 +85,62 @@ body {
 }
 
 @media (max-width: 767px) {
+  [data-slot="card"]:has(.vehicle-detail-mobile-table) { gap: .75rem; overflow: visible; background: transparent; padding: 0; box-shadow: none; --tw-ring-shadow: none; }
+  [data-slot="card"]:has(.vehicle-detail-mobile-table) > [data-slot="card-header"],
+  [data-slot="card"]:has(.vehicle-detail-mobile-table) > [data-slot="card-content"] { padding-right: 0; padding-left: 0; }
+  .vehicle-detail-mobile-table { overflow: visible; border: 0; }
+  .vehicle-detail-mobile-table [data-slot="table-container"] { overflow: visible; }
+  .vehicle-detail-mobile-table [data-slot="table"],
+  .vehicle-detail-mobile-table [data-slot="table-body"] { display: block; width: 100%; }
+  .vehicle-detail-mobile-table [data-slot="table-header"] { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .vehicle-detail-mobile-table [data-slot="table-body"] { display: grid; gap: .75rem; }
+  .vehicle-detail-mobile-table [data-slot="table-body"] [data-slot="table-row"] { display: block; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--card); box-shadow: 0 1px 2px rgb(0 0 0 / .04); }
+  .vehicle-detail-mobile-table [data-slot="table-cell"] { display: flex; min-width: 0; max-width: 100%; height: auto; align-items: flex-start; justify-content: space-between; gap: .75rem; padding: .3rem 1rem; white-space: normal; text-align: right; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"] [class*="min-w-"] { min-width: 0; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:first-child { display: block; padding: .875rem 1rem; text-align: left; font-weight: 500; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:nth-child(2) { border-top: 1px solid var(--border); padding-top: .65rem; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:last-child:not(:first-child) { padding-bottom: .65rem; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:not(:first-child)::before { display: block; flex: none; color: var(--muted-foreground); font-size: .75rem; line-height: 1.25rem; text-align: left; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:last-child:has(button, a[aria-label]) { border-top: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 20%, transparent); padding: .5rem .75rem; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"]:last-child:has(button, a[aria-label])::before { display: none; }
+  .vehicle-detail-mobile-table [data-slot="table-cell"][colspan] { display: block; padding: 2rem 1rem; text-align: center; }
+  .vehicle-detail-debts td:nth-child(2)::before { content: "Data limite"; }
+  .vehicle-detail-debts td:nth-child(3)::before { content: "Valor"; }
+  .vehicle-detail-debts td:nth-child(4)::before { content: "Situação"; }
+  .vehicle-detail-debts td:nth-child(5)::before { content: "Pagamento"; }
+  .vehicle-detail-fines td:nth-child(2)::before { content: "Data"; }
+  .vehicle-detail-fines td:nth-child(3)::before { content: "Descrição"; }
+  .vehicle-detail-fines td:nth-child(4)::before { content: "Situação"; }
+  .vehicle-detail-fines td:nth-child(5)::before { content: "Valor"; }
+  .vehicle-detail-process td:nth-child(2)::before { content: "Início"; }
+  .vehicle-detail-process td:nth-child(3)::before { content: "Encerramento"; }
+  .vehicle-detail-process td:nth-child(4)::before { content: "Interessado"; }
+  .vehicle-detail-process td:nth-child(5)::before { content: "Situação"; }
+  .vehicle-detail-appeal td:nth-child(2)::before { content: "Auto"; }
+  .vehicle-detail-appeal td:nth-child(3)::before { content: "Infração"; }
+  .vehicle-detail-appeal td:nth-child(4)::before { content: "Resultado"; }
+  .vehicle-detail-service td:nth-child(2)::before { content: "Serviço"; }
+  .vehicle-detail-service td:nth-child(3)::before { content: "Data"; }
+  .vehicle-detail-service td:nth-child(4)::before { content: "Hora"; }
+  .vehicle-detail-maintenance td:nth-child(2)::before { content: "Serviço"; }
+  .vehicle-detail-maintenance td:nth-child(3)::before { content: "Oficina / responsável"; }
+  .vehicle-detail-maintenance td:nth-child(4)::before { content: "Quilometragem"; }
+  .vehicle-detail-maintenance td:nth-child(5)::before { content: "Status"; }
+  .vehicle-detail-maintenance td:nth-child(6)::before { content: "Valor"; }
+  .vehicle-detail-fuel td:nth-child(2)::before { content: "Data"; }
+  .vehicle-detail-fuel td:nth-child(3)::before { content: "Posto / motorista"; }
+  .vehicle-detail-fuel td:nth-child(4)::before { content: "Quilometragem"; }
+  .vehicle-detail-fuel td:nth-child(5)::before { content: "Status"; }
+  .vehicle-detail-fuel td:nth-child(6)::before { content: "Total"; }
+  .vehicle-detail-attachments td:nth-child(2)::before { content: "Tipo"; }
+  .vehicle-detail-attachments td:nth-child(3)::before { content: "Tamanho"; }
+  .vehicle-detail-attachments td:nth-child(4)::before { content: "Data"; }
+  .posto-history-mobile-table td:nth-child(2)::before { content: "Veículo"; }
+  .posto-history-mobile-table td:nth-child(3)::before { content: "Motorista"; }
+  .posto-history-mobile-table td:nth-child(4)::before { content: "Conclusão"; }
+  .posto-history-mobile-table td:nth-child(5)::before { content: "Litros"; }
+  .posto-history-mobile-table td:nth-child(6)::before { content: "Valor"; }
+  .posto-history-mobile-table td:nth-child(7)::before { content: "Nota fiscal"; }
   .frotas-route-actions { flex: 0 0 auto; min-width: 0; }
   .frotas-route-actions form { display: none; }
   .frotas-route-actions [data-slot="sidebar-separator"] { display: none; }

@@ -66,23 +66,45 @@ function useSupportWorkspace() {
   if (!value) throw new Error("SupportWorkspace is required");
   return value;
 }
+export function SupportMobileSearch() {
+  const params = useSearchParams();
+  const { query, setQuery, search, setSearch, setPage, loading, setLoading } = useSupportWorkspace();
+  const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
+  const searching = submittedQuery !== null && query.trim() === submittedQuery && loading;
+  useEffect(() => {
+    if (query.trim() === search) return;
+    const timer = window.setTimeout(() => {
+      setSubmittedQuery(query.trim());
+      setSearch(query.trim());
+      setPage(1);
+      setLoading(true);
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [query, search, setLoading, setPage, setSearch]);
+  if (params.get("conversa")) return null;
+  return <div className="shrink-0 border-b bg-background px-4 py-2.5 md:hidden"><div className="relative">
+    {searching ? <LoaderCircle aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" /> : <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />}
+    <Input aria-label="Buscar atendimentos" placeholder="Buscar assunto, empresa ou usuário" className="h-9 w-full pl-9 pr-9" value={query} onChange={event => { setSubmittedQuery(null); setQuery(event.target.value); }} />
+    {query && <Button type="button" variant="ghost" size="icon-sm" aria-label="Limpar busca" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => { setSubmittedQuery(null); setQuery(""); }}><X className="size-3.5" /></Button>}
+    <span className="sr-only" role="status">{searching ? "Buscando atendimentos…" : ""}</span>
+  </div></div>;
+}
 export function SupportToolbar({ master = false }: { master?: boolean }) {
   const params = useSearchParams();
   const { query, setQuery, search, setSearch, status, setStatus, setPage, setLoading, setNewOpen } = useSupportWorkspace();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [mobileQuery, setMobileQuery] = useState(search);
   const [mobileStatus, setMobileStatus] = useState(status);
   const { refresh } = useSupportLive();
   if (params.get("conversa")) return null;
   const filter = () => { setSearch(query.trim()); setPage(1); setLoading(true); refresh(); };
   return <div className="flex w-full min-w-0 items-center justify-end gap-2">
     <div className="md:hidden"><Drawer open={mobileOpen} onOpenChange={setMobileOpen} showSwipeHandle>
-      <DrawerTrigger render={<Button type="button" variant="outline" size="icon" className="relative" aria-label="Filtrar atendimentos" onClick={() => { setMobileQuery(search); setMobileStatus(status); }} />}>
-        <ListFilter className="size-4" />{(search || status) && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden="true" />}
+      <DrawerTrigger render={<Button type="button" variant="outline" size="icon" className="relative" aria-label="Filtrar atendimentos" onClick={() => setMobileStatus(status)} />}>
+        <ListFilter className="size-4" />{status && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden="true" />}
       </DrawerTrigger>
-      <DrawerContent className={mobileDrawerContentClassName}><DrawerHeader className="border-b text-left"><DrawerTitle>Filtrar atendimentos</DrawerTitle><DrawerDescription>Busque chamados e escolha a situação.</DrawerDescription></DrawerHeader>
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4"><label className="block space-y-2 text-sm font-medium">Buscar<Input value={mobileQuery} onChange={event => setMobileQuery(event.target.value)} placeholder="Assunto, empresa ou usuário" /></label><div className="space-y-2 text-sm font-medium"><label>Situação</label><FormSelect aria-label="Situação" value={mobileStatus || "all"} onValueChange={value => setMobileStatus(value === "all" ? "" : value)} options={[{ value: "all", label: "Todos" }, ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label }))]} /></div></div>
-        <DrawerFooter className="flex-row gap-2 border-t bg-popover p-4"><Button type="button" variant="outline" className="flex-1" onClick={() => { setQuery(""); setSearch(""); setStatus(""); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Limpar</Button><Button type="button" className="flex-1" onClick={() => { setQuery(mobileQuery); setSearch(mobileQuery.trim()); setStatus(mobileStatus); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Aplicar filtros</Button></DrawerFooter>
+      <DrawerContent className={mobileDrawerContentClassName}><DrawerHeader className="border-b text-left"><DrawerTitle>Filtrar atendimentos</DrawerTitle><DrawerDescription>Escolha a situação dos chamados.</DrawerDescription></DrawerHeader>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4"><div className="space-y-2 text-sm font-medium"><label>Situação</label><FormSelect aria-label="Situação" value={mobileStatus || "all"} onValueChange={value => setMobileStatus(value === "all" ? "" : value)} options={[{ value: "all", label: "Todos" }, ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: meta.label }))]} /></div></div>
+        <DrawerFooter className="flex-row gap-2 border-t bg-popover p-4"><Button type="button" variant="outline" className="flex-1" onClick={() => { setStatus(""); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Limpar</Button><Button type="button" className="flex-1" onClick={() => { setStatus(mobileStatus); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Aplicar filtros</Button></DrawerFooter>
       </DrawerContent>
     </Drawer></div>
     <form className="hidden min-w-0 flex-1 justify-end gap-2 2xl:flex" onSubmit={event => { event.preventDefault(); filter(); }}>

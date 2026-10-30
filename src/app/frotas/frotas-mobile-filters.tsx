@@ -4,7 +4,6 @@ import { useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ListFilter } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { FormSelect } from "@/components/form-select";
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { mobileDrawerContentClassName } from "@/lib/mobile-drawer";
@@ -34,18 +33,17 @@ export function FrotasMobileFilters({ route, companies, companyId, canChooseComp
   const pathname = usePathname();
   const params = useSearchParams();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
   const [status, setStatus] = useState("");
   const [company, setCompany] = useState(companyId ?? "");
   const [type, setType] = useState("");
-  const active = Boolean(params.get("q") || params.get("status") || params.get("tipo") || (canChooseCompany && params.get("prefeitura") && params.get("prefeitura") !== companyId));
+  const active = Boolean(params.get("status") || params.get("tipo") || (canChooseCompany && params.get("prefeitura") && params.get("prefeitura") !== companyId));
 
   function apply(clear = false) {
     const next = new URLSearchParams();
+    if (params.get("q")) next.set("q", params.get("q")!);
     const selectedCompany = clear ? companyId : company;
     if (selectedCompany) next.set("prefeitura", selectedCompany);
     if (!clear) {
-      if (query.trim()) next.set("q", query.trim());
       if (status) next.set("status", status);
       if (type) next.set("tipo", type);
     }
@@ -55,7 +53,7 @@ export function FrotasMobileFilters({ route, companies, companyId, canChooseComp
 
   return <div className="md:hidden"><Drawer open={open} onOpenChange={value => {
     setOpen(value);
-    if (value) { setQuery(params.get("q") ?? ""); setStatus(params.get("status") ?? ""); setCompany(params.get("prefeitura") ?? companyId ?? ""); setType(params.get("tipo") ?? ""); }
+    if (value) { setStatus(params.get("status") ?? ""); setCompany(params.get("prefeitura") ?? companyId ?? ""); setType(params.get("tipo") ?? ""); }
   }} showSwipeHandle>
     <DrawerTrigger render={<Button type="button" variant="outline" size="icon" className="relative" aria-label={`Filtrar ${names[route] ?? "registros"}`} />}>
       <ListFilter className="size-4" />{active && <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden />}
@@ -63,7 +61,6 @@ export function FrotasMobileFilters({ route, companies, companyId, canChooseComp
     <DrawerContent className={mobileDrawerContentClassName}>
       <DrawerHeader className="border-b text-left"><DrawerTitle>Filtrar {names[route] ?? "registros"}</DrawerTitle><DrawerDescription>Escolha os critérios para atualizar a lista.</DrawerDescription></DrawerHeader>
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-        <label className="block space-y-2 text-sm font-medium">Buscar<Input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar registros" /></label>
         {canChooseCompany && companies.length > 1 && <div className="space-y-2 text-sm font-medium"><label>Empresa</label><FormSelect aria-label="Empresa" value={company} onValueChange={setCompany} options={companies.map(item => ({ value: item.id, label: item.nome }))} /></div>}
         {statuses[route]?.length > 0 && <div className="space-y-2 text-sm font-medium"><label>Situação</label><FormSelect aria-label="Situação" value={status || "all"} onValueChange={value => setStatus(value === "all" ? "" : value)} options={[{ value: "all", label: "Todas" }, ...statuses[route]]} /></div>}
         {route === "relatorios" && <div className="space-y-2 text-sm font-medium"><label>Tipo</label><FormSelect aria-label="Tipo" value={type || "all"} onValueChange={value => setType(value === "all" ? "" : value)} options={[{ value: "all", label: "Todos" }, { value: "expirations", label: "Débitos" }, { value: "fuel", label: "Abastecimentos" }, { value: "maintenance", label: "Manutenções" }, { value: "vehicles", label: "Veículos" }]} /></div>}

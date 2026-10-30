@@ -117,6 +117,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
   return (
     <AdminShell
       active="licencas"
+      mobileSearch="Buscar licença"
       icon={KeyRound}
       profile={profile}
       title="Licenças"

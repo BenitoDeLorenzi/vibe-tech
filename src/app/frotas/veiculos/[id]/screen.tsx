@@ -162,11 +162,12 @@ export default async function VeiculoGestaoPage({ params }: PageProps) {
         prefeituraId={veiculo.prefeitura_id}
         vehicleId={veiculo.id}
       />
-      <main className="flex flex-1 flex-col gap-3 p-4">
+      <main className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:p-4">
         <VehicleOverviewHeader canUpdate={access.canUpdateVeiculos} veiculo={veiculo} status={<VehicleStatusBadge status={veiculo.status} lookupStatus={veiculo.consulta_status} />} />
 
-        <Tabs defaultValue="resumo" className="w-full">
-          <TabsList className="w-full">
+        <Tabs defaultValue="resumo" className="min-w-0 w-full">
+          <div className="-mx-3 max-w-[calc(100%+1.5rem)] min-w-0 overflow-x-auto px-3 pb-1 sm:mx-0 sm:max-w-full sm:px-0">
+          <TabsList className="w-max min-w-full justify-start [&_[data-slot=tabs-trigger]]:max-sm:flex-none sm:w-full">
             <TabsTrigger value="resumo">
               <Car className="size-4" />
               Resumo
@@ -196,6 +197,7 @@ export default async function VeiculoGestaoPage({ params }: PageProps) {
               Anexos
             </TabsTrigger>
           </TabsList>
+          </div>
 
           <TabsContent value="resumo">
             <VehicleOverview veiculo={veiculo} consultation={plexiResumo ? {
@@ -321,7 +323,7 @@ function VehicleDebitsTab({
       </CardHeader>
       <CardContent>
         {totalDebitos ? (
-          <div className="overflow-hidden rounded-lg border">
+          <div className="vehicle-detail-mobile-table vehicle-detail-debts overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
@@ -622,7 +624,7 @@ function formatExternalDate(value: string) {
 
 function VehicleMaintenanceHistory({ manutencoes }: { manutencoes: FrotaVeiculoManutencao[] }) {
   return <Card><CardHeader><CardTitle>Histórico de manutenção</CardTitle></CardHeader><CardContent>
-    <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
+    <div className="vehicle-detail-mobile-table vehicle-detail-maintenance overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
       <TableHead>Entrada / saída</TableHead><TableHead>Serviço</TableHead><TableHead>Oficina / responsável</TableHead><TableHead>Quilometragem</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Valor</TableHead>
     </TableRow></TableHeader><TableBody>
       {manutencoes.length ? manutencoes.map((item) => <TableRow key={item.id}>
@@ -645,7 +647,7 @@ function VehicleFuelHistory({ abastecimentos }: { abastecimentos: FrotaVeiculoAb
     { label: "Média", value: formatFuelAverage(calculateAverageFuelConsumption(abastecimentos)), icon: "gauge" },
     { label: "Total", value: formatCurrency(totalGeral), tone: "info", icon: "money" },
   ]} /></CardHeader><CardContent>
-    <div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
+    <div className="vehicle-detail-mobile-table vehicle-detail-fuel overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
       <TableHead>Ordem</TableHead><TableHead>Data</TableHead><TableHead>Posto / motorista</TableHead><TableHead>Quilometragem</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Total</TableHead>
     </TableRow></TableHeader><TableBody>
       {abastecimentos.length ? abastecimentos.map((item) => <TableRow key={item.id}>
@@ -712,7 +714,7 @@ function VehicleFinesTab({
             const filtered = multas.filter((fine) => fine.origem === origin);
             return <TabsContent key={origin} value={origin}>
         {filtered.length ? (
-          <div className="overflow-hidden rounded-lg border">
+          <div className="vehicle-detail-mobile-table vehicle-detail-fines overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
@@ -784,13 +786,13 @@ function VehicleFinesTab({
 function VehicleProcessesTab({ processos, recursos }: { processos: FrotaProcessoVeicular[]; recursos: FrotaRecursoInfracao[] }) {
   const services = processos.flatMap((process) => process.servicos.map((service, index) => ({ ...service, process: process.processo, key: process.id + "-" + index })));
   return <div className="space-y-3">
-    <Card><CardHeader><CardTitle>Processos</CardTitle></CardHeader><CardContent><div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
+    <Card><CardHeader><CardTitle>Processos</CardTitle></CardHeader><CardContent><div className="vehicle-detail-mobile-table vehicle-detail-process overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
       <TableHead>Processo</TableHead><TableHead>Início</TableHead><TableHead>Encerramento</TableHead><TableHead>Interessado</TableHead><TableHead>Situação</TableHead>
     </TableRow></TableHeader><TableBody>{processos.length ? processos.map((process) => <TableRow key={process.id}><TableCell className="font-medium">{process.processo || "-"}</TableCell><TableCell>{process.inicio_em || "-"}</TableCell><TableCell>{process.final_em || "-"}</TableCell><TableCell>{process.interessado || "-"}</TableCell><TableCell><Badge variant="outline">{process.situacao || "Não informada"}</Badge></TableCell></TableRow>) : <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">Nenhum processo registrado.</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card>
-    <Card><CardHeader><CardTitle>Recursos de infração</CardTitle></CardHeader><CardContent><div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
+    <Card><CardHeader><CardTitle>Recursos de infração</CardTitle></CardHeader><CardContent><div className="vehicle-detail-mobile-table vehicle-detail-appeal overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50">
       <TableHead>Processo</TableHead><TableHead>Auto</TableHead><TableHead>Infração</TableHead><TableHead>Resultado</TableHead>
     </TableRow></TableHeader><TableBody>{recursos.length ? recursos.map((resource) => <TableRow key={resource.id}><TableCell className="max-w-[300px] whitespace-normal font-medium">{resource.processo || "-"}</TableCell><TableCell>{resource.numero_auto || "-"}</TableCell><TableCell className="max-w-[360px] whitespace-normal">{resource.detalhamento_infracao || "-"}</TableCell><TableCell><Badge variant="outline" className="whitespace-normal">{resource.resultado_processo || "Não informado"}</Badge></TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">Nenhum recurso registrado.</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card>
-    <Card><CardHeader><CardTitle>Serviços dos processos</CardTitle></CardHeader><CardContent><div className="overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Processo</TableHead><TableHead>Serviço</TableHead><TableHead>Data</TableHead><TableHead>Hora</TableHead></TableRow></TableHeader><TableBody>{services.length ? services.map((service) => <TableRow key={service.key}><TableCell>{service.process || "-"}</TableCell><TableCell className="font-medium">{service.nome || "-"}</TableCell><TableCell>{service.data || "-"}</TableCell><TableCell>{service.hora || "-"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">Nenhum serviço registrado.</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card>
+    <Card><CardHeader><CardTitle>Serviços dos processos</CardTitle></CardHeader><CardContent><div className="vehicle-detail-mobile-table vehicle-detail-service overflow-hidden rounded-lg border"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Processo</TableHead><TableHead>Serviço</TableHead><TableHead>Data</TableHead><TableHead>Hora</TableHead></TableRow></TableHeader><TableBody>{services.length ? services.map((service) => <TableRow key={service.key}><TableCell>{service.process || "-"}</TableCell><TableCell className="font-medium">{service.nome || "-"}</TableCell><TableCell>{service.data || "-"}</TableCell><TableCell>{service.hora || "-"}</TableCell></TableRow>) : <TableRow><TableCell colSpan={4} className="h-24 text-center text-muted-foreground">Nenhum serviço registrado.</TableCell></TableRow>}</TableBody></Table></div></CardContent></Card>
   </div>;
 }
 

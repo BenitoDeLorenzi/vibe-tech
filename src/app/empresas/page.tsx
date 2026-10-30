@@ -105,6 +105,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
   return (
     <AdminShell
       active="empresas"
+      mobileSearch="Buscar empresa"
       icon={Building2}
       profile={profile}
       title="Empresas"

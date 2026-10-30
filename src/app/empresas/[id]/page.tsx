@@ -1,4 +1,5 @@
 import { ListPanelHeader } from "@/components/list-panel-header";
+import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { ListMetrics } from "@/components/list-metrics";
 import { UsuarioStatusBadge } from "@/components/usuario-status-badge";
 import Link from "next/link";
@@ -165,7 +166,7 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
       profile={profile}
       title={title}
     >
-      <main className="flex flex-1 flex-col gap-3 p-3 sm:p-4">
+      <main className="flex min-w-0 flex-1 flex-col gap-3 p-3 sm:p-4">
         <PrefeituraHero
           licencas={prefeituraLicencas}
           prefeitura={prefeitura}
@@ -174,9 +175,9 @@ export default async function PrefeituraDetailsPage({ params }: PageProps) {
           usuarios={usuarios}
         />
 
-        <Tabs defaultValue="resumo" className="w-full">
-          <div className="-mx-3 overflow-x-auto px-3 pb-1 sm:mx-0 sm:px-0">
-          <TabsList className="w-max min-w-full justify-start sm:w-full">
+        <Tabs defaultValue="resumo" className="min-w-0 w-full">
+          <div className="-mx-3 max-w-[calc(100%+1.5rem)] min-w-0 overflow-x-auto px-3 pb-1 sm:mx-0 sm:max-w-full sm:px-0">
+          <TabsList className="w-max min-w-full justify-start [&_[data-slot=tabs-trigger]]:max-sm:flex-none sm:w-full">
             <TabsTrigger value="resumo">
               <Building2 className="hidden size-4 sm:block" />
               Resumo
@@ -323,7 +324,7 @@ function PrefeituraHero({
 function PrefeituraSummary({ prefeitura }: { prefeitura: Prefeitura }) {
   return (
     <div className="grid gap-3 lg:grid-cols-2">
-      <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle>Cadastro</CardTitle>
           <CardDescription>Dados principais da empresa.</CardDescription>
@@ -342,7 +343,7 @@ function PrefeituraSummary({ prefeitura }: { prefeitura: Prefeitura }) {
         </CardContent>
       </Card>
 
-      <Card className="max-sm:border-0 max-sm:ring-0 max-sm:shadow-none">
+      <Card>
         <CardHeader className="pb-3">
           <CardTitle>Endereço e identidade</CardTitle>
           <CardDescription>
@@ -411,7 +412,7 @@ function LicencasTab({
       <CardContent className="max-sm:px-0">
         {licencas.length ? (
           <div className="overflow-hidden rounded-lg border max-sm:overflow-visible max-sm:border-0">
-            <Table className="company-detail-table">
+            <Table className="company-detail-table company-detail-actions-table">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Módulo</TableHead>
@@ -554,7 +555,17 @@ function ModulosTab({
       <CardContent className="max-sm:px-0">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {modulos.map((modulo) => (
-            <div key={modulo.nome} className="rounded-lg border p-3">
+            <div key={modulo.nome} className="md:hidden">
+              <AdminMobileCard
+                title={modulo.nome}
+                subtitle={modulo.subdominio}
+                badge={<Badge variant="outline">{modulo.licencas} licença(s)</Badge>}
+                details={[{ label: "Contratos atuais", value: formatCurrency(modulo.receita) }]}
+              />
+            </div>
+          ))}
+          {modulos.map((modulo) => (
+            <div key={modulo.nome} className="hidden rounded-lg border p-3 md:block">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="truncate font-medium">{modulo.nome}</div>
@@ -648,7 +659,7 @@ function FinanceiroTab({
       <CardContent className="max-sm:px-0">
         {pagamentosOrdenados.length ? (
           <div className="overflow-hidden rounded-lg border max-sm:overflow-visible max-sm:border-0">
-            <Table className="company-detail-table">
+            <Table className="company-detail-table company-detail-actions-table">
               <TableHeader>
                 <TableRow className="bg-muted/50">
                   <TableHead>Parcela</TableHead>
@@ -664,7 +675,7 @@ function FinanceiroTab({
                 {pagamentosOrdenados.map((pagamento) => (
                   <TableRow key={pagamento.id}>
                     <TableCell data-label="Parcela" className="font-medium">
-                      {pagamento.numero_parcela}
+                      <span className="sm:hidden">Parcela </span>{pagamento.numero_parcela}
                     </TableCell>
                     <TableCell data-label="Módulo">{pagamento.modulo_nome}</TableCell>
                     <TableCell data-label="Vencimento">{formatDate(pagamento.vencimento)}</TableCell>

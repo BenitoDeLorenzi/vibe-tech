@@ -143,6 +143,7 @@ export default async function CobrancasPage({
   return (
     <AdminShell
       active="cobrancas"
+      mobileSearch="Buscar cobrança"
       icon={CircleDollarSign}
       profile={profile}
       title="Cobranças"

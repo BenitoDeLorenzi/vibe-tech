@@ -3,6 +3,7 @@ import { filterPostoHistory, validHistoryDate } from "@/lib/posto-history";
 import { OrdensRealtime } from "./ordens-realtime";
 import Link from "next/link";
 import { ListMetrics } from "@/components/list-metrics";
+import { MobileLiveSearch } from "@/components/mobile-live-search";
 import {
   BadgeCheck,
   Building2,
@@ -79,23 +80,23 @@ export default async function PortalPostoPage({ searchParams }: PageProps) {
   const veiculosUnicos = new Set(ordens.map((ordem) => ordem.veiculo_id)).size;
 
   return (
-    <main className="min-h-screen bg-muted/25 p-4 sm:p-6">
-      <div className="mx-auto flex max-w-6xl flex-col gap-5">
-        <header className="overflow-hidden rounded-xl border bg-background">
-          <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
+    <main className="min-h-screen bg-background p-3 sm:bg-muted/25 sm:p-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:gap-5">
+        <header className="relative overflow-hidden rounded-xl border bg-background">
+          <div className="grid gap-4 p-3 pr-14 sm:p-4 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="flex min-w-0 items-center gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <Fuel className="size-6" />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground sm:size-12">
+                <Fuel className="size-5 sm:size-6" />
               </div>
               <div className="min-w-0">
-                <div className="mb-1 text-xs text-muted-foreground">Vibe Frotas · Portal do posto</div>
+                <div className="mb-1 text-xs text-muted-foreground">Portal do posto</div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="truncate text-xl font-semibold tracking-tight">
+                  <h1 className="truncate text-base font-semibold tracking-tight sm:text-xl">
                     {session.nome}
                   </h1>
                   <Badge
                     variant="outline"
-                    className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
+                    className="hidden border-emerald-200 bg-emerald-50 text-emerald-700 sm:inline-flex dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-400"
                   >
                     <BadgeCheck className="size-3" />
                     Credenciado
@@ -104,11 +105,12 @@ export default async function PortalPostoPage({ searchParams }: PageProps) {
                 <p className="mt-1 truncate text-sm text-muted-foreground">
                   CNPJ {formatCnpj(session.cnpj)}
                 </p>
+                <p className="truncate text-xs text-muted-foreground sm:hidden">{prefeituraNome}</p>
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center lg:justify-end">
-              <div className="flex min-w-0 items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2">
+            <div className="absolute right-3 top-3 flex flex-col gap-3 sm:static sm:flex-row sm:items-center lg:justify-end">
+              <div className="hidden min-w-0 items-center gap-3 rounded-lg border bg-muted/20 px-3 py-2 sm:flex">
                 {prefeitura?.brasao_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -131,21 +133,22 @@ export default async function PortalPostoPage({ searchParams }: PageProps) {
                 </div>
               </div>
               <form action={logoutPostoAction}>
-                <Button type="submit" variant="outline" className="h-9 gap-2">
+                <Button type="submit" variant="outline" aria-label="Sair do portal" className="size-9 gap-2 px-0 sm:w-auto sm:px-3">
                   <LogOut className="size-4" />
-                  Sair
+                  <span className="hidden sm:inline">Sair</span>
                 </Button>
               </form>
             </div>
           </div>
         </header>
 
-        <nav aria-label="Abastecimentos do posto" className="flex w-fit flex-wrap gap-1 rounded-lg bg-muted p-1">
-          <Link href="/frotas/posto" aria-current={!history ? "page" : undefined} className={buttonVariants({ variant: history ? "ghost" : "default", size: "sm" })}>Pendentes</Link>
-          <Link href="/frotas/posto?tab=history" aria-current={history ? "page" : undefined} className={buttonVariants({ variant: history ? "default" : "ghost", size: "sm" })}>Histórico de abastecimentos</Link>
+        <nav aria-label="Abastecimentos do posto" className="flex w-full gap-1 rounded-lg bg-muted p-1 sm:w-fit">
+          <Link href="/frotas/posto" aria-current={!history ? "page" : undefined} className={buttonVariants({ variant: history ? "ghost" : "default", size: "sm", className: "min-w-0 flex-1 sm:flex-none" })}>Pendentes</Link>
+          <Link href="/frotas/posto?tab=history" aria-current={history ? "page" : undefined} className={buttonVariants({ variant: history ? "default" : "ghost", size: "sm", className: "min-w-0 flex-1 sm:flex-none" })}><span className="sm:hidden">Histórico</span><span className="hidden sm:inline">Histórico de abastecimentos</span></Link>
         </nav>
+        <div className="sticky top-0 z-20 -mx-3 bg-background sm:hidden"><MobileLiveSearch placeholder="Buscar por ordem, placa ou veículo" /></div>
         {history ? <PostoHistory orders={ordens} q={params.q} from={from} to={to} /> : <>
-        <section className="grid gap-3 md:grid-cols-3">
+        <section className="hidden gap-3 md:grid md:grid-cols-3">
           <SummaryCard
             icon={ReceiptText}
             label="Ordens pendentes"
@@ -163,20 +166,20 @@ export default async function PortalPostoPage({ searchParams }: PageProps) {
           />
         </section>
 
-        <Card>
-          <CardHeader>
+        <Card className="gap-0 overflow-visible bg-transparent py-0 ring-0 sm:gap-4 sm:overflow-hidden sm:bg-card sm:py-4 sm:ring-1">
+          <CardHeader className="hidden px-0 pb-3 sm:block sm:px-4">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <CardTitle>Ordens pendentes</CardTitle>
-                <div className="mt-2"><OrdensRealtime nextExpiry={nextExpiry} /></div>
+                <OrdensRealtime nextExpiry={nextExpiry} />
                 <div className="mt-3">
-                  <ListMetrics items={[{ label: params.q ? "Encontradas" : "Pendentes", value: ordens.length, tone: "inUse" }]} />
+                  {ordens.length > 0 ? <ListMetrics items={[{ label: params.q ? "Encontradas" : "Pendentes", value: ordens.length, tone: "inUse" }]} /> : null}
                 </div>
               </div>
               <PortalPostoFilters q={params.q} />
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 sm:px-4">
             {ordens.length ? (
               <div className="grid gap-3">
                 {ordens.map((ordem) => (

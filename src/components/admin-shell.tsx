@@ -4,6 +4,7 @@ import { type LucideIcon } from "lucide-react";
 import { AdminSidebar } from "@/components/admin-sidebar";
 import { SupportLiveProvider } from "@/components/support/support-live";
 import { HeaderSeparator } from "@/components/header-separator";
+import { MobileLiveSearch } from "@/components/mobile-live-search";
 import {
   SidebarInset,
   SidebarProvider,
@@ -24,6 +25,8 @@ type AdminShellProps = {
   children: ReactNode;
   icon?: LucideIcon;
   mobileTitle?: string;
+  mobileSearch?: string;
+  mobileSubheader?: ReactNode;
   profile: CurrentUserProfile;
   title: string;
 };
@@ -34,6 +37,8 @@ export function AdminShell({
   children,
   icon: Icon,
   mobileTitle,
+  mobileSearch,
+  mobileSubheader,
   profile,
   title,
 }: AdminShellProps) {
@@ -57,6 +62,9 @@ export function AdminShell({
             </div>
           ) : null}
         </header>
+
+        {mobileSearch ? <MobileLiveSearch placeholder={mobileSearch} /> : null}
+        {mobileSubheader}
 
         <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
       </SidebarInset>

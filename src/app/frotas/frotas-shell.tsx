@@ -8,6 +8,7 @@ import { HeaderSeparator } from "@/components/header-separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { FrotasCompanyScope } from "./frotas-persistent-frame";
 import { FrotasMobileFilters } from "./frotas-mobile-filters";
+import { MobileLiveSearch } from "@/components/mobile-live-search";
 
 type FrotasShellProps = {
   loading?: boolean;
@@ -72,6 +73,7 @@ export async function FrotasShell({
           </div>
         ) : null}
       </header>
+      {isList && <MobileLiveSearch placeholder={`Buscar ${title.toLowerCase()}`} />}
       <div className="min-h-0 flex-1 overflow-y-auto print:block print:min-h-0 print:overflow-visible">
         {loading && (
           <p role="status" className="sr-only">
