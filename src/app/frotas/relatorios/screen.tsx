@@ -4,7 +4,6 @@ import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
 import { ListMetrics } from "@/components/list-metrics";
-import { ListPagination } from "@/components/list-pagination";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
@@ -17,10 +16,8 @@ import {
   Fuel,
   Plus,
   Printer,
-  Search,
   Trash2,
   Wrench,
-  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +36,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { HeaderSeparator } from "@/components/header-separator";
 import {
   Table,
@@ -233,7 +229,6 @@ export default async function RelatoriosPage({ searchParams, loading = false }: 
                 showPrefeituraField={profile.role === "bdl_admin"}
               />
             )}
-            {!loading && <ListPagination page={reportPage.page} pageCount={reportPage.pageCount} pathname="/frotas/relatorios" params={{ size: params.size, prefeitura: prefeituraId, q: params.q, status: params.status, tipo: params.tipo }} />}
           </CardContent>
         </Card>
       </main>
@@ -255,45 +250,9 @@ function RelatoriosToolbar({
   data: Awaited<ReturnType<typeof getAbastecimentosData>>;
   params: Awaited<PageProps["searchParams"]>;
 }) {
-  const hasFilters = Boolean(params.q?.trim() || params.tipo || params.status);
 
   return (
     <div className="flex w-full min-w-0 items-center justify-end gap-2">
-      <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-        <div className="relative min-w-0 w-[280px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-9 pl-9"
-            name="q"
-            placeholder="Buscar relatório"
-            defaultValue={params.q}
-          />
-        </div>
-        {params.tipo ? <input name="tipo" type="hidden" value={params.tipo} /> : null}
-        {params.status ? (
-          <input name="status" type="hidden" value={params.status} />
-        ) : null}
-        {data.selectedPrefeituraId ? (
-          <input name="prefeitura" type="hidden" value={data.selectedPrefeituraId} />
-        ) : null}
-        {hasFilters ? (
-          <Link
-            className={buttonVariants({
-              className: "h-9 gap-2",
-              variant: "outline",
-            })}
-            href="/frotas/relatorios"
-          >
-            <X className="size-4" />
-            Limpar
-          </Link>
-        ) : (
-          <Button className="h-9" type="submit" variant="outline">
-            <Search className="size-4" />
-            Filtrar
-          </Button>
-        )}
-      </form>
 
       <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
         {reportTypeOptions.map((option) => {

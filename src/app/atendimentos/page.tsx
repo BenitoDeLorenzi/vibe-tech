@@ -6,5 +6,5 @@ import { requireRole } from "@/lib/auth-data";
 export const dynamic = "force-dynamic";
 export default async function AtendimentosPage() {
   const profile = await requireRole(["bdl_admin"]);
-  return <SupportWorkspace><AdminShell active="atendimentos" title="Atendimentos" icon={Headset} profile={profile} actions={<SupportToolbar master />} mobileSubheader={<SupportMobileSearch />}><SupportCenter master userId={profile.id} /></AdminShell></SupportWorkspace>;
+  return <SupportWorkspace><AdminShell active="atendimentos" title="Atendimentos" icon={Headset} profile={profile} actions={<SupportToolbar master />} mobileSubheader={<SupportMobileSearch />} desktopSearch={<SupportMobileSearch desktop />}><SupportCenter master userId={profile.id} /></AdminShell></SupportWorkspace>;
 }

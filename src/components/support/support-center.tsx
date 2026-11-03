@@ -1,6 +1,5 @@
 "use client";
 
-import { AdaptiveListSize } from "@/components/adaptive-list-size";
 import { createContext, useContext, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -18,11 +17,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { TableLoadingRows } from "@/components/table-loading";
-import { PaginationControl } from "@/components/pagination-control";
 import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { FormSelect } from "@/components/form-select";
 import { Drawer, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { mobileDrawerContentClassName } from "@/lib/mobile-drawer";
 import { cn } from "@/lib/utils";
 import { useSupportLive } from "./support-live";
@@ -66,7 +63,7 @@ function useSupportWorkspace() {
   if (!value) throw new Error("SupportWorkspace is required");
   return value;
 }
-export function SupportMobileSearch() {
+export function SupportMobileSearch({ desktop = false }: { desktop?: boolean }) {
   const params = useSearchParams();
   const { query, setQuery, search, setSearch, setPage, loading, setLoading } = useSupportWorkspace();
   const [submittedQuery, setSubmittedQuery] = useState<string | null>(null);
@@ -82,7 +79,7 @@ export function SupportMobileSearch() {
     return () => window.clearTimeout(timer);
   }, [query, search, setLoading, setPage, setSearch]);
   if (params.get("conversa")) return null;
-  return <div className="shrink-0 border-b bg-background px-4 py-2.5 md:hidden"><div className="relative">
+  return <div className={desktop ? "hidden w-[min(320px,30vw)] min-w-40 shrink md:block" : "shrink-0 border-b bg-background px-4 py-2.5 md:hidden"}><div className="relative">
     {searching ? <LoaderCircle aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" /> : <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />}
     <Input aria-label="Buscar atendimentos" placeholder="Buscar assunto, empresa ou usuário" className="h-9 w-full pl-9 pr-9" value={query} onChange={event => { setSubmittedQuery(null); setQuery(event.target.value); }} />
     {query && <Button type="button" variant="ghost" size="icon-sm" aria-label="Limpar busca" className="absolute right-1 top-1/2 -translate-y-1/2" onClick={() => { setSubmittedQuery(null); setQuery(""); }}><X className="size-3.5" /></Button>}
@@ -91,12 +88,11 @@ export function SupportMobileSearch() {
 }
 export function SupportToolbar({ master = false }: { master?: boolean }) {
   const params = useSearchParams();
-  const { query, setQuery, search, setSearch, status, setStatus, setPage, setLoading, setNewOpen } = useSupportWorkspace();
+  const { status, setStatus, setPage, setLoading, setNewOpen } = useSupportWorkspace();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileStatus, setMobileStatus] = useState(status);
   const { refresh } = useSupportLive();
   if (params.get("conversa")) return null;
-  const filter = () => { setSearch(query.trim()); setPage(1); setLoading(true); refresh(); };
   return <div className="flex w-full min-w-0 items-center justify-end gap-2">
     <div className="md:hidden"><Drawer open={mobileOpen} onOpenChange={setMobileOpen} showSwipeHandle>
       <DrawerTrigger render={<Button type="button" variant="outline" size="icon" className="relative" aria-label="Filtrar atendimentos" onClick={() => setMobileStatus(status)} />}>
@@ -107,10 +103,6 @@ export function SupportToolbar({ master = false }: { master?: boolean }) {
         <DrawerFooter className="flex-row gap-2 border-t bg-popover p-4"><Button type="button" variant="outline" className="flex-1" onClick={() => { setStatus(""); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Limpar</Button><Button type="button" className="flex-1" onClick={() => { setStatus(mobileStatus); setPage(1); setLoading(true); setMobileOpen(false); refresh(); }}>Aplicar filtros</Button></DrawerFooter>
       </DrawerContent>
     </Drawer></div>
-    <form className="hidden min-w-0 flex-1 justify-end gap-2 2xl:flex" onSubmit={event => { event.preventDefault(); filter(); }}>
-      <div className="relative min-w-0 w-[320px] shrink"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /><Input aria-label="Buscar atendimentos" placeholder={master ? "Buscar assunto, empresa ou usuário" : "Buscar chamado"} className="h-9 pl-9" value={query} onChange={event => setQuery(event.target.value)} /></div>
-      {search || status ? <Button type="button" variant="outline" className="h-9 gap-2" onClick={() => { setQuery(""); setSearch(""); setStatus(""); setPage(1); setLoading(true); refresh(); }}><X className="size-4" />Limpar</Button> : <Button type="submit" variant="outline" className="h-9"><Search className="size-4" />Filtrar</Button>}
-    </form>
     <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 xl:flex">{[{ value: "", label: "Todos" }, ...Object.entries(statusMeta).map(([value, meta]) => ({ value, label: value === "resolved" ? "Resolvidos" : meta.label }))].map(option => <Button key={option.value} variant={status === option.value ? "default" : "ghost"} size="sm" className={status === option.value ? "h-7 shrink-0 px-2 text-xs shadow-sm" : "h-7 shrink-0 px-2 text-xs text-muted-foreground"} onClick={() => { setStatus(option.value); setPage(1); setLoading(true); refresh(); }}>{option.label}</Button>)}</div>
     {!master && <><HeaderSeparator className="hidden 2xl:block" /><Button className="size-9 shrink-0 gap-0 p-0 md:w-auto md:gap-2 md:px-3" aria-label="Abrir chamado" onClick={() => setNewOpen(true)}><Plus className="size-4" /><span className="sr-only md:not-sr-only">Abrir chamado</span></Button></>}
   </div>;
@@ -118,23 +110,20 @@ export function SupportToolbar({ master = false }: { master?: boolean }) {
 
 export function SupportCenter({ master = false, userId }: { master?: boolean; userId: string }) {
   const { base, revision, unread, connected, refresh } = useSupportLive();
-  const isMobile = useIsMobile();
   const params = useSearchParams();
   const selected = params.get("conversa");
   const { newOpen, setNewOpen, setPage, search, status, page, loading, setLoading } = useSupportWorkspace();
-  const [size, setSize] = useState(10);
-  const resize = useCallback((next: number) => { setSize(next); setPage(1); setLoading(true); }, [setPage, setLoading]);
   const [data, setData] = useState<{ items: Ticket[]; total: number }>({ items: [], total: 0 });
   const [error, setError] = useState("");
   useEffect(() => {
     if (selected) return;
     const controller = new AbortController();
-    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page), size: String(isMobile ? 10 : size) })}`, { cache: "no-store", signal: controller.signal })
+    void fetch(`${base}&${new URLSearchParams({ q: search, status, page: String(page), size: "10" })}`, { cache: "no-store", signal: controller.signal })
       .then(async response => { const result = await response.json(); if (!response.ok) throw new Error(result.error); return result; })
-      .then(result => { setPage(result.page); setData(previous => isMobile && page > 1 ? { ...result, items: [...new Map([...previous.items, ...result.items].map(item => [item.id, item])).values()] } : result); setError(""); setLoading(false); })
+      .then(result => { setPage(result.page); setData(previous => page > 1 ? { ...result, items: [...new Map([...previous.items, ...result.items].map(item => [item.id, item])).values()] } : result); setError(""); setLoading(false); })
       .catch(error => { if (!controller.signal.aborted) { setError(error.message); setLoading(false); } });
     return () => controller.abort();
-  }, [base, search, status, page, size, isMobile, revision, selected, setLoading, setPage]);
+  }, [base, search, status, page, revision, selected, setLoading, setPage]);
   const open = (id: string | null) => {
     const current = new URL(window.location.href);
     if (id) current.searchParams.set("conversa", id); else current.searchParams.delete("conversa");
@@ -156,9 +145,9 @@ export function SupportCenter({ master = false, userId }: { master?: boolean; us
             {data.items.length > 0 && <p className="text-center text-xs text-muted-foreground">Mostrando {data.items.length} de {data.total}</p>}
           </div>
           <div className="hidden overflow-hidden rounded-lg border md:block"><Table><TableHeader><TableRow className="bg-muted/50"><TableHead>Assunto</TableHead>{master && <><TableHead>Empresa</TableHead><TableHead>Usuário</TableHead></>}<TableHead>Última atividade</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>
-            {loading ? <TableLoadingRows columns={master ? 6 : 4} /> : data.items.length ? data.items.map(ticket => <TableRow key={ticket.id} className={cn(ticket.novas > 0 && "bg-blue-500/5")}><TableCell><div className="flex items-center gap-2"><MessageCircle className="size-4 shrink-0 text-muted-foreground" /><span className="max-w-80 truncate font-medium">{ticket.assunto}</span>{ticket.novas > 0 && <Badge className="bg-red-600 text-white">{ticket.novas}</Badge>}</div></TableCell>{master && <><TableCell>{ticket.empresa}</TableCell><TableCell>{ticket.usuario}</TableCell></>}<TableCell className="whitespace-nowrap tabular-nums">{date(ticket.updated_at)}</TableCell><TableCell><StatusBadge status={ticket.status} /></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => open(ticket.id)}><MessageCircle />Abrir chat</Button></TableCell></TableRow>) : <TableRow><TableCell colSpan={master ? 6 : 4} className="h-40 text-center text-muted-foreground"><Headset className="mx-auto mb-3 size-7" />{search || status ? "Nenhum chamado encontrado." : master ? "Nenhum chamado por enquanto." : "Precisa de ajuda? Abra um chamado para a equipe Vibe Tech."}</TableCell></TableRow>}
+            {loading && !data.items.length ? <TableLoadingRows columns={master ? 6 : 4} /> : data.items.length ? data.items.map(ticket => <TableRow key={ticket.id} className={cn(ticket.novas > 0 && "bg-blue-500/5")}><TableCell><div className="flex items-center gap-2"><MessageCircle className="size-4 shrink-0 text-muted-foreground" /><span className="max-w-80 truncate font-medium">{ticket.assunto}</span>{ticket.novas > 0 && <Badge className="bg-red-600 text-white">{ticket.novas}</Badge>}</div></TableCell>{master && <><TableCell>{ticket.empresa}</TableCell><TableCell>{ticket.usuario}</TableCell></>}<TableCell className="whitespace-nowrap tabular-nums">{date(ticket.updated_at)}</TableCell><TableCell><StatusBadge status={ticket.status} /></TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => open(ticket.id)}><MessageCircle />Abrir chat</Button></TableCell></TableRow>) : <TableRow><TableCell colSpan={master ? 6 : 4} className="h-40 text-center text-muted-foreground"><Headset className="mx-auto mb-3 size-7" />{search || status ? "Nenhum chamado encontrado." : master ? "Nenhum chamado por enquanto." : "Precisa de ajuda? Abra um chamado para a equipe Vibe Tech."}</TableCell></TableRow>}
           </TableBody></Table></div>
-          <div className="mt-auto hidden flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground md:flex"><AdaptiveListSize size={size} onSizeChange={resize} maximum={25} loading={loading} /><span>{data.total} registros</span><PaginationControl page={page} pageCount={Math.max(1, Math.ceil(data.total / size))} disabled={loading} onPageChange={next => { setPage(next); setLoading(true); }} /></div>
+          <div className="mt-auto hidden flex-col items-center gap-2 md:flex">{data.items.length < data.total && <Button type="button" variant="outline" className="w-full max-w-64" disabled={loading} onClick={() => { setPage(page + 1); setLoading(true); }}>{loading ? "Carregando…" : "Mostrar mais"}</Button>}{data.total > 0 && <p className="text-xs text-muted-foreground">Mostrando {data.items.length} de {data.total}</p>}</div>
         </CardContent>
       </div>
     </>}

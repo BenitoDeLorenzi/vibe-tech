@@ -1,3 +1,4 @@
+import { DesktopShowMoreRows } from "@/components/desktop-show-more-rows";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { AdminMobileFilters } from "@/components/admin-mobile-filters";
@@ -14,9 +15,7 @@ import {
   KeyRound,
   Pencil,
   Plus,
-  Search,
   RefreshCw,
-  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +32,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -72,8 +70,6 @@ type PageProps = {
   }>;
 };
 
-
-
 const filterOptions = [
   { label: "Todas", status: undefined },
   { label: "Ativas", status: "active" },
@@ -98,7 +94,6 @@ export default async function LicencasPage({ searchParams }: PageProps) {
   const activeCount = licencas.filter((licenca) => licenca.status === "active")
     .length;
   const searchTerm = params.q?.trim();
-  const hasActiveFilters = Boolean(searchTerm || params.status);
   const buildFilterHref = (status?: string) => {
     const query = new URLSearchParams();
 
@@ -126,43 +121,6 @@ export default async function LicencasPage({ searchParams }: PageProps) {
           <AdminMobileFilters key={`${params.q ?? ""}:${params.status ?? ""}`} pathname="/licencas" title="Licenças" query={params.q} status={params.status} statusOptions={filterOptions.map(option => ({ value: option.status ?? "all", label: option.label }))} />
           <Dialog><DialogTrigger aria-label="Nova licença" className={buttonVariants({ size: "icon", className: "md:hidden" })}><Plus className="size-4" /></DialogTrigger><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg"><DialogHeader><DialogTitle>Nova licença</DialogTitle></DialogHeader><LicencaForm defaultFim={defaultFim} defaultInicio={defaultInicio} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} /></DialogContent></Dialog>
           <div className="hidden min-w-0 items-center justify-end gap-2 md:flex">
-          <form className="flex min-w-0 shrink-0 justify-end gap-2">
-            <div className="relative min-w-0 w-[320px]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-9 pl-9"
-                name="q"
-                placeholder="Buscar licença"
-                defaultValue={params.q}
-              />
-            </div>
-            {params.status ? (
-              <input type="hidden" name="status" value={params.status} />
-            ) : null}
-            {hasActiveFilters ? (
-              <Link
-                href="/licencas"
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9 gap-2",
-                })}
-              >
-                <X className="size-4" />
-                Limpar
-              </Link>
-            ) : (
-              <button
-                type="submit"
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9 gap-2",
-                })}
-              >
-                <Search className="size-4" />
-                Filtrar
-              </button>
-            )}
-          </form>
 
           <div className="flex shrink-0 gap-1 overflow-x-auto rounded-lg bg-muted p-1">
             {filterOptions.map((option) => {
@@ -249,7 +207,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {licencas.map((licenca) => (
+                      <DesktopShowMoreRows key={`${params.q ?? ""}:${params.status ?? ""}`} columns={6} rows={licencas.map((licenca) => (
                         <TableRow key={licenca.id}>
                           <TableCell>
                             <div className="font-medium">
@@ -293,7 +251,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                             <LicencaActions licenca={licenca} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} />
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ))} />
                     </TableBody>
                   </Table>
                 </div>

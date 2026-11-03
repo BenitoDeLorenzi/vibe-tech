@@ -64,6 +64,7 @@ export async function FrotasShell({
             {title}
           </h1>
         </div>
+        {isList && <MobileLiveSearch placeholder={`Buscar ${title.toLowerCase()}`} desktop />}
         {actions ? (
           <div
             inert={loading}

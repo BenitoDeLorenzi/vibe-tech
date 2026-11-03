@@ -5,7 +5,6 @@ import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
 import { deletePosto, updatePostoStatus } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
-import { ListPagination } from "@/components/list-pagination";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
@@ -18,8 +17,6 @@ import {
   Pencil,
   Phone,
   Plus,
-  Search,
-  X,
 } from "lucide-react";
 
 import { FrotasShell } from "@/app/frotas/frotas-shell";
@@ -27,7 +24,7 @@ import { PostoCredenciadoForm } from "@/app/frotas/posto-credenciado-form";
 import { PostoSenhaForm } from "@/app/frotas/posto-senha-form";
 import { CadastroStatusButton } from "@/components/cadastro-status-button";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -41,7 +38,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -87,7 +83,6 @@ export default async function PostosPage({ searchParams, loading = false }: Page
     prefeituraId: databasePage.empresaId ?? prefeituraId,
     query: params.q,
   });
-  const hasActiveFilters = Boolean(params.q?.trim());
   const stationPage = { ...databasePage, items: orderPageItems(data.postos, databasePage) };
 
   return (
@@ -97,45 +92,6 @@ export default async function PostosPage({ searchParams, loading = false }: Page
       active="postos"
       actions={
         <div className="flex w-full min-w-0 items-center justify-end gap-2">
-          <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-            <div className="relative min-w-0 w-[320px]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-9 pl-9"
-                name="q"
-                placeholder="Buscar posto"
-                defaultValue={params.q}
-              />
-            </div>
-            {data.selectedPrefeituraId ? (
-              <input
-                type="hidden"
-                name="prefeitura"
-                value={data.selectedPrefeituraId}
-              />
-            ) : null}
-            {hasActiveFilters ? (
-              <Link
-                href={
-                  data.selectedPrefeituraId
-                    ? `/frotas/postos?prefeitura=${data.selectedPrefeituraId}`
-                    : "/frotas/postos"
-                }
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9 gap-2",
-                })}
-              >
-                <X className="size-4" />
-                Limpar
-              </Link>
-            ) : (
-              <Button type="submit" variant="outline" className="h-9">
-                <Search className="size-4" />
-                Filtrar
-              </Button>
-            )}
-          </form>
 
           <Dialog>
             <DialogTrigger
@@ -251,7 +207,6 @@ export default async function PostosPage({ searchParams, loading = false }: Page
                 </DialogContent>
               </Dialog>} />
             )}
-            {!loading && <ListPagination page={stationPage.page} pageCount={stationPage.pageCount} pathname="/frotas/postos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>
         </Card>
       </main>

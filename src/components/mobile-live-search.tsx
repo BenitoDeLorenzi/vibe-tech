@@ -6,7 +6,7 @@ import { LoaderCircle, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
-export function MobileLiveSearch({ placeholder }: { placeholder: string }) {
+export function MobileLiveSearch({ placeholder, desktop = false }: { placeholder: string; desktop?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -36,7 +36,7 @@ export function MobileLiveSearch({ placeholder }: { placeholder: string }) {
     return () => window.clearTimeout(timer);
   }, [current, params, pathname, router, value]);
 
-  return <div className="shrink-0 border-b bg-background px-4 py-2.5 md:hidden">
+  return <div className={desktop ? "hidden w-[min(320px,30vw)] min-w-40 shrink md:block" : "shrink-0 border-b bg-background px-4 py-2.5 md:hidden"}>
     <div className="relative">
       {searching ? <LoaderCircle aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-muted-foreground" /> : <Search aria-hidden="true" className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />}
       <Input ref={inputRef} aria-label={placeholder} value={value} onChange={event => { setSubmittedQuery(null); setValue(event.target.value); }} placeholder={placeholder} className="h-9 w-full bg-background pl-9 pr-9" />

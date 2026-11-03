@@ -5,7 +5,6 @@ import { TableLoadingRows } from "@/components/table-loading";
 import { DeleteCadastroButton } from "@/components/delete-cadastro-button";
 import { deleteMotorista } from "../cadastro-actions";
 import { ListMetrics } from "@/components/list-metrics";
-import { ListPagination } from "@/components/list-pagination";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import Link from "next/link";
 import { forbidden } from "next/navigation";
@@ -16,14 +15,12 @@ import {
   Eye,
   Pencil,
   Plus,
-  Search,
   UserRoundCog,
-  X,
 } from "lucide-react";
 
 import { FrotasShell } from "@/app/frotas/frotas-shell";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -38,7 +35,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { HeaderSeparator } from "@/components/header-separator";
 import {
   Table,
@@ -259,7 +255,6 @@ export default async function MotoristasPage({ searchParams, loading = false }: 
                 showPrefeituraField={profile.role === "bdl_admin"}
               />
             )}
-            {!loading && <ListPagination page={driverPage.page} pageCount={driverPage.pageCount} pathname="/frotas/motoristas" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
           </CardContent>
         </Card>
       </main>
@@ -283,48 +278,9 @@ function MotoristasToolbar({
   params: Awaited<PageProps["searchParams"]>;
   showPrefeituraField: boolean;
 }) {
-  const hasActiveFilters = Boolean(params.q?.trim() || params.status || params.prefeitura);
 
   return (
     <div className="flex w-full min-w-0 items-center justify-end gap-2">
-      <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-        <div className="relative min-w-0 w-[320px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-9 pl-9"
-            name="q"
-            placeholder="Buscar motorista"
-            defaultValue={params.q}
-          />
-        </div>
-        {params.status ? (
-          <input type="hidden" name="status" value={params.status} />
-        ) : null}
-        {data.selectedPrefeituraId ? (
-          <input
-            type="hidden"
-            name="prefeitura"
-            value={data.selectedPrefeituraId}
-          />
-        ) : null}
-        {hasActiveFilters ? (
-          <Link
-            href="/frotas/motoristas"
-            className={buttonVariants({
-              variant: "outline",
-              className: "h-9 gap-2",
-            })}
-          >
-            <X className="size-4" />
-            Limpar
-          </Link>
-        ) : (
-          <Button type="submit" variant="outline" className="h-9">
-            <Search className="size-4" />
-            Filtrar
-          </Button>
-        )}
-      </form>
 
       <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
         {statusFilters.map((option) => {

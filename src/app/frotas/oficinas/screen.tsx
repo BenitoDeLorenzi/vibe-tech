@@ -5,18 +5,15 @@ import { TableLoadingRows } from "@/components/table-loading";
 import { CadastroStatusButton } from "@/components/cadastro-status-button";
 import { updateOficinaStatus } from "../cadastro-actions";
 import { forbidden } from "next/navigation";
-import { Search, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
 import { requireUserProfile } from "@/lib/auth-data";
 import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
 import { getFrotasData } from "@/lib/frotas-data";
 import { getOficinasForEmpresa } from "@/lib/oficinas-data";
 import { FrotasShell } from "../frotas-shell";
 import { ListMetrics } from "@/components/list-metrics";
-import { ListPagination } from "@/components/list-pagination";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { HeaderSeparator } from "@/components/header-separator";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
@@ -68,26 +65,7 @@ export default async function OficinasPage({
       selectedPrefeituraId={data.selectedPrefeituraId}
       actions={
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <form className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-2.5 size-4 text-muted-foreground" />
-              <Input
-                name="q"
-                aria-label="Buscar oficina"
-                placeholder="Buscar oficina"
-                defaultValue={params.q}
-                className="h-9 pl-9"
-              />
-            </div>
-            <input
-              type="hidden"
-              name="prefeitura"
-              value={data.selectedPrefeituraId ?? ""}
-            />
-            <Button variant="outline" type="submit">
-              Filtrar
-            </Button>
-          </form>
+
           {canManage && data.selectedPrefeituraId ? (
             <>
               <HeaderSeparator />
@@ -200,7 +178,6 @@ export default async function OficinasPage({
                 description={query ? "Ajuste os termos da busca para encontrar outra oficina." : "Cadastre uma oficina para organizar os serviços de manutenção da frota."}
                 action={!query && canManage && data.selectedPrefeituraId ? <OficinaDialog empresaId={data.selectedPrefeituraId} /> : null} />
             )}
-            {oficinas.length > 0 && <ListPagination page={oficinaPage.page} pageCount={oficinaPage.pageCount} pathname="/frotas/oficinas" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q }} />}
           </CardContent>
         </Card>
       </main>

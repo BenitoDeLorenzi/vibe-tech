@@ -1,19 +1,15 @@
 import { getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
 import { FrotasEmptyState } from "@/components/frotas-empty-state";
-import Link from "next/link";
 import { forbidden, notFound, redirect } from "next/navigation";
-import { Building2, Search, X } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { requireUserProfile } from "@/lib/auth-data";
 import { getModuleLicensedEmpresas } from "@/lib/empresa-access";
 import { getFrotasPermissionAccess } from "@/lib/frotas-permissions";
 import { getSecretarias } from "@/lib/secretarias-data";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
-import { ListPagination } from "@/components/list-pagination";
 import { ListMetrics } from "@/components/list-metrics";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -65,36 +61,7 @@ export default async function SecretariasPage({
       selectedPrefeituraId={empresa.id}
       actions={
         <div className="flex min-w-0 items-center justify-end gap-2">
-          <form className="hidden items-center gap-2 xl:flex">
-            <input type="hidden" name="prefeitura" value={empresa.id} />
-            <div className="relative w-[320px]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                name="q"
-                defaultValue={params.q}
-                aria-label="Buscar secretaria"
-                placeholder="Buscar secretaria"
-                className="h-9 pl-9"
-              />
-            </div>
-            {params.q ? (
-              <Link
-                href={`/frotas/secretarias?prefeitura=${empresa.id}`}
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9",
-                })}
-              >
-                <X />
-                Limpar
-              </Link>
-            ) : (
-              <Button type="submit" variant="outline" className="h-9">
-                <Search />
-                Filtrar
-              </Button>
-            )}
-          </form>
+
           {manage && <SecretariaDialog empresaId={empresa.id} />}
         </div>
       }
@@ -159,7 +126,6 @@ export default async function SecretariasPage({
                 description={params.q ? "Ajuste os termos da busca." : "Cadastre as secretarias desta prefeitura para vinculá-las aos veículos."}
                 action={manage && !params.q ? <SecretariaDialog empresaId={empresa.id} /> : null} />
             )}
-            {rows.length > 0 && <ListPagination page={secretariaPage.page} pageCount={secretariaPage.pageCount} pathname="/frotas/secretarias" params={{ size: params.size, prefeitura: empresa.id, q: params.q }} />}
           </CardContent>
         </Card>
       </main>

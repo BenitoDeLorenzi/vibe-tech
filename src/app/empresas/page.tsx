@@ -1,3 +1,4 @@
+import { DesktopShowMoreRows } from "@/components/desktop-show-more-rows";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { AdminMobileFilters } from "@/components/admin-mobile-filters";
@@ -13,14 +14,12 @@ import {
   MapPin,
   Pencil,
   Plus,
-  Search,
   Settings,
   Trash2,
-  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -33,7 +32,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -86,7 +84,6 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
     (prefeitura) => prefeitura.status === "active",
   ).length;
   const searchTerm = params.q?.trim();
-  const hasActiveFilters = Boolean(searchTerm || params.status);
   const buildFilterHref = (status?: string) => {
     const query = new URLSearchParams();
 
@@ -117,37 +114,6 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
             <DialogContent className="sm:max-w-2xl"><DialogHeader><DialogTitle>Nova empresa</DialogTitle></DialogHeader><PrefeituraForm /></DialogContent>
           </Dialog>
           <div className="hidden min-w-0 items-center justify-end gap-2 md:flex">
-          <form className="flex min-w-0 shrink-0 justify-end gap-2">
-            <div className="relative min-w-0 w-[320px]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-9 pl-9"
-                name="q"
-                placeholder="Buscar empresa"
-                defaultValue={params.q}
-              />
-            </div>
-            {params.status ? (
-              <input type="hidden" name="status" value={params.status} />
-            ) : null}
-            {hasActiveFilters ? (
-              <Link
-                href="/empresas"
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9 gap-2",
-                })}
-              >
-                <X className="size-4" />
-                Limpar
-              </Link>
-            ) : (
-              <Button type="submit" variant="outline" className="h-9">
-                <Search className="size-4" />
-                Filtrar
-              </Button>
-            )}
-          </form>
 
           <div className="flex shrink-0 gap-1 overflow-x-auto rounded-lg bg-muted p-1">
             {filterOptions.map((option) => {
@@ -236,7 +202,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {prefeituras.map((prefeitura) => (
+                    <DesktopShowMoreRows key={`${params.q ?? ""}:${params.status ?? ""}`} columns={7} rows={prefeituras.map((prefeitura) => (
                       <TableRow key={prefeitura.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -323,7 +289,7 @@ export default async function PrefeiturasPage({ searchParams }: PageProps) {
                           <EmpresaActions prefeitura={prefeitura} />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))} />
                   </TableBody>
                 </Table>
               </div>

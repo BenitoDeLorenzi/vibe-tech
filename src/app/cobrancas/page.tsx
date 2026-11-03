@@ -1,3 +1,4 @@
+import { DesktopShowMoreRows } from "@/components/desktop-show-more-rows";
 import Link from "next/link";
 import { AlertCircle, CircleCheck, CircleDollarSign, CircleX, Clock3 } from "lucide-react";
 import { AdminShell } from "@/components/admin-shell";
@@ -7,7 +8,6 @@ import { AdminMobileFilters } from "@/components/admin-mobile-filters";
 import { AdminMobileList } from "@/components/admin-mobile-list";
 import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { Card, CardContent } from "@/components/ui/card";
-import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BillingFilters } from "./billing-filters";
 import {
@@ -37,7 +37,6 @@ export default async function CobrancasPage({
     q?: string;
     modulo?: string;
     status?: string;
-    pagina?: string;
     error?: string;
   }>;
 }) {
@@ -124,22 +123,7 @@ export default async function CobrancasPage({
         a.vencimento.localeCompare(b.vencimento) ||
         a.empresa.localeCompare(b.empresa),
     );
-  const pages = Math.max(1, Math.ceil(filtered.length / 25));
-  const page = Math.min(
-    pages,
-    Math.max(1, Number.parseInt(params.pagina ?? "1") || 1),
-  );
-  const rows = filtered.slice((page - 1) * 25, page * 25);
-  const href = (num: number) => {
-    const q = new URLSearchParams();
-    for (const [k, v] of Object.entries({
-      ...params,
-      pagina: String(num),
-      mes,
-    }))
-      if (v && k !== "error") q.set(k, v);
-    return `/cobrancas?${q}`;
-  };
+
   return (
     <AdminShell
       active="cobrancas"
@@ -232,8 +216,8 @@ export default async function CobrancasPage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.length ? (
-                    rows.map((p) => (
+                  {filtered.length ? (
+                    <DesktopShowMoreRows key={`${mes}:${params.q ?? ""}:${params.modulo ?? ""}:${params.status ?? ""}`} columns={8} rows={filtered.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell>
                           <Link
@@ -268,7 +252,7 @@ export default async function CobrancasPage({
                           <BillingActions pagamento={p} empresa={p.empresa} pagador={p.pagador} />
                         </TableCell>
                       </TableRow>
-                    ))
+                    ))} />
                   ) : (
                     <TableRow>
                       <TableCell
@@ -282,35 +266,7 @@ export default async function CobrancasPage({
                 </TableBody>
               </Table>
             </div>
-            <div className="hidden items-center justify-between text-xs text-muted-foreground md:flex">
-              <span>
-                {filtered.length} cobranças · Página {page} de {pages}
-              </span>
-              <div className="flex gap-2">
-                {page > 1 && (
-                  <Link
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                    })}
-                    href={href(page - 1)}
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {page < pages && (
-                  <Link
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                    })}
-                    href={href(page + 1)}
-                  >
-                    Próxima
-                  </Link>
-                )}
-              </div>
-            </div>
+
           </CardContent>
         </Card>
       </main>

@@ -3,9 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { FormSelect } from "@/components/form-select";
 import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
@@ -17,7 +16,7 @@ const statuses = [
   ["previous", "Atrasadas anteriores"],
 ];
 
-export function BillingFilters({ mes, query, modulo, status, modulos, currentMonth }: {
+export function BillingFilters({ mes, query, modulo, status, modulos }: {
   mes: string; query: string; modulo: string; status: string;
   modulos: { value: string; label: string }[]; currentMonth: string;
 }) {
@@ -25,7 +24,6 @@ export function BillingFilters({ mes, query, modulo, status, modulos, currentMon
   const [month, setMonth] = useState(mes);
   const [year, setYear] = useState(Number(mes.slice(0, 4)));
   const [open, setOpen] = useState(false);
-  const hasFilters = Boolean(query || modulo !== "all" || status !== "all" || mes !== currentMonth);
   const statusHref = (value: string) => {
     const params = new URLSearchParams({ mes });
     if (query) params.set("q", query);
@@ -35,18 +33,10 @@ export function BillingFilters({ mes, query, modulo, status, modulos, currentMon
   };
   return (
     <div className="hidden w-full min-w-0 items-center justify-end gap-2 overflow-x-auto md:flex">
-      <form id="billing-filters" action="/cobrancas" className="flex min-w-0 shrink-0 justify-end gap-2">
-        <div className="relative w-[320px] min-w-0">
-          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input name="q" aria-label="Buscar cobrança por empresa ou CNPJ" placeholder="Buscar cobrança" defaultValue={query} className="h-9 pl-9" />
-        </div>
+      <form id="billing-filters" action="/cobrancas" className="hidden">
+        <input type="hidden" name="q" value={query} />
         <input type="hidden" name="status" value={status} />
         <input type="hidden" name="mes" value={month} />
-        {hasFilters ? (
-          <Link href="/cobrancas" className={buttonVariants({ variant: "outline", className: "h-9 gap-2" })}><X className="size-4" />Limpar</Link>
-        ) : (
-          <Button type="submit" variant="outline" className="h-9 gap-2"><Search className="size-4" />Filtrar</Button>
-        )}
       </form>
       <div aria-label="Situação da cobrança" className="flex shrink-0 gap-1 overflow-x-auto rounded-lg bg-muted p-1">
         {statuses.map(([value, label]) => (

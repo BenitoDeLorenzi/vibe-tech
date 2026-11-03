@@ -27,6 +27,7 @@ type AdminShellProps = {
   icon?: LucideIcon;
   mobileTitle?: string;
   mobileSearch?: string;
+  desktopSearch?: ReactNode;
   mobileSubheader?: ReactNode;
   profile: CurrentUserProfile;
   title: string;
@@ -39,6 +40,7 @@ export function AdminShell({
   icon: Icon,
   mobileTitle,
   mobileSearch,
+  desktopSearch,
   mobileSubheader,
   profile,
   title,
@@ -58,6 +60,8 @@ export function AdminShell({
               {mobileTitle ? <><span className="sm:hidden">{mobileTitle}</span><span className="hidden sm:inline">{title}</span></> : title}
             </h1>
           </div>
+          {mobileSearch ? <MobileLiveSearch placeholder={mobileSearch} desktop /> : null}
+          {desktopSearch}
           {actions ? (
             <div className="ml-auto flex min-w-0 flex-1 items-center justify-end">
               {actions}

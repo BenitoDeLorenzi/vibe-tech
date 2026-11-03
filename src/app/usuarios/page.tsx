@@ -1,9 +1,9 @@
+import { DesktopShowMoreRows } from "@/components/desktop-show-more-rows";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { ListMetrics } from "@/components/list-metrics";
 import { AdminMobileFilters } from "@/components/admin-mobile-filters";
 import { AdminMobileList } from "@/components/admin-mobile-list";
 import { AdminMobileCard } from "@/components/admin-mobile-card";
-import Link from "next/link";
 import { AdminShell } from "@/components/admin-shell";
 import { EmpresaFilterCombobox } from "@/components/empresa-filter-combobox";
 import { UsuarioStatusBadge } from "@/components/usuario-status-badge";
@@ -12,15 +12,13 @@ import {
   CircleX,
   Pencil,
   Plus,
-  Search,
   ShieldCheck,
   Trash2,
   Users,
-  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -33,7 +31,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Table,
@@ -88,10 +85,6 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
   const statuses = usuarios.map(getUsuarioStatus);
   const activeCount = statuses.filter((status) => status === "active").length;
   const pendingCount = statuses.filter((status) => status === "first_access" || status === "email_pending").length;
-  const searchTerm = params.q?.trim();
-  const hasActiveFilters = Boolean(
-    searchTerm || (params.empresa ?? params.prefeitura),
-  );
 
   return (
     <AdminShell
@@ -105,41 +98,6 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
           <AdminMobileFilters key={`${params.q ?? ""}:${params.empresa ?? params.prefeitura ?? ""}`} pathname="/usuarios" title="Usuários" query={params.q} company={params.empresa ?? params.prefeitura} companyOptions={formOptions.prefeituras.map(empresa => ({ value: empresa.id, label: empresa.nome }))} />
           <Dialog><DialogTrigger aria-label="Novo usuário" className={buttonVariants({ size: "icon", className: "md:hidden" })}><Plus className="size-4" /></DialogTrigger><DialogContent className="sm:max-w-lg"><DialogHeader><DialogTitle>Novo usuário</DialogTitle></DialogHeader><UsuarioForm prefeituras={formOptions.prefeituras} /></DialogContent></Dialog>
           <div className="hidden min-w-0 items-center justify-end gap-2 md:flex">
-          <form className="flex min-w-0 shrink-0 justify-end gap-2">
-            <div className="relative min-w-0 w-[320px]">
-              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                className="h-9 pl-9"
-                name="q"
-                placeholder="Buscar usuário"
-                defaultValue={params.q}
-              />
-            </div>
-            {(params.empresa ?? params.prefeitura) ? (
-              <input
-                type="hidden"
-                name="empresa"
-                value={params.empresa ?? params.prefeitura}
-              />
-            ) : null}
-            {hasActiveFilters ? (
-              <Link
-                href="/usuarios"
-                className={buttonVariants({
-                  variant: "outline",
-                  className: "h-9 gap-2",
-                })}
-              >
-                <X className="size-4" />
-                Limpar
-              </Link>
-            ) : (
-              <Button type="submit" variant="outline" className="h-9">
-                <Search className="size-4" />
-                Filtrar
-              </Button>
-            )}
-          </form>
 
           <EmpresaFilterCombobox
             className="hidden w-[260px] shrink-0 xl:block"
@@ -202,7 +160,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {usuarios.map((usuario) => (
+                    <DesktopShowMoreRows key={`${params.q ?? ""}:${params.empresa ?? params.prefeitura ?? ""}`} columns={6} rows={usuarios.map((usuario) => (
                       <TableRow key={usuario.id}>
                         <TableCell>
                           <div className="font-medium">{usuario.nome}</div>
@@ -228,7 +186,7 @@ export default async function UsuariosPage({ searchParams }: PageProps) {
                           <UsuarioActions usuario={usuario} currentUserId={profile.id} prefeituras={formOptions.prefeituras} acessos={accessMap[usuario.id] ?? []} />
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))} />
                   </TableBody>
                 </Table>
               </div>

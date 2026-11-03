@@ -3,7 +3,6 @@ import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { AdminMobileCard } from "@/components/admin-mobile-card";
 import { ListPanelHeader } from "@/components/list-panel-header";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
-import { ListPagination } from "@/components/list-pagination";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
 import { ListDeleteButton } from "@/components/list-delete-button";
@@ -19,16 +18,14 @@ import {
   LoaderCircle,
   Clock3,
   Pencil,
-  Search,
   Settings,
   Trash2,
   Wrench,
-  X,
 } from "lucide-react";
 
 import { VeiculoAvatar } from "@/components/veiculo-avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -41,7 +38,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { HeaderSeparator } from "@/components/header-separator";
 import {
   Table,
@@ -297,7 +293,6 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
                     selectedPrefeituraId={data.selectedPrefeituraId}
                   />
                 )}
-                {!loading && <ListPagination page={vehiclePage.page} pageCount={vehiclePage.pageCount} pathname="/frotas/veiculos" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
               </CardContent>
             </Card>
         </main>
@@ -455,48 +450,9 @@ function VeiculosToolbar({
   params: Awaited<PageProps["searchParams"]>;
   showPrefeituraField: boolean;
 }) {
-  const hasActiveFilters = Boolean(params.q?.trim() || params.status || params.prefeitura);
 
   return (
     <div className="flex w-full min-w-0 items-center justify-end gap-2">
-      <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-        <div className="relative min-w-0 w-[320px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-9 pl-9"
-            name="q"
-            placeholder="Buscar veículo"
-            defaultValue={params.q}
-          />
-        </div>
-        {params.status ? (
-          <input type="hidden" name="status" value={params.status} />
-        ) : null}
-        {data.selectedPrefeituraId ? (
-          <input
-            type="hidden"
-            name="prefeitura"
-            value={data.selectedPrefeituraId}
-          />
-        ) : null}
-        {hasActiveFilters ? (
-          <Link
-            href="/frotas/veiculos"
-            className={buttonVariants({
-              variant: "outline",
-              className: "h-9 gap-2",
-            })}
-          >
-            <X className="size-4" />
-            Limpar
-          </Link>
-        ) : (
-          <Button type="submit" variant="outline" className="h-9">
-            <Search className="size-4" />
-            Filtrar
-          </Button>
-        )}
-      </form>
 
       <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
         {statusFilters.map((option) => {
@@ -523,8 +479,6 @@ function VeiculosToolbar({
       </div>
 
       {access.canCreateVeiculos ? <HeaderSeparator className="hidden xl:block" /> : null}
-
-
 
       {access.canCreateVeiculos ? (
         <VeiculoCadastroDialog

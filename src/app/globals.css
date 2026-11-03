@@ -236,6 +236,24 @@ body {
   .frotas-mobile-table [data-slot="table-cell"]:last-child:has(button, a[aria-label]) { display: flex; justify-content: flex-end; border-top: 1px solid var(--border); background: color-mix(in oklab, var(--muted) 20%, transparent); padding: .5rem .75rem; }
 }
 
+@media (min-width: 768px) {
+  [data-fleet-route] .fleet-appended-page {
+    margin-top: 0;
+  }
+  [data-fleet-route] > div:has(+ .fleet-appended-page) .frotas-mobile-table {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  [data-fleet-route] .fleet-appended-page .frotas-mobile-table {
+    border-top: 0;
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+  [data-fleet-route] .fleet-appended-page [data-slot="table-header"] {
+    display: none;
+  }
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

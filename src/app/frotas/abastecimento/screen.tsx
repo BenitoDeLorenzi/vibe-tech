@@ -1,4 +1,5 @@
 import { emptyFleetPage, getFrotaListPage, orderPageItems } from "@/lib/frotas-list-page";
+import { FleetMonthFilter } from "@/components/fleet-month-filter";
 import { FrotasEmptyState } from "@/components/frotas-empty-state";
 import { getFrotasLoadingData } from "@/app/frotas/frotas-loading-data";
 import { TableLoadingRows } from "@/components/table-loading";
@@ -6,7 +7,6 @@ import { CancellationDetails } from "@/components/cancellation-details";
 import { CancelFrotaDialog } from "@/components/cancel-frota-dialog";
 import { DeleteAbastecimentoButton } from "./delete-abastecimento-button";
 import { ListStatusActionButton } from "@/components/list-status-action-button";
-import { ListPagination } from "@/components/list-pagination";
 import { FrotasResponsiveTable } from "@/components/frotas-responsive-table";
 import { ListMetrics } from "@/components/list-metrics";
 import Link from "next/link";
@@ -19,9 +19,7 @@ import {
   Eye,
   Fuel,
   Printer,
-  Search,
   SquareCheckBig,
-  X,
 } from "lucide-react";
 
 import { cancelAbastecimento } from "../actions";
@@ -45,7 +43,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { HeaderSeparator } from "@/components/header-separator";
 import {
   Table,
@@ -80,6 +77,7 @@ type PageProps = {
     q?: string;
     ordem?: string;
     status?: string;
+    mes?: string;
     size?: string; page?: string;
   }>;
 };
@@ -131,6 +129,7 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
     if (status) {
       query.set("status", status);
     }
+    if (params.mes) query.set("mes", params.mes);
 
     if (prefeitura) {
       query.set("prefeitura", prefeitura);
@@ -181,7 +180,7 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
           </CardHeader>
           <CardContent className="flex flex-1 flex-col">
             {loading || data.abastecimentos.length ? (
-              <FrotasResponsiveTable page={fuelPage.page} pageCount={fuelPage.pageCount} total={fuelPage.total} count={fuelPage.items.length} pathname="/frotas/abastecimento" params={{ prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
+              <FrotasResponsiveTable page={fuelPage.page} pageCount={fuelPage.pageCount} total={fuelPage.total} count={fuelPage.items.length} pathname="/frotas/abastecimento" params={{ prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status, mes: params.mes }} loading={loading}><div className="frotas-mobile-table overflow-hidden rounded-lg border">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -258,7 +257,6 @@ export default async function AbastecimentoPage({ searchParams, loading = false 
                 veiculos={data.veiculos}
               />
             )}
-            {!loading && data.abastecimentos.length > 0 && <ListPagination page={fuelPage.page} pageCount={fuelPage.pageCount} pathname="/frotas/abastecimento" params={{ size: params.size, prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} />}
           </CardContent>
         </Card>
       </main>
@@ -280,49 +278,11 @@ function AbastecimentoToolbar({
   data: Awaited<ReturnType<typeof getAbastecimentosData>>;
   params: Awaited<PageProps["searchParams"]>;
 }) {
-  const hasActiveFilters = Boolean(params.q?.trim() || params.status || params.prefeitura);
 
   return (
     <div className="flex w-full min-w-0 items-center justify-end gap-2">
-      <form className="hidden min-w-0 shrink-0 gap-2 xl:flex">
-        <div className="relative min-w-0 w-[320px]">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="h-9 pl-9"
-            name="q"
-            placeholder="Buscar abastecimento"
-            defaultValue={params.q}
-          />
-        </div>
-        {params.status ? (
-          <input type="hidden" name="status" value={params.status} />
-        ) : null}
-        {data.selectedPrefeituraId ? (
-          <input
-            type="hidden"
-            name="prefeitura"
-            value={data.selectedPrefeituraId}
-          />
-        ) : null}
-        {hasActiveFilters ? (
-          <Link
-            href="/frotas/abastecimento"
-            className={buttonVariants({
-              variant: "outline",
-              className: "h-9 gap-2",
-            })}
-          >
-            <X className="size-4" />
-            Limpar
-          </Link>
-        ) : (
-          <Button type="submit" variant="outline" className="h-9">
-            <Search className="size-4" />
-            Filtrar
-          </Button>
-        )}
-      </form>
 
+      <FleetMonthFilter />
       <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
         {statusFilters.map((option) => {
           const isActive = option.status
