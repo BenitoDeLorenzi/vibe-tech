@@ -648,6 +648,20 @@ export async function getFrotasData(params?: {
     }
   }
 
+  const vehiclePhotoPaths = ((veiculosResult.data ?? []) as unknown as VeiculoRow[])
+    .map((veiculo) => veiculo.foto_path)
+    .filter((path): path is string => Boolean(path));
+  const vehiclePhotoUrls = new Map<string, string>();
+  if (vehiclePhotoPaths.length) {
+    const { data: signedPhotos, error: signedPhotosError } = await supabase.storage
+      .from("frota-veiculos")
+      .createSignedUrls(vehiclePhotoPaths, 60 * 60);
+    if (signedPhotosError) throw new Error(signedPhotosError.message);
+    signedPhotos?.forEach((photo, index) => {
+      if (photo.signedUrl) vehiclePhotoUrls.set(vehiclePhotoPaths[index], photo.signedUrl);
+    });
+  }
+
   let veiculos = ((veiculosResult.data ?? []) as unknown as VeiculoRow[]).map(
     (veiculo) => ({
       ...registrationLookupSummary(veiculo.frota_debito_consultas),
@@ -701,7 +715,7 @@ export async function getFrotasData(params?: {
       combustivel: veiculo.combustivel,
       especie: veiculo.especie,
       foto_path: veiculo.foto_path,
-      foto_url: veiculo.foto_url,
+      foto_url: veiculo.foto_path ? vehiclePhotoUrls.get(veiculo.foto_path) ?? null : null,
       manutencoes: manutencoesByVeiculo.get(veiculo.id) ?? [],
       origem_dados: veiculo.origem_dados,
       vencimentos: vencimentoDatesByVeiculo.get(veiculo.id) ?? {},

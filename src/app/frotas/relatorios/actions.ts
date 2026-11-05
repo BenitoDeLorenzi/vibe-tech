@@ -11,6 +11,7 @@ import {
   type RelatorioTipo,
 } from "@/lib/relatorios-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
+import { getFrotasEmpresa } from "@/lib/secretarias-data";
 
 export type RelatorioActionState = {
   error?: string;
@@ -55,6 +56,9 @@ export async function createRelatorio(
 
   if (!prefeituraId) {
     return { error: "Selecione uma empresa para gerar o relatório." };
+  }
+  if (!(await getFrotasEmpresa(profile, prefeituraId))) {
+    return { error: "Empresa não disponível para o módulo de frotas." };
   }
 
   if (tipo !== "vehicles" && (!periodoInicio || !periodoFim)) {

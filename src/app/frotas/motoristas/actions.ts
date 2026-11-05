@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireUserProfile } from "@/lib/auth-data";
 import { hasFrotasPermission } from "@/lib/frotas-permissions";
+import { getFrotasEmpresa } from "@/lib/secretarias-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export type MotoristaActionState = {
@@ -32,6 +33,9 @@ export async function createMotorista(
 
   if (profile.role !== "bdl_admin" && prefeituraId !== profile.prefeitura_id) {
     return { error: "Você só pode cadastrar motoristas da sua empresa." };
+  }
+  if (!(await getFrotasEmpresa(profile, prefeituraId))) {
+    return { error: "Empresa não disponível para o módulo de frotas." };
   }
 
   if (!isValidCpf(cpf)) {
@@ -77,12 +81,20 @@ export async function updateMotorista(
   if (profile.role !== "bdl_admin" && prefeituraId !== profile.prefeitura_id) {
     return { error: "Você só pode editar motoristas da sua empresa." };
   }
+  if (!(await getFrotasEmpresa(profile, prefeituraId))) {
+    return { error: "Empresa não disponível para o módulo de frotas." };
+  }
 
   if (!isValidCpf(cpf)) {
     return { error: "Informe um CPF válido." };
   }
 
   const supabase = createSupabaseServerClient();
+  const { data: currentMotorista } = await supabase.from("frota_motoristas")
+    .select("prefeitura_id").eq("id", id).maybeSingle();
+  if (!currentMotorista || !(await getFrotasEmpresa(profile, currentMotorista.prefeitura_id))) {
+    return { error: "Motorista não encontrado nesta empresa." };
+  }
   const { error } = await supabase
     .from("frota_motoristas")
     .update({
@@ -91,7 +103,8 @@ export async function updateMotorista(
       prefeitura_id: prefeituraId,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", currentMotorista.prefeitura_id);
 
   if (error) {
     return { error: formatMotoristaError(error.message) };
@@ -134,10 +147,7 @@ export async function updateMotoristaStatus(
     };
   }
 
-  if (
-    profile.role !== "bdl_admin" &&
-    motorista.prefeitura_id !== profile.prefeitura_id
-  ) {
+  if (!(await getFrotasEmpresa(profile, motorista.prefeitura_id))) {
     return { error: "Você só pode alterar motoristas da sua empresa." };
   }
 
@@ -147,7 +157,8 @@ export async function updateMotoristaStatus(
       status,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", motorista.prefeitura_id);
 
   if (error) {
     return { error: formatMotoristaError(error.message) };

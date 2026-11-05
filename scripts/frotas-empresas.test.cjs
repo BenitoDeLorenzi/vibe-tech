@@ -50,6 +50,7 @@ async function main() {
     '@/lib/auth-data': { requireUserProfile: async () => ({ id: 'user', role: 'municipal_user', prefeitura_id: 'empresa-a' }) },
     '@/lib/frotas-permissions': { hasFrotasPermission: async () => true },
     '@/lib/relatorios-data': reports,
+    '@/lib/secretarias-data': { getFrotasEmpresa: async (profile, empresaId) => empresaId === profile.prefeitura_id },
     '@/lib/supabase-server': { createSupabaseServerClient: () => ({ from: () => ({ insert(payload) { inserted = payload; return { select: () => ({ single: async () => ({ data: { id: 'report' }, error: null }) }) }; } }) }) },
   });
   const form = new FormData();

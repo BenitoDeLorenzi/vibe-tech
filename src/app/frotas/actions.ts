@@ -1,6 +1,6 @@
 "use server";
 
-import { validateVehicleSecretaria } from "@/lib/secretarias-data";
+import { getFrotasEmpresa, validateVehicleSecretaria } from "@/lib/secretarias-data";
 import { updatePostoStatus } from "./cadastro-actions";
 import { pbkdf2Sync, randomBytes } from "crypto";
 import { revalidatePath } from "next/cache";
@@ -101,11 +101,7 @@ export async function updateVeiculo(
   if (currentVehicle.error || !currentVehicle.data)
     return { error: "Veículo não encontrado." };
   const profile = await requireUserProfile();
-  if (
-    profile.role !== "bdl_admin" &&
-    (currentVehicle.data.prefeitura_id !== profile.prefeitura_id ||
-      payload.veiculo.prefeitura_id !== profile.prefeitura_id)
-  ) {
+  if (!(await getFrotasEmpresa(profile, currentVehicle.data.prefeitura_id))) {
     return { error: "Você não tem acesso ao veículo desta empresa." };
   }
   if (currentVehicle.data.status === "processing") {
@@ -127,6 +123,7 @@ export async function updateVeiculo(
     .from("frota_veiculos")
     .update({ ...payload.veiculo, ...secretaria })
     .eq("id", id)
+    .eq("prefeitura_id", currentVehicle.data.prefeitura_id)
     .neq("status", "processing");
 
   if (error) {
@@ -272,11 +269,9 @@ export async function uploadVeiculoFoto(
   }
 
   const id = getRequiredValue(formData, "id");
-  const prefeituraId = getRequiredValue(formData, "prefeitura_id");
-  const placa = normalizePlate(getRequiredValue(formData, "placa"));
   const file = formData.get("foto");
 
-  if (!id || !prefeituraId || !placa) {
+  if (!id) {
     return { error: "Veículo não encontrado." };
   }
 
@@ -293,6 +288,12 @@ export async function uploadVeiculoFoto(
   }
 
   const supabase = createSupabaseServerClient();
+  const profile = await requireUserProfile();
+  const { data: vehicle } = await supabase.from("frota_veiculos")
+    .select("id,prefeitura_id,placa").eq("id", id).maybeSingle();
+  if (!vehicle || !(await getFrotasEmpresa(profile, vehicle.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
+  }
   const bucketError = await ensureVehiclePhotoBucket(supabase);
 
   if (bucketError) {
@@ -300,7 +301,7 @@ export async function uploadVeiculoFoto(
   }
 
   const extension = getImageExtension(file);
-  const path = `${prefeituraId}/${id}/${placa}-${Date.now()}.${extension}`;
+  const path = `${vehicle.prefeitura_id}/${id}/${normalizePlate(vehicle.placa)}-${Date.now()}.${extension}`;
   const { error: uploadError } = await supabase.storage
     .from(vehiclePhotoBucket)
     .upload(path, file, {
@@ -313,16 +314,14 @@ export async function uploadVeiculoFoto(
     return { error: formatSupabaseError(uploadError.message) };
   }
 
-  const { data: publicUrlData } = supabase.storage
-    .from(vehiclePhotoBucket)
-    .getPublicUrl(path);
   const { error } = await supabase
     .from("frota_veiculos")
     .update({
       foto_path: path,
-      foto_url: publicUrlData.publicUrl,
+      foto_url: null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", vehicle.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -344,18 +343,22 @@ export async function removeVeiculoFoto(
   }
 
   const id = getRequiredValue(formData, "id");
-  const path = getOptionalValue(formData, "foto_path");
-
   if (!id) {
     return { error: "Veículo não encontrado." };
   }
 
   const supabase = createSupabaseServerClient();
+  const profile = await requireUserProfile();
+  const { data: vehicle } = await supabase.from("frota_veiculos")
+    .select("id,prefeitura_id,foto_path").eq("id", id).maybeSingle();
+  if (!vehicle || !(await getFrotasEmpresa(profile, vehicle.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
+  }
 
-  if (path) {
+  if (vehicle.foto_path) {
     const { error: storageError } = await supabase.storage
       .from(vehiclePhotoBucket)
-      .remove([path]);
+      .remove([vehicle.foto_path]);
 
     if (storageError) {
       return { error: formatSupabaseError(storageError.message) };
@@ -368,7 +371,8 @@ export async function removeVeiculoFoto(
       foto_path: null,
       foto_url: null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", vehicle.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -415,6 +419,10 @@ export async function addVeiculoAnexos(
     };
   }
 
+  if (!(await getFrotasEmpresa(await requireUserProfile(), veiculo.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
+  }
+
   const attachmentError = await uploadVehicleAttachments({
     formData,
     prefeituraId: veiculo.prefeitura_id,
@@ -450,7 +458,7 @@ export async function deleteVeiculoAnexo(
   const supabase = createSupabaseServerClient();
   const { data: anexo, error: anexoError } = await supabase
     .from("frota_veiculo_anexos")
-    .select("id,file_path")
+    .select("id,file_path,prefeitura_id")
     .eq("id", id)
     .single();
 
@@ -460,6 +468,10 @@ export async function deleteVeiculoAnexo(
         anexoError?.message ?? "Documento não encontrado.",
       ),
     };
+  }
+
+  if (!(await getFrotasEmpresa(await requireUserProfile(), anexo.prefeitura_id))) {
+    return { error: "Documento não encontrado nesta empresa." };
   }
 
   const { error: storageError } = await supabase.storage
@@ -473,7 +485,8 @@ export async function deleteVeiculoAnexo(
   const { error } = await supabase
     .from("frota_veiculo_anexos")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", anexo.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -506,10 +519,17 @@ export async function updateVeiculoStatus(
   }
 
   const supabase = createSupabaseServerClient();
+  const profile = await requireUserProfile();
+  const { data: vehicle } = await supabase.from("frota_veiculos")
+    .select("prefeitura_id").eq("id", id).maybeSingle();
+  if (!vehicle || !(await getFrotasEmpresa(profile, vehicle.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
+  }
   const { error } = await supabase
     .from("frota_veiculos")
     .update({ status })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", vehicle.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -593,6 +613,10 @@ export async function registrarPagamentoVencimento(
     };
   }
 
+  if (!(await getFrotasEmpresa(await requireUserProfile(), vencimento.prefeitura_id))) {
+    return { error: "Débito não encontrado nesta empresa." };
+  }
+
   if (vencimento.tipo !== "ipva" && formaPagamento !== "cota_unica") {
     return {
       error:
@@ -660,7 +684,8 @@ export async function registrarPagamentoVencimento(
         data_vencimento: nextDate,
         status: "pending",
       })
-      .eq("id", id);
+      .eq("id", id)
+      .eq("prefeitura_id", vencimento.prefeitura_id);
 
     if (error) {
       return { error: formatSupabaseError(error.message) };
@@ -695,13 +720,20 @@ export async function updateVencimentoData(
   }
 
   const supabase = createSupabaseServerClient();
+  const profile = await requireUserProfile();
+  const { data: vencimento } = await supabase.from("frota_vencimentos")
+    .select("prefeitura_id").eq("id", id).maybeSingle();
+  if (!vencimento || !(await getFrotasEmpresa(profile, vencimento.prefeitura_id))) {
+    return { error: "Débito não encontrado nesta empresa." };
+  }
   const { error } = await supabase
     .from("frota_vencimentos")
     .update({
       data_vencimento: dataVencimento,
       status: "pending",
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", vencimento.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -749,6 +781,10 @@ export async function createDebitoManual(
         veiculoError?.message ?? "Veículo não encontrado.",
       ),
     };
+  }
+
+  if (!(await getFrotasEmpresa(await requireUserProfile(), veiculo.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
   }
 
   const { error } = await supabase.from("frota_vencimentos").insert({
@@ -820,6 +856,10 @@ export async function createMultaManual(
         veiculoError?.message ?? "Veículo não encontrado.",
       ),
     };
+  }
+
+  if (!(await getFrotasEmpresa(await requireUserProfile(), veiculo.prefeitura_id))) {
+    return { error: "Veículo não encontrado nesta empresa." };
   }
 
   const { data: existingMulta, error: existingMultaError } = await supabase
@@ -1328,7 +1368,7 @@ export async function registerAbastecimentoPrint(
   const supabase = createSupabaseServerClient();
   const { data: abastecimento, error: abastecimentoError } = await supabase
     .from("frota_abastecimentos")
-    .select("id,status,print_count,expires_at")
+    .select("id,prefeitura_id,status,print_count,expires_at")
     .eq("id", id)
     .single();
 
@@ -1338,6 +1378,10 @@ export async function registerAbastecimentoPrint(
         abastecimentoError?.message ?? "Ordem não encontrada.",
       ),
     };
+  }
+
+  if (!(await getFrotasEmpresa(await requireUserProfile(), abastecimento.prefeitura_id))) {
+    return { error: "Ordem não encontrada nesta empresa." };
   }
 
   if (abastecimento.status !== "issued") {
@@ -1360,7 +1404,8 @@ export async function registerAbastecimentoPrint(
       print_count: (abastecimento.print_count ?? 0) + 1,
       updated_at: new Date().toISOString(),
     })
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", abastecimento.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -1660,6 +1705,10 @@ export async function finishManutencao(
     };
   }
 
+  if (!(await getFrotasEmpresa(await requireUserProfile(), manutencao.prefeitura_id))) {
+    return { error: "Manutenção não encontrada nesta empresa." };
+  }
+
   if (
     profile.role !== "bdl_admin" &&
     manutencao.prefeitura_id !== profile.prefeitura_id
@@ -1762,6 +1811,10 @@ export async function addManutencaoAnexos(
     };
   }
 
+  if (!(await getFrotasEmpresa(await requireUserProfile(), manutencao.prefeitura_id))) {
+    return { error: "Manutenção não encontrada nesta empresa." };
+  }
+
   const attachmentError = await uploadMaintenanceAttachments({
     formData,
     manutencaoId: manutencao.id,
@@ -1799,7 +1852,7 @@ export async function deleteManutencaoAnexo(
   const supabase = createSupabaseServerClient();
   const { data: anexo, error: anexoError } = await supabase
     .from("frota_manutencao_anexos")
-    .select("id,file_path")
+    .select("id,file_path,prefeitura_id")
     .eq("id", id)
     .single();
 
@@ -1809,6 +1862,10 @@ export async function deleteManutencaoAnexo(
         anexoError?.message ?? "Documento não encontrado.",
       ),
     };
+  }
+
+  if (!(await getFrotasEmpresa(await requireUserProfile(), anexo.prefeitura_id))) {
+    return { error: "Documento não encontrado nesta empresa." };
   }
 
   const { error: storageError } = await supabase.storage
@@ -1822,7 +1879,8 @@ export async function deleteManutencaoAnexo(
   const { error } = await supabase
     .from("frota_manutencao_anexos")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("prefeitura_id", anexo.prefeitura_id);
 
   if (error) {
     return { error: formatSupabaseError(error.message) };
@@ -2571,7 +2629,7 @@ async function ensureVehiclePhotoBucket(
   const { error } = await supabase.storage.createBucket(vehiclePhotoBucket, {
     allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"],
     fileSizeLimit: maxVehiclePhotoSize,
-    public: true,
+    public: false,
   });
 
   if (!error || error.message.toLowerCase().includes("already exists")) {
