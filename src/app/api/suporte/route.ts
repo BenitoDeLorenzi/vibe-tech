@@ -17,18 +17,35 @@ export async function GET(request: Request) {
     if (id) {
       const ticket = await getSupportTicket(scope, id);
       if (!ticket) return fail("Atendimento não encontrado.", 404);
+      const ticketProfile = Array.isArray(ticket.perfis) ? ticket.perfis[0] : ticket.perfis;
       const before = params.get("before");
       if (before && !/^[1-9]\d{0,14}$/.test(before)) return fail("Página inválida.");
+      const after = params.get("after");
+      if (after && !/^[1-9]\d{0,14}$/.test(after)) return fail("Página inválida.");
+      if (before && after) return fail("Página inválida.");
       let query = db.from("suporte_mensagens").select("id,autor_id,autor_nome,suporte,tipo,texto,anexos,created_at")
-        .eq("conversa_id", id).order("id", { ascending: false }).limit(51);
+        .eq("conversa_id", id).order("id", { ascending: Boolean(after) }).limit(after ? 101 : 51);
       if (before) query = query.lt("id", before);
-      const { data, error } = await query;
+      if (after) query = query.gt("id", after);
+      const avatarPath = ticketProfile?.avatar_path;
+      const avatarRequest = !after && !before && scope.master && ticket.usuario_id && avatarPath?.startsWith(`${ticket.usuario_id}/`)
+        ? db.storage.from("profile-photos").createSignedUrl(avatarPath, 3600)
+        : Promise.resolve(null);
+      const [{ data, error }, { data: readings, error: readingsError }, avatar] = await Promise.all([
+        query,
+        db.from("suporte_leituras").select("usuario_id,ultima_id").eq("conversa_id", id),
+        avatarRequest,
+      ]);
       if (error) return fail("Não foi possível carregar as mensagens.", 500);
-      const messages = data.slice(0, 50).reverse().map(item => ({ ...item,
+      const messages = (after ? data.slice(0, 100) : data.slice(0, 50).reverse()).map(item => ({ ...item,
         anexos: (item.anexos as Array<{ name: string }>).map((file, index) => ({ name: file.name,
           url: `/api/suporte/anexo?${new URLSearchParams({ mode: scope.master ? "master" : "usuario", empresa: scope.empresa ?? "", mensagem: String(item.id), indice: String(index) })}` })),
       }));
-      return json({ ticket, messages, hasMore: data.length > 50 });
+      if (readingsError) return fail("Não foi possível carregar as confirmações de leitura.", 500);
+      const readByClient = readings?.find(item => item.usuario_id === ticket.usuario_id)?.ultima_id ?? 0;
+      const readBySupport = Math.max(0, ...(readings ?? []).filter(item => item.usuario_id !== ticket.usuario_id).map(item => item.ultima_id));
+      const userAvatarUrl = !after && !before ? scope.master ? avatar?.data?.signedUrl ?? null : scope.profile.avatar_url ?? null : null;
+      return json({ ticket: { ...ticket, perfis: ticketProfile ? { nome: ticketProfile.nome } : null }, messages, userAvatarUrl, hasMore: !after && data.length > 50, hasNewer: Boolean(after) && data.length > 100, readByClient, readBySupport });
     }
     const status = params.get("status") || null;
     if (status && !["waiting", "active", "resolved"].includes(status)) return fail("Status inválido.");
@@ -72,13 +89,21 @@ export async function POST(request: Request) {
   try {
     const ticket = await getSupportTicket(scope, id);
     const operation = String(form.get("operation") ?? "send");
-    if (operation === "read" || operation === "status") {
+    if (operation === "read" || operation === "status" || operation === "feedback") {
       if (!ticket) return fail("Atendimento não encontrado.", 404);
       if (operation === "read") {
         const last = Number(form.get("last"));
         if (!Number.isSafeInteger(last) || last <= 0) return fail("Mensagem inválida.");
         const { error } = await db.rpc("suporte_ler", { ...supportRpcScope(scope), p_conversa: id, p_ultima: last });
         return error ? fail("Não foi possível atualizar a leitura.", 500) : json({ ok: true });
+      }
+      if (operation === "feedback") {
+        if (scope.master) return fail("Somente o solicitante pode avaliar o atendimento.", 403);
+        const resolved = String(form.get("resolvido"));
+        const rating = Number(form.get("nota"));
+        if (!["true", "false"].includes(resolved) || !Number.isInteger(rating) || rating < 1 || rating > 5) return fail("Informe se o problema foi resolvido e uma nota de 1 a 5.");
+        const { error } = await db.rpc("suporte_avaliar", { p_usuario: scope.profile.id, p_empresa: scope.empresa, p_conversa: id, p_resolvido: resolved === "true", p_nota: rating });
+        return error ? fail("Esta avaliação não está mais disponível. Atualize o atendimento.", 409) : json({ ok: true });
       }
       const status = String(form.get("status"));
       if (!["waiting", "active", "resolved"].includes(status) || (!scope.master && !(ticket.status === "resolved" && status === "waiting"))) return fail("Alteração não permitida.", 403);

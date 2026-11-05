@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { SidebarMenuBadge } from "@/components/ui/sidebar";
 
 type SupportLive = { revision: number; unread: number; connected: boolean; refresh: () => void; base: string };
@@ -13,8 +13,16 @@ export function SupportLiveProvider({ master = false, empresa, children }: { mas
   const [revision, setRevision] = useState(0);
   const [unread, setUnread] = useState(0);
   const [connected, setConnected] = useState(false);
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const base = `/api/suporte?${new URLSearchParams({ mode: master ? "master" : "usuario", empresa: empresa ?? "" })}`;
-  const refresh = useCallback(() => setRevision(value => value + 1), []);
+  const refresh = useCallback(() => {
+    if (refreshTimer.current) return;
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null;
+      setRevision(value => value + 1);
+    }, 100);
+  }, []);
+  useEffect(() => () => { if (refreshTimer.current) clearTimeout(refreshTimer.current); }, []);
   useEffect(() => {
     const controller = new AbortController();
     void fetch(base, { cache: "no-store", signal: controller.signal }).then(response => response.ok ? response.json() : Promise.reject()).then(data => setUnread(data.unread)).catch(() => {});
@@ -22,14 +30,13 @@ export function SupportLiveProvider({ master = false, empresa, children }: { mas
   }, [base, revision]);
   useEffect(() => {
     const stream = new EventSource(base.replace("/api/suporte?", "/api/suporte/realtime?"));
-    let timer: ReturnType<typeof setTimeout>;
-    const changed = () => { clearTimeout(timer); timer = setTimeout(refresh, 150); };
+    const changed = () => refresh();
     stream.addEventListener("ready", () => { setConnected(true); changed(); });
     stream.addEventListener("changed", changed);
     stream.onerror = () => setConnected(false);
     const visible = () => { if (document.visibilityState === "visible") changed(); };
     document.addEventListener("visibilitychange", visible);
-    return () => { stream.close(); clearTimeout(timer); document.removeEventListener("visibilitychange", visible); };
+    return () => { stream.close(); document.removeEventListener("visibilitychange", visible); };
   }, [base, refresh]);
   return <Context.Provider value={{ base, revision, unread, connected, refresh }}>{children}</Context.Provider>;
 }

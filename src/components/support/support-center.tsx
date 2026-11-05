@@ -1,12 +1,17 @@
 "use client";
 
-import { createContext, useContext, useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { ArrowLeft, CheckCheck, CircleCheck, Clock3, Headset, ListFilter, LoaderCircle, MessageCircle, Paperclip, Plus, RotateCcw, Search, Send, X } from "lucide-react";
+import { ArrowLeft, Check, CheckCheck, CircleCheck, Clock3, Headset, ListFilter, LoaderCircle, MessageCircle, Paperclip, Plus, RotateCcw, Search, Send, Star, X } from "lucide-react";
 import { HeaderSeparator } from "@/components/header-separator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Bubble, BubbleContent } from "@/components/ui/bubble";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
+import { Message as ChatMessage, MessageAvatar, MessageContent } from "@/components/ui/message";
+import { MessageScroller, MessageScrollerButton, MessageScrollerContent, MessageScrollerItem, MessageScrollerProvider, MessageScrollerViewport } from "@/components/ui/message-scroller";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -25,7 +30,7 @@ import { cn } from "@/lib/utils";
 import { useSupportLive } from "./support-live";
 
 type Status = "waiting" | "active" | "resolved";
-type Ticket = { id: string; assunto: string; status: Status; usuario_id: string | null; solicitante_nome?: string; empresa: string; usuario: string; novas: number; updated_at: string; created_at?: string; origem?: string; empresas?: { nome: string }; perfis?: { nome: string } };
+type Ticket = { id: string; assunto: string; status: Status; usuario_id: string | null; solicitante_nome?: string; empresa: string; usuario: string; novas: number; updated_at: string; created_at?: string; origem?: string; feedback_resolvido?: boolean | null; feedback_nota?: number | null; feedback_respondido_em?: string | null; empresas?: { nome: string }; perfis?: { nome: string } };
 type Message = { id: number; autor_id: string; autor_nome: string; suporte: boolean; tipo: string; texto: string; created_at: string; anexos: Array<{ name: string; url: string }> };
 const statusMeta = {
   waiting: { label: "Aguardando atendimento", icon: Clock3, color: "border-transparent bg-amber-500/10 text-amber-700 dark:text-amber-400" },
@@ -33,6 +38,16 @@ const statusMeta = {
   resolved: { label: "Resolvido", icon: CircleCheck, color: "border-transparent bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
 };
 const date = (value: string) => new Date(value).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
+const messageTime = (value: string) => new Date(value).toLocaleTimeString("pt-BR", { timeZone: "America/Sao_Paulo", hour: "2-digit", minute: "2-digit" });
+const messageDay = (value: string) => new Date(value).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+const messageDayLabel = (value: string) => new Date(value).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "long", year: "numeric" });
+function SupportMessageAvatar({ support, name, src }: { support: boolean; name: string; src?: string | null }) {
+  const initials = name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "U";
+  return <MessageAvatar className="size-10 min-w-10 self-center"><Avatar className="size-10 ring-2 ring-background" aria-label={support ? "Atendente" : name}>
+    {!support && src && <AvatarImage src={src} alt={name} />}
+    <AvatarFallback className={support ? "bg-primary/10 text-primary" : "bg-muted text-sm font-medium"}>{support ? <Headset className="size-5" aria-hidden="true" /> : initials}</AvatarFallback>
+  </Avatar></MessageAvatar>;
+}
 function StatusBadge({ status }: { status: Status }) {
   const meta = statusMeta[status];
   return <Badge variant="outline" className={cn("gap-1.5 whitespace-nowrap", meta.color)}><meta.icon />{meta.label}</Badge>;
@@ -166,27 +181,59 @@ function TicketChat({ id, master, userId, onBack }: { id: string; master: boolea
   const { base, revision, connected, refresh } = useSupportLive();
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+  const [readReceipts, setReadReceipts] = useState({ client: 0, support: 0 });
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [atBottom, setAtBottom] = useState(true);
+  const [otherTyping, setOtherTyping] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
+  const followBottom = useRef(true);
   const lastRead = useRef(0);
+  const lastLoadedMessageId = useRef<number | null>(null);
   const initial = useRef(true);
-  const shouldScroll = useRef(true);
+  const lastAutoStart = useRef<string | null>(null);
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`${base}&conversa=${id}`, { cache: "no-store", signal: controller.signal }).then(async response => {
+    const after = lastLoadedMessageId.current;
+    void fetch(`${base}&conversa=${id}${after ? `&after=${after}` : ""}`, { cache: "no-store", signal: controller.signal }).then(async response => {
       const data = await response.json(); if (!response.ok) throw new Error(data.error); return data;
     }).then(data => {
       setTicket(data.ticket); setError("");
+      if (!after) setUserAvatarUrl(data.userAvatarUrl ?? null);
+      if (data.messages.length) lastLoadedMessageId.current = data.messages.at(-1).id;
+      setReadReceipts({ client: data.readByClient ?? 0, support: data.readBySupport ?? 0 });
       if (initial.current) { setHasMore(data.hasMore); initial.current = false; }
       setMessages(previous => { const merged = new Map(previous.map(item => [item.id, item])); for (const item of data.messages as Message[]) merged.set(item.id, item); return [...merged.values()].sort((a, b) => a.id - b.id); });
+      if (data.hasNewer) refresh();
     }).catch(error => { if (!controller.signal.aborted) setError(error.message); });
     return () => controller.abort();
-  }, [base, id, revision]);
-  useEffect(() => { if (shouldScroll.current && panel.current) panel.current.scrollTop = panel.current.scrollHeight; }, [messages]);
+  }, [base, id, revision, refresh]);
+  useLayoutEffect(() => {
+    if (followBottom.current && panel.current) panel.current.scrollTop = panel.current.scrollHeight;
+  }, [messages, otherTyping]);
+  useEffect(() => {
+    const stream = new EventSource(`${base.replace("/api/suporte?", "/api/suporte/realtime?")}&conversa=${encodeURIComponent(id)}`);
+    let expiry: ReturnType<typeof setTimeout>;
+    const typing = (event: Event) => {
+      const payload = JSON.parse((event as MessageEvent).data) as { senderId?: string; typing?: boolean };
+      if (payload.senderId === userId) return;
+      clearTimeout(expiry);
+      setOtherTyping(payload.typing === true);
+      if (payload.typing) expiry = setTimeout(() => setOtherTyping(false), 3500);
+    };
+    stream.addEventListener("typing", typing);
+    stream.addEventListener("changed", refresh);
+    return () => { stream.close(); clearTimeout(expiry); };
+  }, [base, id, refresh, userId]);
+  useEffect(() => {
+    if (!master || ticket?.status !== "waiting" || lastAutoStart.current === ticket.updated_at) return;
+    lastAutoStart.current = ticket.updated_at;
+    const form = new FormData(); form.set("operation", "status"); form.set("conversa", id); form.set("status", "active");
+    void sendForm(base, form).then(refresh).catch(error => setError((error as Error).message));
+  }, [base, id, master, refresh, ticket?.status, ticket?.updated_at]);
   const latest = messages.at(-1)?.id;
   const markRead = useCallback(async () => {
     if (!latest || latest <= lastRead.current || !atBottom || document.visibilityState !== "visible") return;
@@ -198,11 +245,11 @@ function TicketChat({ id, master, userId, onBack }: { id: string; master: boolea
   useEffect(() => { void markRead(); const visible = () => void markRead(); document.addEventListener("visibilitychange", visible); return () => document.removeEventListener("visibilitychange", visible); }, [markRead]);
   const older = async () => {
     setLoadingOlder(true);
+    followBottom.current = false;
     const height = panel.current?.scrollHeight ?? 0;
     try {
       const response = await fetch(`${base}&conversa=${id}&before=${messages[0]?.id}`, { cache: "no-store" });
       const data = await response.json(); if (!response.ok) throw new Error(data.error);
-      shouldScroll.current = false;
       setMessages(previous => { const merged = new Map(previous.map(item => [item.id, item])); for (const item of data.messages as Message[]) merged.set(item.id, item); return [...merged.values()].sort((a,b) => a.id-b.id); });
       setHasMore(data.hasMore);
       requestAnimationFrame(() => { if (panel.current) panel.current.scrollTop += panel.current.scrollHeight - height; });
@@ -217,15 +264,53 @@ function TicketChat({ id, master, userId, onBack }: { id: string; master: boolea
     <div className="flex shrink-0 items-center justify-between gap-3"><Button variant="outline" size="sm" onClick={onBack}><ArrowLeft />Voltar aos chamados</Button><LiveStatus connected={connected} /></div>
     {error && <ErrorNotice message={error} retry={refresh} />}
     {!ticket ? !error && <Card className="p-10 text-center text-sm text-muted-foreground"><LoaderCircle className="mx-auto mb-2 size-5 animate-spin" />Carregando chamado…</Card> : <Card className="min-h-0 flex-1 gap-0 overflow-hidden py-0">
-      <CardHeader className="max-h-[25dvh] shrink-0 overflow-y-auto border-b py-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 space-y-1"><CardTitle className="break-words">{ticket.assunto}</CardTitle>{master && <p className="truncate text-xs text-muted-foreground">{ticket.empresas?.nome} · {ticket.perfis?.nome ?? ticket.solicitante_nome}</p>}</div><div className="flex flex-wrap items-center gap-2"><StatusBadge status={ticket.status} />{ticket.status === "resolved" ? <Button variant="outline" size="sm" disabled={busy} onClick={() => void changeStatus("waiting")}><RotateCcw />Reabrir</Button> : master && <>{ticket.status === "waiting" && <Button variant="outline" size="sm" disabled={busy} onClick={() => void changeStatus("active")}><Headset />Iniciar atendimento</Button>}<Button variant="outline" size="sm" disabled={busy} onClick={() => void changeStatus("resolved")}><CheckCheck />Resolver</Button></>}</div></div></CardHeader>
-      <div ref={panel} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-muted/20 p-4" role="log" aria-label="Chat do chamado" aria-live="polite" onScroll={event => { const node = event.currentTarget; const bottom = node.scrollHeight - node.scrollTop - node.clientHeight < 40; shouldScroll.current = bottom; setAtBottom(bottom); }}>
-        {hasMore && <div className="text-center"><Button size="sm" variant="outline" disabled={loadingOlder} onClick={() => void older()}>{loadingOlder ? "Carregando…" : "Carregar mensagens anteriores"}</Button></div>}
-        {messages.map(message => message.tipo === "status" ? <div key={message.id} className="text-center text-xs text-muted-foreground">{message.autor_nome} · {message.texto} · {date(message.created_at)}</div> : <div key={message.id} className={cn("flex", message.autor_id === userId ? "justify-end" : "justify-start")}><div className={cn("max-w-[90%] space-y-2 rounded-xl border p-3 sm:max-w-[75%]", message.autor_id === userId ? "border-primary/15 bg-primary/5" : "bg-background")}><div className="flex flex-wrap items-center gap-2 text-xs"><span className="font-semibold">{message.autor_nome}</span>{message.suporte && <Badge variant="secondary" className="text-[10px]">Vibe Tech</Badge>}<time className="text-muted-foreground" dateTime={message.created_at}>{date(message.created_at)}</time></div>{message.texto && <p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{message.texto}</p>}{message.anexos.length > 0 && <div className="flex flex-wrap gap-2">{message.anexos.map(file => <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="max-w-full break-all rounded-md border bg-background p-2 text-sm underline-offset-4 hover:underline" aria-label={`Abrir imagem ${file.name}`}><Paperclip className="mr-1 inline size-4" />{file.name}</a>)}</div>}</div></div>)}
-      </div>
-      {!atBottom && <Button size="sm" variant="ghost" className="shrink-0" onClick={() => { if (panel.current) panel.current.scrollTop = panel.current.scrollHeight; shouldScroll.current = true; setAtBottom(true); }}>Ir para as mensagens mais recentes</Button>}
-      <div className="shrink-0 border-t bg-background p-3">{ticket.status === "resolved" ? <p className="text-center text-sm text-muted-foreground">Chamado resolvido. Reabra o chamado se precisar continuar neste chat.</p> : <Composer ticket={id} onSent={() => { shouldScroll.current = true; setAtBottom(true); refresh(); }} />}</div>
+      <CardHeader className="max-h-[25dvh] shrink-0 overflow-y-auto border-b py-3"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 space-y-1"><CardTitle className="break-words">{ticket.assunto}</CardTitle><p className="truncate text-xs text-muted-foreground">{master && ticket.empresas?.nome ? `${ticket.empresas.nome} · ` : ""}Aberto por {ticket.perfis?.nome ?? ticket.solicitante_nome ?? "Usuário"}</p></div><div className="flex flex-wrap items-center gap-2"><StatusBadge status={ticket.status} />{ticket.status === "resolved" ? (master || ticket.feedback_respondido_em) && <Button variant="outline" size="sm" disabled={busy} onClick={() => void changeStatus("waiting")}><RotateCcw />Reabrir</Button> : master && <Button variant="outline" size="sm" disabled={busy} onClick={() => void changeStatus("resolved")}><CheckCheck />Resolver</Button>}</div></div></CardHeader>
+      <MessageScrollerProvider>
+        <MessageScroller className="min-h-0 flex-1 bg-muted/20">
+          <MessageScrollerViewport ref={panel} role="log" aria-label="Chat do chamado" aria-live="polite" onScroll={event => { const node = event.currentTarget; const bottom = node.scrollHeight - node.scrollTop - node.clientHeight < 40; followBottom.current = bottom; setAtBottom(bottom); }}>
+            <MessageScrollerContent className="gap-4 p-4">
+              {hasMore && <div className="text-center"><Button size="sm" variant="outline" disabled={loadingOlder} onClick={() => void older()}>{loadingOlder ? "Carregando…" : "Carregar mensagens anteriores"}</Button></div>}
+              {messages.map((message, index) => <MessageScrollerItem key={message.id} messageId={String(message.id)} className="space-y-3">
+                {(index === 0 || messageDay(messages[index - 1].created_at) !== messageDay(message.created_at)) && <div className="flex justify-center"><time dateTime={messageDay(message.created_at)} className="rounded-full bg-background px-3 py-1 text-[11px] font-medium text-muted-foreground shadow-sm ring-1 ring-border/70">{messageDayLabel(message.created_at)}</time></div>}
+                {message.tipo === "status" ? <p className="text-center text-xs text-muted-foreground">{message.texto} · {messageTime(message.created_at)}</p> : <ChatMessage align={message.autor_id === userId ? "end" : "start"}>
+                  <SupportMessageAvatar support={message.suporte} name={message.autor_nome} src={userAvatarUrl} />
+                  <MessageContent className="max-w-[90%] sm:max-w-[75%]">
+                    <Bubble align={message.autor_id === userId ? "end" : "start"} variant={message.autor_id === userId ? "muted" : "outline"} className="max-w-full">
+                      <BubbleContent className="w-full space-y-2">{message.texto && <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.texto}</p>}{message.anexos.length > 0 && <div className="flex flex-wrap gap-2">{message.anexos.map(file => <a key={file.url} href={file.url} target="_blank" rel="noreferrer" className="max-w-full break-all rounded-md border bg-background p-2 text-sm underline-offset-4 hover:underline" aria-label={`Abrir imagem ${file.name}`}><Paperclip className="mr-1 inline size-4" />{file.name}</a>)}</div>}<div className="flex items-center justify-end gap-1.5 text-[10px] text-muted-foreground"><time dateTime={message.created_at}>{messageTime(message.created_at)}</time>{message.autor_id === userId && <span className="inline-flex items-center" title={message.id <= (master ? readReceipts.client : readReceipts.support) ? "Lida" : "Entregue"} aria-label={message.id <= (master ? readReceipts.client : readReceipts.support) ? "Mensagem lida" : "Mensagem entregue"}>{message.id <= (master ? readReceipts.client : readReceipts.support) ? <CheckCheck className="size-3.5 text-sky-600" /> : <Check className="size-3.5" />}</span>}</div></BubbleContent>
+                    </Bubble>
+                  </MessageContent>
+                </ChatMessage>}
+              </MessageScrollerItem>)}
+              {otherTyping && <MessageScrollerItem messageId="typing" aria-live="polite"><ChatMessage><SupportMessageAvatar support={!master} name={ticket.perfis?.nome ?? ticket.solicitante_nome ?? "Usuário"} src={userAvatarUrl} /><MessageContent><Bubble variant="muted"><BubbleContent className="flex items-center gap-1 py-3" aria-label="Digitando"><span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" /><span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" /><span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" /></BubbleContent></Bubble></MessageContent></ChatMessage></MessageScrollerItem>}
+            </MessageScrollerContent>
+          </MessageScrollerViewport>
+          <MessageScrollerButton aria-label="Ir para as mensagens mais recentes" />
+        </MessageScroller>
+      </MessageScrollerProvider>
+      <div className="shrink-0 border-t bg-background p-3">{ticket.status === "resolved" ? !master && !ticket.feedback_respondido_em ? <ResolutionFeedback base={base} ticketId={id} onSent={refresh} /> : <p className="text-center text-sm text-muted-foreground">{ticket.feedback_respondido_em ? `Avaliação registrada: ${ticket.feedback_nota}/5 estrelas.` : "Chamado resolvido. Reabra o chamado se precisar continuar neste chat."}</p> : <Composer ticket={id} onSent={() => { followBottom.current = true; setAtBottom(true); refresh(); }} />}</div>
     </Card>}
   </>;
+}
+
+function ResolutionFeedback({ base, ticketId, onSent }: { base: string; ticketId: string; onSent: () => void }) {
+  const [resolved, setResolved] = useState<boolean | null>(null);
+  const [rating, setRating] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const submit = async () => {
+    if (resolved === null || rating < 1 || busy) return;
+    setBusy(true); setError("");
+    const form = new FormData();
+    form.set("operation", "feedback"); form.set("conversa", ticketId);
+    form.set("resolvido", String(resolved)); form.set("nota", String(rating));
+    try { await sendForm(base, form); onSent(); } catch (cause) { setError((cause as Error).message); } finally { setBusy(false); }
+  };
+  return <div className="mx-auto max-w-md space-y-3 py-2 text-center">
+    <div><p className="font-medium">O atendimento resolveu seu problema?</p><p className="text-xs text-muted-foreground">Sua resposta nos ajuda a melhorar o suporte.</p></div>
+    <div className="flex justify-center gap-2"><Button type="button" variant={resolved === true ? "default" : "outline"} size="sm" onClick={() => setResolved(true)}>Sim, resolveu</Button><Button type="button" variant={resolved === false ? "default" : "outline"} size="sm" onClick={() => setResolved(false)}>Ainda preciso de ajuda</Button></div>
+    {resolved !== null && <div className="space-y-2"><p className="text-sm">Como você avalia o atendimento?</p><div className="flex justify-center gap-1" role="group" aria-label="Nota do atendimento">{[1, 2, 3, 4, 5].map(value => <Button key={value} type="button" variant="ghost" size="icon-sm" aria-label={`${value} ${value === 1 ? "estrela" : "estrelas"}`} aria-pressed={rating === value} onClick={() => setRating(value)}><Star className={cn("size-5", value <= rating ? "fill-amber-400 text-amber-500" : "text-muted-foreground")} /></Button>)}</div><Button type="button" className="w-full" disabled={!rating || busy} onClick={() => void submit()}>{busy ? <LoaderCircle className="animate-spin" /> : <CheckCheck />}{busy ? "Enviando avaliação…" : "Enviar avaliação"}</Button></div>}
+    {error && <ErrorNotice message={error} />}
+  </div>;
 }
 
 function Composer({ ticket, isNew = false, onSent, onCancel }: { ticket?: string; isNew?: boolean; onSent: (id: string) => void; onCancel?: () => void }) {
@@ -236,7 +321,29 @@ function Composer({ ticket, isNew = false, onSent, onCancel }: { ticket?: string
   const ids = useId();
   const request = useRef<string | null>(null);
   const conversation = useRef<string | null>(ticket ?? null);
+  const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingThrottleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingThrottled = useRef(false);
+  const typingActive = useRef(false);
   const [error, setError] = useState("");
+  const sendTyping = (typing: boolean) => {
+    if (!ticket) return;
+    if (typingTimer.current) clearTimeout(typingTimer.current);
+    if (typing && typingThrottled.current) {
+      typingTimer.current = setTimeout(() => sendTyping(false), 2500);
+      return;
+    }
+    if (!typing && !typingActive.current) return;
+    typingActive.current = typing;
+    if (typing) {
+      typingThrottled.current = true;
+      typingThrottleTimer.current = setTimeout(() => { typingThrottled.current = false; }, 1200);
+    }
+    const url = `${base.replace("/api/suporte?", "/api/suporte/realtime?")}&conversa=${encodeURIComponent(ticket)}`;
+    void fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ typing }), keepalive: !typing }).catch(() => {});
+    if (typing) typingTimer.current = setTimeout(() => sendTyping(false), 2500);
+  };
+  useEffect(() => () => { if (typingTimer.current) clearTimeout(typingTimer.current); if (typingThrottleTimer.current) clearTimeout(typingThrottleTimer.current); }, []);
   const selectFiles = (selected: FileList | null) => {
     const next = [...files];
     for (const file of Array.from(selected ?? [])) {
@@ -260,19 +367,25 @@ function Composer({ ticket, isNew = false, onSent, onCancel }: { ticket?: string
     try { origin = window.sessionStorage.getItem("frotas-support-origin") ?? origin; } catch {}
     form.set("origem", origin);
     for (const file of files) form.append("imagens", file);
-    try { const result = await sendForm(base, form); reset(); setFiles([]); request.current = null; onSent(result.conversa); } catch (error) { setError((error as Error).message); }
+    try { const result = await sendForm(base, form); sendTyping(false); reset(); setFiles([]); request.current = null; onSent(result.conversa); } catch (error) { setError((error as Error).message); }
   };
+  const chatMessageField = !isNew ? register("texto", { maxLength: { value: 5000, message: "Use até 5.000 caracteres." } }) : null;
   if (!isNew) return <form noValidate onSubmit={event => void handleSubmit(submit)(event)} className="space-y-2">
     {files.length > 0 && <ul className="flex max-h-24 flex-wrap gap-2 overflow-y-auto">{files.map((file, index) => <li key={`${file.name}-${file.lastModified}-${file.size}`} className="flex min-w-0 max-w-full items-center gap-2 rounded-lg border bg-muted/30 py-1 pl-2 pr-1">
       <Paperclip className="size-3.5 shrink-0 text-muted-foreground" /><span className="max-w-48 truncate text-xs" title={file.name}>{file.name}</span>
       <Tooltip><TooltipTrigger render={<Button type="button" variant="destructive" size="icon-sm" disabled={isSubmitting} aria-label={`Remover imagem ${file.name}`} onClick={() => { setFiles(previous => previous.filter((_, position) => position !== index)); setError(""); }} />}><X /></TooltipTrigger><TooltipContent>Remover imagem</TooltipContent></Tooltip>
     </li>)}</ul>}
     {error && <ErrorNotice message={error} />}
-    <fieldset disabled={isSubmitting} className="flex min-w-0 items-end gap-2 disabled:opacity-60">
+    <fieldset disabled={isSubmitting} className="min-w-0 disabled:opacity-60">
       <input ref={fileInput} className="hidden" type="file" multiple accept="image/jpeg,image/png,image/webp" aria-label="Selecionar imagens" onChange={event => { selectFiles(event.target.files); event.target.value = ""; }} />
-      <Tooltip><TooltipTrigger render={<Button type="button" variant="outline" size="icon" className="size-10 shrink-0" disabled={files.length >= 3 || isSubmitting} aria-label="Anexar imagens" onClick={() => fileInput.current?.click()} />}><Paperclip /></TooltipTrigger><TooltipContent>Anexar imagens · até 3 imagens, máximo de 3 MB</TooltipContent></Tooltip>
-      <div className="min-w-0 flex-1"><Label className="sr-only" htmlFor={`${ids}-texto`}>Mensagem</Label><Textarea id={`${ids}-texto`} rows={1} className="h-10 min-h-10 resize-none field-sizing-fixed py-2.5" placeholder="Escreva sua mensagem…" aria-invalid={!!errors.texto} {...register("texto", { maxLength: { value: 5000, message: "Use até 5.000 caracteres." } })} /></div>
-      <Tooltip><TooltipTrigger render={<Button type="submit" className="h-10 shrink-0 gap-2" disabled={isSubmitting} aria-label={isSubmitting ? "Enviando mensagem" : "Enviar mensagem"} />}>{isSubmitting ? <LoaderCircle className="animate-spin" /> : <Send />}<span className="hidden sm:inline">{isSubmitting ? "Enviando…" : "Enviar"}</span></TooltipTrigger><TooltipContent>Enviar mensagem</TooltipContent></Tooltip>
+      <InputGroup className="h-auto flex-col items-stretch rounded-2xl bg-background shadow-sm">
+        <Label className="sr-only" htmlFor={`${ids}-texto`}>Mensagem</Label>
+        <InputGroupTextarea id={`${ids}-texto`} rows={2} className="max-h-36 min-h-16 resize-none px-3 py-2.5" placeholder="Escreva sua mensagem…" aria-invalid={!!errors.texto} {...chatMessageField} onChange={event => { void chatMessageField?.onChange(event); sendTyping(Boolean(event.currentTarget.value.trim())); }} onBlur={event => { void chatMessageField?.onBlur(event); sendTyping(false); }} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} />
+        <InputGroupAddon align="block-end" className="justify-between border-t px-2 py-1.5">
+          <Tooltip><TooltipTrigger render={<InputGroupButton type="button" variant="ghost" size="icon-sm" disabled={files.length >= 3 || isSubmitting} aria-label="Anexar imagens" onClick={() => fileInput.current?.click()} />}><Paperclip /></TooltipTrigger><TooltipContent>Anexar imagens · até 3 imagens, máximo de 3 MB</TooltipContent></Tooltip>
+          <Tooltip><TooltipTrigger render={<InputGroupButton type="submit" variant="default" size="icon-sm" disabled={isSubmitting} aria-label={isSubmitting ? "Enviando mensagem" : "Enviar mensagem"} />}>{isSubmitting ? <LoaderCircle className="animate-spin" /> : <Send />}</TooltipTrigger><TooltipContent>Enviar mensagem</TooltipContent></Tooltip>
+        </InputGroupAddon>
+      </InputGroup>
     </fieldset>
     {errors.texto && <p className="text-sm text-destructive">{errors.texto.message}</p>}
   </form>;

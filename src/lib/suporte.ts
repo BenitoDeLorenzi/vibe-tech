@@ -24,7 +24,7 @@ export type SupportScope = NonNullable<Awaited<ReturnType<typeof getSupportScope
 export async function getSupportTicket(scope: SupportScope, id: string) {
   if (!isUuid(id)) return null;
   let query = createSupabaseServerClient().from("suporte_conversas")
-    .select("id,empresa_id,usuario_id,solicitante_nome,assunto,origem,status,created_at,updated_at,empresas(nome),perfis!suporte_conversas_usuario_id_fkey(nome)").eq("id", id);
+    .select("id,empresa_id,usuario_id,solicitante_nome,assunto,origem,status,feedback_resolvido,feedback_nota,feedback_respondido_em,created_at,updated_at,empresas(nome),perfis!suporte_conversas_usuario_id_fkey(nome,avatar_path)").eq("id", id);
   if (!scope.master) query = query.eq("usuario_id", scope.profile.id).eq("empresa_id", scope.empresa);
   const { data, error } = await query.maybeSingle();
   if (error) throw new Error("Não foi possível carregar o atendimento.", { cause: error.code });
