@@ -257,7 +257,7 @@ body {
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-jakarta-sans);
+  --font-sans: var(--font-manrope);
   --font-mono: var(--font-jetbrains-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -365,6 +365,74 @@ body {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Vibe Frotas has its own quiet blue palette. The body scope also themes
+   dialogs and drawers rendered in portals outside the module wrapper. */
+body:has([data-vibe-frotas]) {
+  --background: #f7faff;
+  --foreground: #162b46;
+  --card: #ffffff;
+  --card-foreground: #162b46;
+  --popover: #ffffff;
+  --popover-foreground: #162b46;
+  --primary: #174a8b;
+  --primary-foreground: #ffffff;
+  --secondary: #eaf2fc;
+  --secondary-foreground: #193e72;
+  --muted: #f0f5fb;
+  --muted-foreground: #60728a;
+  --accent: #e8f1fc;
+  --accent-foreground: #173f77;
+  --border: #dfe8f3;
+  --input: #d9e4f0;
+  --ring: #4b8bd3;
+  --chart-1: #174a8b;
+  --chart-2: #2f79bc;
+  --chart-3: #55a3cf;
+  --chart-4: #8fc6df;
+  --chart-5: #c2e0ed;
+  --sidebar: #eef4fb;
+  --sidebar-foreground: #213a57;
+  --sidebar-primary: #174a8b;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e0ecf9;
+  --sidebar-accent-foreground: #143a70;
+  --sidebar-border: #d8e4f0;
+  --sidebar-ring: #4b8bd3;
+}
+
+.dark body:has([data-vibe-frotas]) {
+  --background: #0d1725;
+  --foreground: #e8f0fa;
+  --card: #142236;
+  --card-foreground: #e8f0fa;
+  --popover: #17263b;
+  --popover-foreground: #e8f0fa;
+  --primary: #8fc0ff;
+  --primary-foreground: #102440;
+  --secondary: #1e344d;
+  --secondary-foreground: #dcecff;
+  --muted: #1a2d43;
+  --muted-foreground: #a1b4cb;
+  --accent: #24466b;
+  --accent-foreground: #e8f3ff;
+  --border: #2b4058;
+  --input: #36516d;
+  --ring: #8fc0ff;
+  --chart-1: #8fc0ff;
+  --chart-2: #64a8e9;
+  --chart-3: #3c84c9;
+  --chart-4: #2a659f;
+  --chart-5: #1e4c7b;
+  --sidebar: #111f31;
+  --sidebar-foreground: #dceafa;
+  --sidebar-primary: #8fc0ff;
+  --sidebar-primary-foreground: #102440;
+  --sidebar-accent: #1d3856;
+  --sidebar-accent-foreground: #e5f2ff;
+  --sidebar-border: #29435d;
+  --sidebar-ring: #8fc0ff;
 }
 
 @layer base {

@@ -9,7 +9,6 @@ export async function getNotificationScope(empresa: string | null) {
   if (!(await hasModuleAccess(profile, "frotas-publicas"))) return null;
   const access = await getFrotasPermissionAccess(profile);
   const tipos = [
-    "suporte",
     ...(access.canViewAbastecimento ? ["abastecimento"] : []),
     ...(access.canViewManutencao ? ["manutencao"] : []),
     ...(access.canViewUsoVeiculo ? ["uso_veiculo"] : []),

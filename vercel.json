@@ -1,5 +1,11 @@
 {
+  "functions": {
+    "src/app/api/frotas/veiculos/atualizacoes/queue/route.ts": {
+      "experimentalTriggers": [{ "type": "queue/v2beta", "topic": "vehicle-monthly-updates" }]
+    }
+  },
   "crons": [
-    { "path": "/api/inter/reconcile", "schedule": "0 9 * * *" }
+    { "path": "/api/inter/reconcile", "schedule": "0 9 * * *" },
+    { "path": "/api/frotas/veiculos/atualizacoes/worker", "schedule": "15 9 * * *" }
   ]
 }

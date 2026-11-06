@@ -8,6 +8,7 @@ import { requireAuthenticatedProfile, requireUserProfile } from "@/lib/auth-data
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { createSupabaseAuthServerClient } from "@/lib/supabase-auth-server";
 import { buildProfileVerificationOtpEmail } from "@/lib/otp-email";
+import { emailLogoAttachment } from "@/lib/email-brand";
 
 function emailCodeHash(userId: string, email: string, code: string) {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -78,6 +79,7 @@ export async function enviarCodigoVerificacaoPerfil() {
       to: current.email_contato,
       subject: "Confirme seu e-mail de recuperação — Vibe Tech",
       ...buildProfileVerificationOtpEmail(current.nome, code),
+      attachments: [emailLogoAttachment()],
     });
   } catch {
     await db.from("perfil_email_confirmacoes").delete().eq("token_hash", tokenHash);

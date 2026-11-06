@@ -8,6 +8,7 @@ import { requireAuthenticatedProfile } from "@/lib/auth-data";
 import { createSupabaseAuthServerClient } from "@/lib/supabase-auth-server";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { buildFirstAccessOtpEmail } from "@/lib/otp-email";
+import { emailLogoAttachment } from "@/lib/email-brand";
 import { CONTACT_EMAIL_IN_USE, isContactEmailInUse, isContactEmailUniqueViolation } from "@/lib/contact-email";
 
 export type FirstAccessState = { error?: string; success?: string; senhaAlterada?: boolean };
@@ -82,6 +83,7 @@ export async function salvarPrimeiroAcesso(
       from: 'Vibe Tech <vibe.tech.gestao@gmail.com>', to: email,
       subject: "Código de verificação — Vibe Tech",
       ...emailContent,
+      attachments: [emailLogoAttachment()],
     });
   } catch {
     await db.from("perfil_email_confirmacoes").delete().eq("token_hash", tokenHash);

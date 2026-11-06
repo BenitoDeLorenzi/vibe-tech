@@ -4,6 +4,7 @@ import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 
 import nodemailer from "nodemailer";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { buildPasswordRecoveryOtpEmail } from "@/lib/otp-email";
+import { emailLogoAttachment } from "@/lib/email-brand";
 
 function hashCode(userId: string, email: string, code: string) {
   const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -67,6 +68,7 @@ export async function solicitarCodigoRecuperacao(cpfInput: string) {
       to: profile.email_contato,
       subject: "Código para redefinir sua senha — Vibe Tech",
       ...buildPasswordRecoveryOtpEmail(profile.nome, code),
+      attachments: [emailLogoAttachment()],
     });
   } catch {
     await db.from("perfil_senha_recuperacoes")

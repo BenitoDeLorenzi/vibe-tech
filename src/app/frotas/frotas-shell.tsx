@@ -55,11 +55,11 @@ export async function FrotasShell({
     <>
       {!loading && <FrotasCompanyScope empresa={selectedPrefeituraId} />}
       <MobileBrandBar section="Frotas" />
-      <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
+      <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-card/85 px-4 print:hidden">
         <SidebarTrigger className="-ml-1" />
         <HeaderSeparator />
         <div className="flex min-w-0 items-center gap-2 md:shrink-0">
-          {Icon ? <Icon className="size-5 text-muted-foreground" /> : null}
+          {Icon ? <Icon className="size-5 text-primary" /> : null}
           <h1 className="truncate text-base font-semibold tracking-normal md:text-xl">
             {title}
           </h1>

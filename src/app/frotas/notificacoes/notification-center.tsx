@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
-import { Bell, Fuel, Wrench, KeyRound, Headset, CircleCheck, CircleX, ArrowUpRight } from "lucide-react";
+import { Bell, Fuel, Wrench, KeyRound, CircleCheck, CircleX, ArrowUpRight } from "lucide-react";
 import { TableLoadingRows } from "@/components/table-loading";
 import { Badge } from "@/components/ui/badge";
 import { SidebarMenuBadge } from "@/components/ui/sidebar";
@@ -13,8 +13,7 @@ import { ListMetrics } from "@/components/list-metrics";
 import { cn } from "@/lib/utils";
 
 type Notification = {
-  tipo: "abastecimento" | "manutencao" | "uso_veiculo" | "suporte";
-  suporte_id: string | null;
+  tipo: "abastecimento" | "manutencao" | "uso_veiculo";
   manutencao_id: string | null; uso_id: string | null;
   id: number; ordem_id: string | null; evento: "issued" | "completed" | "cancelled";
   numero_ordem: string; veiculo: string; posto: string | null; responsavel: string | null;
@@ -115,7 +114,6 @@ const events = {
 };
 
 const activities = {
-  suporte: { title: "Atendimento", icon: Headset, color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400", route: "ajuda", issued: "Resposta", completed: "Resolvida" },
   abastecimento: { title: "Abastecimento", icon: Fuel, color: "bg-blue-500/10 text-blue-600 dark:text-blue-400", route: "abastecimento", issued: "Emitida", completed: "Concluída" },
   manutencao: { title: "Manutenção", icon: Wrench, color: "bg-amber-500/10 text-amber-600 dark:text-amber-400", route: "manutencao", issued: "Aberta", completed: "Concluída" },
   uso_veiculo: { title: "Uso do veículo", icon: KeyRound, color: "bg-violet-500/10 text-violet-600 dark:text-violet-400", route: "uso-veiculo", issued: "Retirada", completed: "Devolvida" },
@@ -136,12 +134,12 @@ function NotificationRow({ item, center }: { item: Notification; center: Center 
   }, [item.id, item.lida, read]);
   const event = events[item.evento];
   const activity = activities[item.tipo];
-  const recordId = item.tipo === "suporte" ? item.suporte_id : item.tipo === "manutencao" ? item.manutencao_id : item.tipo === "uso_veiculo" ? item.uso_id : item.ordem_id;
+  const recordId = item.tipo === "manutencao" ? item.manutencao_id : item.tipo === "uso_veiculo" ? item.uso_id : item.ordem_id;
   const statusTitle = item.evento === "cancelled" ? event.title : activity[item.evento];
   const StatusIcon = item.evento === "issued" ? activity.icon : event.icon;
   const query = new URLSearchParams({ prefeitura: center.empresa });
   if (recordId) {
-    query.set(item.tipo === "suporte" ? "conversa" : item.tipo === "abastecimento" ? "ordem" : "registro", recordId);
+    query.set(item.tipo === "abastecimento" ? "ordem" : "registro", recordId);
     if (item.tipo === "abastecimento") query.set("q", item.numero_ordem);
   }
   return <TableRow ref={ref} className={cn(highlight && "bg-blue-500/5")}>

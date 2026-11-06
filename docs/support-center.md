@@ -5,7 +5,7 @@
 - A primeira mensagem abre o chamado com seu próprio chat. Resposta do usuário deixa **Aguardando atendimento**; resposta do suporte deixa **Em atendimento**. O Master pode iniciar, resolver e reabrir; o solicitante pode reabrir um chamado resolvido.
 - Mensagens aceitam até 5.000 caracteres e até três imagens JPG/PNG/WebP, com 3 MB de limite total por envio. O servidor valida, redimensiona e converte as imagens para WebP, removendo metadados. Os arquivos são privados e sua leitura verifica novamente a sessão e o acesso ao chamado.
 - O contador do Master considera mensagens de outros autores não lidas por aquele Master. A leitura só avança quando o chat está visível e posicionado nas mensagens mais recentes; é individual por usuário e nunca retrocede.
-- Respostas e resoluções feitas pelo suporte geram notificações privadas para o solicitante no Vibe Frotas, sem exposição aos colegas da empresa.
+- Respostas e resoluções aparecem na própria Central de Ajuda; atendimentos não entram na lista nem no contador de Notificações do Vibe Frotas.
 - A tabela pagina 25 chamados; o chat carrega 50 mensagens recentes com acesso às anteriores. Pesquisa por assunto, empresa/usuário (Master) e status.
 - A origem é o caminho da tela de onde o usuário entrou na ajuda pelo sidebar, sem parâmetros de URL.
 - Ao excluir um usuário, o histórico fica preservado para o Master com os nomes registrados nas mensagens e na abertura do chamado; outro usuário não pode assumir esse chamado.

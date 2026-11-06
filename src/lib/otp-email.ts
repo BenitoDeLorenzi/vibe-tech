@@ -1,3 +1,5 @@
+import { emailFontFamily, emailFontHead, emailLogoHtml } from "@/lib/email-brand";
+
 export function buildFirstAccessOtpEmail(name: string, code: string) {
   return buildOtpEmail(name, code, "first-access");
 }
@@ -20,16 +22,13 @@ function buildOtpEmail(name: string, code: string, purpose: "first-access" | "pr
 
   const html = `<!doctype html>
 <html lang="pt-BR">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${passwordRecovery ? "Código de recuperação" : "Código de verificação"} · Vibe Tech</title></head>
-<body style="margin:0;padding:0;background-color:#f3f5f9;color:#172033;font-family:Arial,Helvetica,sans-serif;">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${passwordRecovery ? "Código de recuperação" : "Código de verificação"} · Vibe Tech</title>${emailFontHead}</head>
+<body style="margin:0;padding:0;background-color:#f3f5f9;color:#172033;font-family:${emailFontFamily};">
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Seu código para ${context} vence em 10 minutos.</div>
   <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color:#f3f5f9;"><tr><td align="center" style="padding:32px 16px;">
     <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width:560px;background-color:#ffffff;border:1px solid #e4e9f1;border-radius:14px;overflow:hidden;">
       <tr><td style="background-color:#0b1535;border-top:4px solid #0b7dff;padding:25px 32px;">
-        <table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>
-          <td style="width:36px;height:36px;border-radius:8px;background-color:#075bea;color:#ffffff;text-align:center;font-size:15px;font-weight:700;letter-spacing:-1px;">VT</td>
-          <td style="padding-left:12px;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:1px;">VIBE <span style="font-weight:400;">TECH</span></td>
-        </tr></table>
+        ${emailLogoHtml}
       </td></tr>
       <tr><td style="padding:34px 32px 30px;">
         <p style="margin:0 0 10px;color:#075bea;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">${firstAccess ? "Primeiro acesso" : "Segurança da conta"}</p>

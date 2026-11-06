@@ -15,6 +15,7 @@ import {
   CircleCheck,
   CircleX,
   ClipboardCheck,
+  RefreshCw,
   LoaderCircle,
   Clock3,
   Pencil,
@@ -166,13 +167,13 @@ export default async function FrotasPage({ searchParams, loading = false }: Page
       <FrotasToasts deleted={params.deleted} error={params.error} />
         <main className="flex min-h-full flex-col gap-3 p-4">
             <Card className="frotas-list-card flex flex-1 flex-col">
-              <ListPanelHeader mobileMetricsOnly title="Veículos cadastrados" icon={Car} metrics={<ListMetrics
+              <ListPanelHeader mobileMetricsOnly title="Veículos cadastrados" icon={Car} metrics={<div className="flex flex-wrap items-center gap-2"><ListMetrics
                 loading={loading}
                     items={[
                       { label: "Ativos", value: (databasePage.statuses.active ?? 0), tone: "success" },
                       { label: "Total", value: databasePage.total },
                     ]}
-                  />} />
+                  /><Link href={`/frotas/veiculos/atualizacoes${data.selectedPrefeituraId ? `?prefeitura=${data.selectedPrefeituraId}` : ""}`} className={buttonVariants({ variant: "outline", className: "h-8 gap-2" })}><RefreshCw className="size-4" />Atualizar veículos</Link></div>} />
               <CardContent className="flex flex-1 flex-col">
                 {loading || data.veiculos.length ? (
                   <FrotasResponsiveTable page={vehiclePage.page} pageCount={vehiclePage.pageCount} total={vehiclePage.total} count={vehiclePage.items.length} pathname="/frotas/veiculos" params={{ prefeitura: data.selectedPrefeituraId, q: params.q, status: params.status }} loading={loading}>

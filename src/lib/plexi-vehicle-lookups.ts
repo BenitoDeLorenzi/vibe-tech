@@ -22,8 +22,24 @@ export async function processVehicleLookup(vehicleId: string) {
   const vehicle = await db.from("frota_veiculos").select("status").eq("id", vehicleId).maybeSingle();
   if (vehicle.error) throw new Error(vehicle.error.message);
   if (!vehicle.data || vehicle.data.status !== "processing") return false;
+  return processLookup(lookup, true);
+}
+
+export async function processMonthlyVehicleLookup(lookupId: string) {
+  const db = createSupabaseServerClient();
+  const { data, error } = await db.from("frota_debito_consultas")
+    .select("id,veiculo_id,prefeitura_id,license_plate,renavam,id_consult,status,updated_at,response_payload")
+    .eq("id", lookupId).eq("provider", "plexi").eq("request_payload->>purpose", "monthly")
+    .single();
+  if (error || !data) throw new Error("Consulta mensal não encontrada.");
+  return processLookup(data as Lookup, false);
+}
+
+async function processLookup(lookup: Lookup, updateVehicleStatus: boolean) {
+  const db = createSupabaseServerClient();
+  const vehicleId = lookup.veiculo_id;
   // Replay a saved result if a previous request stopped between the history and vehicle updates.
-  if (["success", "error"].includes(lookup.status)) return applyLookupOutcome(lookup);
+  if (["success", "error"].includes(lookup.status)) return applyLookupOutcome(lookup, updateVehicleStatus);
   // A database lease prevents multiple browser tabs and the background worker from submitting twice.
   if (Date.now() - Date.parse(lookup.updated_at) < 30_000) return false;
   const claimed = await db.from("frota_debito_consultas")
@@ -35,7 +51,7 @@ export async function processVehicleLookup(vehicleId: string) {
   const apiToken = process.env.PLEXI_API_TOKEN;
   const certificate = process.env.PLEXI_CERTIFICATE_ID;
   if (!apiToken || !certificate || process.env.PLEXI_API_ENABLED !== "true") {
-    return failLookup(lookup, "A consulta automática está indisponível. Complete o cadastro manualmente.");
+    return failLookup(lookup, "A consulta automática está indisponível.", null, updateVehicleStatus);
   }
   const headers = { Accept: "application/json", Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" };
   try {
@@ -48,14 +64,14 @@ export async function processVehicleLookup(vehicleId: string) {
       const record = asRecord(payload);
       const requestId = record.requestId ?? asRecord(record.body).requestId;
       if (!response.ok && !(response.status === 409 && typeof requestId === "string")) {
-        if (response.status >= 500 && response.status !== 520) {
+        if (response.status === 429 || (response.status >= 500 && response.status !== 520)) {
           await recordWaiting(lookup, `Plexi indisponível (HTTP ${response.status}). A solicitação será verificada novamente.`);
           return false;
         }
-        return failLookup(lookup, `Plexi: HTTP ${response.status}. ${apiMessage(payload) || "A solicitação foi recusada."}`, payload);
+        return failLookup(lookup, `Plexi: HTTP ${response.status}. ${apiMessage(payload) || "A solicitação foi recusada."}`, payload, updateVehicleStatus);
       }
       if (typeof requestId !== "string") {
-        return failLookup(lookup, "A Plexi não retornou um protocolo válido para acompanhar a consulta.", payload);
+        return failLookup(lookup, "A Plexi não retornou um protocolo válido para acompanhar a consulta.", payload, updateVehicleStatus);
       }
       lookup.id_consult = requestId;
       const saved = await db.from("frota_debito_consultas").update({ id_consult: requestId, status: "processing", error_message: null }).eq("id", lookup.id);
@@ -69,28 +85,28 @@ export async function processVehicleLookup(vehicleId: string) {
       return false;
     }
     if (response.status === 404) {
-      return failLookup(lookup, "Plexi: protocolo não encontrado ou expirado (HTTP 404). Complete o cadastro manualmente.");
+      return failLookup(lookup, "Plexi: protocolo não encontrado ou expirado (HTTP 404).", null, updateVehicleStatus);
     }
     if ([500, 502, 503, 504, 429].includes(response.status)) {
       await recordWaiting(lookup, `Aguardando conexão com a Plexi (HTTP ${response.status}). Nova verificação automática em instantes.`);
       return false;
     }
     const payload = await readPayload(response);
-    if (!response.ok) return failLookup(lookup, `Plexi: HTTP ${response.status}. ${apiMessage(payload) || "A consulta foi encerrada sem sucesso."}`, payload);
+    if (!response.ok) return failLookup(lookup, `Plexi: HTTP ${response.status}. ${apiMessage(payload) || "A consulta foi encerrada sem sucesso."}`, payload, updateVehicleStatus);
     const result = unwrap(payload);
     if (result.status === "erro" || result.error === true || typeof result.error === "string") {
-      return failLookup(lookup, apiMessage(result) || "A Plexi encerrou a consulta sem sucesso.", payload);
+      return failLookup(lookup, apiMessage(result) || "A Plexi encerrou a consulta sem sucesso.", payload, updateVehicleStatus);
     }
     if (!string(result.marca) || !string(result.modelo)) {
-      return failLookup(lookup, apiMessage(result) || "A Plexi retornou uma resposta sem os dados cadastrais do veículo.", payload);
+      return failLookup(lookup, apiMessage(result) || "A Plexi retornou uma resposta sem os dados cadastrais do veículo.", payload, updateVehicleStatus);
     }
     if ((string(result.placa) && string(result.placa).replace(/[^a-z0-9]/gi, "").toUpperCase() !== lookup.license_plate)
       || (string(result.renavam) && string(result.renavam).replace(/\D/g, "").padStart(11, "0") !== lookup.renavam)) {
-      return failLookup(lookup, "A placa ou o Renavam retornado pela Plexi não corresponde ao veículo solicitado.", payload);
+      return failLookup(lookup, "A placa ou o Renavam retornado pela Plexi não corresponde ao veículo solicitado.", payload, updateVehicleStatus);
     }
     const finished = await db.from("frota_debito_consultas").update({ status: "success", response_payload: payload, error_message: null, updated_at: new Date().toISOString() }).eq("id", lookup.id);
     if (finished.error) throw new Error(finished.error.message);
-    return applyLookupOutcome({ ...lookup, status: "success", response_payload: payload });
+    return applyLookupOutcome({ ...lookup, status: "success", response_payload: payload }, updateVehicleStatus);
   } catch (error) {
     console.error("[Plexi] Consulta temporariamente indisponível", { vehicleId, message: error instanceof Error ? error.message : "Falha de conexão" });
     await recordWaiting(lookup, "Sem resposta da Plexi na última verificação. A consulta permanece pendente e será verificada novamente.");
@@ -104,15 +120,16 @@ async function recordWaiting(lookup: Lookup, message: string) {
   if (error) throw new Error(error.message);
 }
 
-async function failLookup(lookup: Lookup, message: string, payload: unknown = null) {
+async function failLookup(lookup: Lookup, message: string, payload: unknown = null, updateVehicleStatus = true) {
   const db = createSupabaseServerClient();
   const saved = await db.from("frota_debito_consultas").update({ status: "error", error_message: message, response_payload: payload, updated_at: new Date().toISOString() }).eq("id", lookup.id);
   if (saved.error) throw new Error(saved.error.message);
-  return applyLookupOutcome({ ...lookup, status: "error", response_payload: payload });
+  return applyLookupOutcome({ ...lookup, status: "error", response_payload: payload }, updateVehicleStatus);
 }
 
-async function applyLookupOutcome(lookup: Lookup) {
+async function applyLookupOutcome(lookup: Lookup, updateVehicleStatus = true) {
   if (lookup.status === "success") await importLookupDetails(lookup);
+  if (!updateVehicleStatus) return lookup.status === "success";
   const updated = await createSupabaseServerClient().from("frota_veiculos").update({
     ...(lookup.status === "success" ? vehicleFields(unwrap(lookup.response_payload)) : {}),
     status: lookup.status === "success" ? "active" : "consult_error", consulta_raw: lookup.response_payload,

@@ -2,11 +2,11 @@ import type { CurrentUserProfile } from "@/lib/auth-data";
 import { getUserModules } from "@/lib/empresa-access";
 export type PortalModulo = {
   description: string;
+  highlights: string[];
   href: string;
   id: string;
   label: string;
   slug: string;
-  tag: string;
 };
 type ModuloRow = { id: string; nome: string; slug: string };
 export async function getPortalModules(
@@ -17,11 +17,11 @@ export async function getPortalModules(
     ? [
         {
           description: "Gestão da Vibe Tech, empresas, licenças e usuários.",
+          highlights: ["Empresas", "Licenças", "Cobranças"],
           href: "/",
           id: "bdl-admin",
           label: "Painel Vibe Tech",
           slug: "bdl-admin",
-          tag: "Administração",
         },
         ...modules,
       ]
@@ -30,32 +30,31 @@ export async function getPortalModules(
 function mapModuloToPortalItem(modulo: ModuloRow): PortalModulo {
   if (modulo.slug === "gestao-estabelecimentos") {
     return {
-      description:
-        "Fechamentos por produto, estoque e gestão do estabelecimento.",
+      description: "Organize a rotina e os resultados do estabelecimento.",
+      highlights: ["Produtos", "Estoque", "Fechamentos"],
       href: "/gestao",
       id: modulo.id,
       label: modulo.nome,
       slug: modulo.slug,
-      tag: "Estabelecimentos",
     };
   }
   if (modulo.slug === "frotas-publicas") {
     return {
-      description: "Operação da frota, veículos, manutenção e abastecimento.",
+      description: "Controle a operação diária e os custos da frota.",
+      highlights: ["Veículos", "Abastecimento", "Manutenção"],
       href: "/frotas",
       id: modulo.id,
       label: modulo.nome,
       slug: modulo.slug,
-      tag: "Módulo municipal",
     };
   }
 
   return {
     description: "Módulo habilitado para acesso.",
+    highlights: [],
     href: "#",
     id: modulo.id,
     label: modulo.nome,
     slug: modulo.slug,
-    tag: "Em breve",
   };
 }

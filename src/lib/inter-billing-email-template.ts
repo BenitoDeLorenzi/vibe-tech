@@ -1,4 +1,5 @@
 import { INTER_BILLING_SCHEDULE_DAYS } from "@/lib/inter-client";
+import { emailFontFamily, emailFontHead, emailLogoHtml } from "@/lib/email-brand";
 
 const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -7,11 +8,11 @@ const money = (value: number) => new Intl.NumberFormat("pt-BR", { style: "curren
 const date = (value: string) => new Date(`${value.slice(0, 10)}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" });
 
 function frame(title: string, lead: string, content: string) {
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-  <body style="margin:0;padding:0;background:#f3f5f9;color:#16213b;font-family:Arial,Helvetica,sans-serif">
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${emailFontHead}</head>
+  <body style="margin:0;padding:0;background:#f3f5f9;color:#16213b;font-family:${emailFontFamily}">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f3f5f9"><tr><td align="center" style="padding:32px 16px">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #e5eaf2;border-radius:14px;overflow:hidden">
-  <tr><td style="background:#07132f;padding:26px 32px;border-top:4px solid #087dff"><table role="presentation" cellspacing="0" cellpadding="0"><tr><td style="width:38px;height:38px;border-radius:8px;background:#075bea;color:#fff;text-align:center;font-size:16px;font-weight:bold">VT</td><td style="padding-left:12px;color:#fff;font-size:20px;font-weight:bold;letter-spacing:1px">VIBE <span style="font-weight:normal">TECH</span></td></tr></table></td></tr>
+  <tr><td style="background:#07132f;padding:26px 32px;border-top:4px solid #087dff">${emailLogoHtml}</td></tr>
   <tr><td style="padding:32px"><p style="margin:0 0 8px;color:#075bea;font-size:12px;font-weight:bold;letter-spacing:1.4px;text-transform:uppercase">Vibe Tech · Cobranças</p>
   <h1 style="margin:0 0 14px;font-size:25px;line-height:1.3;color:#101b34">${escapeHtml(title)}</h1>
   <p style="margin:0 0 24px;color:#475569;font-size:15px;line-height:1.6">${escapeHtml(lead)}</p>${content}

@@ -46,7 +46,6 @@ import {
   Fuel,
   KeyRound,
   LayoutDashboard,
-  Settings,
   UserRoundCog,
   Wrench,
 } from "lucide-react";
@@ -133,7 +132,6 @@ const navAdministracao = [
     href: "/frotas/notificacoes",
     icon: Bell,
   },
-  { label: "Configurações", href: "#", icon: Settings },
 ] as const;
 
 export function FrotasPersistentFrame({
@@ -240,7 +238,7 @@ export function FrotasPersistentFrame({
         empresa={selectedPrefeituraId}
         enabled
       >
-        <SidebarProvider className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
+        <SidebarProvider data-vibe-frotas="" className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
           <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
               <FrotasPrefeituraContext

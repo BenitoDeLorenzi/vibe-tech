@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getPostoSession, hashPostoPassword } from "@/lib/posto-auth";
 import { buildFirstAccessOtpEmail, buildPasswordRecoveryOtpEmail } from "@/lib/otp-email";
+import { emailLogoAttachment } from "@/lib/email-brand";
 
 const invalidCode = "Código expirado, inválido ou limite de tentativas atingido. Solicite outro código.";
 const normalizeCnpj = (value: string) => value.replace(/\D/g, "");
@@ -46,6 +47,7 @@ async function sendCode(posto: { id: string; nome: string }, email: string, purp
       from: 'Vibe Tech <vibe.tech.gestao@gmail.com>', to: email,
       subject: purpose === "primeiro_acesso" ? "Confirme o acesso do posto — Vibe Tech" : "Recuperação de senha do posto — Vibe Tech",
       ...(purpose === "primeiro_acesso" ? buildFirstAccessOtpEmail(posto.nome, code) : buildPasswordRecoveryOtpEmail(posto.nome, code)),
+      attachments: [emailLogoAttachment()],
     });
   } catch {
     await db.from("frota_posto_codigos").delete().eq("posto_id", posto.id).eq("codigo_hash", digest);

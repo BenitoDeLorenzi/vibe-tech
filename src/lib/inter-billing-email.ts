@@ -3,6 +3,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { retrieveInterBillingPdf } from "@/lib/inter-client";
 import { buildInterBillEmail, buildInterPaymentEmail } from "@/lib/inter-billing-email-template";
+import { emailLogoAttachment } from "@/lib/email-brand";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 const sender = "vibe.tech.gestao@gmail.com";
@@ -79,7 +80,10 @@ async function processEmail(row: EmailRow) {
     }).sendMail({
       from: `Vibe Tech LTDA <${sender}>`, to: recipient,
       subject: message.subject, html: message.html, text: message.text,
-      ...(pdf ? { attachments: [{ filename: `boleto-vibe-tech-${payment.competencia.slice(0, 7)}.pdf`, content: pdf, contentType: "application/pdf" }] } : {}),
+      attachments: [
+        emailLogoAttachment(),
+        ...(pdf ? [{ filename: `boleto-vibe-tech-${payment.competencia.slice(0, 7)}.pdf`, content: pdf, contentType: "application/pdf" }] : []),
+      ],
     });
     if (!result.accepted?.some(address => address.toLowerCase() === recipient.toLowerCase()))
       throw new Error("O servidor de e-mail não confirmou o destinatário.");

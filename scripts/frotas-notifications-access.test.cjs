@@ -11,7 +11,7 @@ function load(path, dependencies) {
 async function scope(role, requested, allowed = true) {
   const lib = load('src/lib/frotas-notificacoes.ts', {
     'server-only': {},
-    '@/lib/auth-data': { getCurrentUserProfile: async () => role ? { id: 'user', role, prefeitura_id: 'own' } : null },
+    '@/lib/auth-data': { getCurrentUserProfile: async () => role ? { id: 'user', role, prefeitura_id: 'own', primeiro_acesso_concluido_em: '2026-01-01' } : null },
     '@/lib/frotas-permissions': { getFrotasPermissionAccess: async () => typeof allowed === 'object' ? allowed : ({ canViewAbastecimento: allowed }) },
     '@/lib/empresa-access': { hasModuleAccess: async () => allowed !== false, getModuleLicensedEmpresas: async () => [{ id: 'own' }, { id: 'other' }] },
   });
@@ -24,9 +24,9 @@ async function scope(role, requested, allowed = true) {
   assert.equal(await scope('bdl_admin', 'unlicensed'), null);
   assert.equal((await scope('bdl_admin', 'other')).empresaId, 'other');
   assert.equal((await scope('municipal_admin', null)).empresaId, 'own');
-  assert.equal((await scope('municipal_user', 'own', {canViewManutencao:true})).tipos.join(','), 'suporte,manutencao');
-  assert.equal((await scope('municipal_user', 'own', {canViewUsoVeiculo:true})).tipos.join(','), 'suporte,uso_veiculo');
-  assert.equal((await scope('municipal_user', 'own', {})).tipos.join(','), 'suporte');
+  assert.equal((await scope('municipal_user', 'own', {canViewManutencao:true})).tipos.join(','), 'manutencao');
+  assert.equal((await scope('municipal_user', 'own', {canViewUsoVeiculo:true})).tipos.join(','), 'uso_veiculo');
+  assert.equal((await scope('municipal_user', 'own', {})).tipos.join(','), '');
   let written, companyFilter, typeFilter, rpcArgs, recipientFilter;
   const query = { select: () => query, or: filter => {recipientFilter=filter; return query;}, eq: (_, value) => { companyFilter = value; return query; }, in: (key, values) => { if (key === 'tipo') { typeFilter = values; return query; } return Promise.resolve({ data: [{ id: 1 }], error: null }); } };
   const route = load('src/app/frotas/notificacoes/feed/route.ts', {
