@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Supabase CLI cache and local verification artifacts
 /supabase/.temp/
+
+# Local PDF rendering and authoring intermediates
+/tmp/

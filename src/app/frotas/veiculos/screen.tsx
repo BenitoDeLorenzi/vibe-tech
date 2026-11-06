@@ -430,7 +430,7 @@ function VehicleDebtLastUpdate({ summary }: { summary?: VehicleDebtSummary }) {
   }).format(new Date(summary.atualizadoEm));
   return <div className="whitespace-nowrap">
     <div className="font-medium tabular-nums">{date}</div>
-    <div className="text-xs text-muted-foreground">{summary.origemAtualizacao === "plexi" ? "Consulta Plexi" : "Atualização manual"}</div>
+    <div className="text-xs text-muted-foreground">{summary.origemAtualizacao === "plexi" ? "Consulta automática" : "Atualização manual"}</div>
   </div>;
 }
 
