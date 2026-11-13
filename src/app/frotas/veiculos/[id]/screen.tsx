@@ -26,6 +26,7 @@ import { FrotasShell } from "@/app/frotas/frotas-shell";
 import { MultaManualForm } from "@/app/frotas/multa-manual-form";
 import { VehicleRealtimeSync } from "@/app/frotas/veiculos/vehicle-realtime-sync";
 import { VehicleLookupSync } from "@/app/frotas/veiculos/vehicle-lookup-sync";
+import { RetryVehicleLookup } from "@/app/frotas/veiculos/retry-vehicle-lookup";
 import { VeiculoForm } from "@/app/frotas/veiculo-form";
 import { VencimentoDataForm } from "@/app/frotas/vencimento-data-form";
 import { VencimentoPagamentoForm } from "@/app/frotas/vencimento-pagamento-form";
@@ -125,6 +126,9 @@ export default async function VeiculoGestaoPage({ params }: PageProps) {
             <ArrowLeft className="size-4" />
             Voltar
           </Link>
+          {access.canCreateVeiculos && veiculo.status === "consult_error" && veiculo.consulta_status === "error" ? (
+            <RetryVehicleLookup vehicleId={veiculo.id} companyId={veiculo.prefeitura_id} placa={veiculo.placa} />
+          ) : null}
           {access.canUpdateVeiculos ? (
             <Dialog>
               <DialogTrigger

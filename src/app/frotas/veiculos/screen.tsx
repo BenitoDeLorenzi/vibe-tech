@@ -69,6 +69,7 @@ import { VeiculoCadastroDialog } from "../veiculo-cadastro-dialog";
 import { VeiculoForm } from "../veiculo-form";
 import { VehicleRealtimeSync } from "./vehicle-realtime-sync";
 import { VehicleLookupSync } from "./vehicle-lookup-sync";
+import { RetryVehicleLookup } from "./retry-vehicle-lookup";
 
 export const dynamic = "force-dynamic";
 
@@ -310,6 +311,10 @@ function VehicleActions({ veiculo, access, data, profile }: {
   return (
                               <div className="flex justify-end gap-1">
 
+                                {access.canCreateVeiculos && veiculo.status === "consult_error" && veiculo.consulta_status === "error" ? (
+                                  <RetryVehicleLookup compact vehicleId={veiculo.id} companyId={veiculo.prefeitura_id} placa={veiculo.placa} />
+                                ) : null}
+
                                 <Tooltip>
                                   <TooltipTrigger
                                     render={
@@ -385,7 +390,7 @@ function VehicleActions({ veiculo, access, data, profile }: {
                                         <DialogTitle>Excluir veículo</DialogTitle>
                                         <DialogDescription>
                                           Esta ação remove o veículo {veiculo.placa}
-                                          e todos os dados vinculados a ele.
+                                          e seus dados operacionais. O histórico das consultas será preservado.
                                         </DialogDescription>
                                       </DialogHeader>
                                       <DeleteVeiculoForm id={veiculo.id} />

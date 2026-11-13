@@ -7,12 +7,13 @@ type Lookup = {
   id: string; veiculo_id: string; prefeitura_id: string; license_plate: string;
   renavam: string; id_consult: string | null; status: string; updated_at: string;
   response_payload: unknown;
+  request_payload: RecordValue | null;
 };
 
 export async function processVehicleLookup(vehicleId: string) {
   const db = createSupabaseServerClient();
   const { data, error } = await db.from("frota_debito_consultas")
-    .select("id,veiculo_id,prefeitura_id,license_plate,renavam,id_consult,status,updated_at,response_payload")
+    .select("id,veiculo_id,prefeitura_id,license_plate,renavam,id_consult,status,updated_at,response_payload,request_payload")
     .eq("veiculo_id", vehicleId).eq("provider", "plexi")
     .eq("request_payload->>purpose", "registration")
     .order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -28,7 +29,7 @@ export async function processVehicleLookup(vehicleId: string) {
 export async function processMonthlyVehicleLookup(lookupId: string) {
   const db = createSupabaseServerClient();
   const { data, error } = await db.from("frota_debito_consultas")
-    .select("id,veiculo_id,prefeitura_id,license_plate,renavam,id_consult,status,updated_at,response_payload")
+    .select("id,veiculo_id,prefeitura_id,license_plate,renavam,id_consult,status,updated_at,response_payload,request_payload")
     .eq("id", lookupId).eq("provider", "plexi").eq("request_payload->>purpose", "monthly")
     .single();
   if (error || !data) throw new Error("Consulta mensal não encontrada.");
@@ -74,7 +75,13 @@ async function processLookup(lookup: Lookup, updateVehicleStatus: boolean) {
         return failLookup(lookup, "A Plexi não retornou um protocolo válido para acompanhar a consulta.", payload, updateVehicleStatus);
       }
       lookup.id_consult = requestId;
-      const saved = await db.from("frota_debito_consultas").update({ id_consult: requestId, status: "processing", error_message: null }).eq("id", lookup.id);
+      const protocolReused = response.status === 409;
+      const saved = await db.from("frota_debito_consultas").update({
+        id_consult: requestId,
+        status: "processing",
+        error_message: protocolReused ? "O serviço de consulta informou que este protocolo já existia. Acompanhando o resultado anterior." : null,
+        request_payload: { ...asRecord(lookup.request_payload), protocolReused },
+      }).eq("id", lookup.id);
       if (saved.error) throw new Error(saved.error.message);
     }
     const response = await fetch(`${baseUrl()}/api/maestro/result/${encodeURIComponent(lookup.id_consult)}`, {

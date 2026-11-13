@@ -133,11 +133,13 @@ export type FrotaDebitoVeicular = {
 };
 
 export type FrotaDebitoConsulta = {
+  arquivada?: boolean;
   client_request_id: string;
   created_at: string;
   error_message: string | null;
   id: string;
   id_consult: string | null;
+  request_payload: { purpose?: string; protocolReused?: boolean; retryOf?: string } | null;
   status: "pending" | "processing" | "success" | "error" | "disabled";
 };
 
@@ -837,9 +839,12 @@ export async function getFrotasData(params?: {
 
 export async function getVeiculoDebitosData(veiculoId: string) {
   const supabase = createSupabaseServerClient();
+  const vehicle = await supabase.from("frota_veiculos")
+    .select("prefeitura_id,placa,renavam").eq("id", veiculoId).maybeSingle();
+  if (vehicle.error) throw new Error(vehicle.error.message);
   const consultasResult = await supabase
     .from("frota_debito_consultas")
-    .select("id,client_request_id,id_consult,status,error_message,created_at")
+    .select("id,client_request_id,id_consult,status,error_message,created_at,request_payload")
     .eq("veiculo_id", veiculoId)
     .order("created_at", { ascending: false })
     .limit(5);
@@ -851,6 +856,21 @@ export async function getVeiculoDebitosData(veiculoId: string) {
 
     throw new Error(consultasResult.error.message);
   }
+
+  const archived = vehicle.data ? await supabase.from("frota_debito_consultas")
+    .select("id,client_request_id,id_consult,status,error_message,created_at,request_payload")
+    .eq("prefeitura_id", vehicle.data.prefeitura_id)
+    .eq("license_plate", vehicle.data.placa)
+    .eq("renavam", vehicle.data.renavam)
+    .is("veiculo_id", null)
+    .eq("provider", "plexi")
+    .order("created_at", { ascending: false }).limit(5) : null;
+  if (archived?.error) throw new Error(archived.error.message);
+  const consultations = [
+    ...(consultasResult.data ?? []),
+    ...(archived?.data ?? []).map((consulta) => ({ ...consulta, arquivada: true })),
+  ]
+    .sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5) as FrotaDebitoConsulta[];
 
   // Preserve debts from the last successful historical import.
   const latestSuccessful = await supabase
@@ -869,7 +889,7 @@ export async function getVeiculoDebitosData(veiculoId: string) {
 
   if (!latestConsultaId) {
     return {
-      consultas: (consultasResult.data ?? []) as FrotaDebitoConsulta[],
+      consultas: consultations,
       debitos: [],
     };
   }
@@ -887,7 +907,7 @@ export async function getVeiculoDebitosData(veiculoId: string) {
   }
 
   return {
-    consultas: (consultasResult.data ?? []) as FrotaDebitoConsulta[],
+    consultas: consultations,
     debitos: (debitosResult.data ?? []) as FrotaDebitoVeicular[],
   };
 }

@@ -24,6 +24,7 @@ export async function POST(request: Request) {
     renavam?: string;
     prefeituraId?: string;
     vehicleIds?: string[];
+    vehicleId?: string;
     legacyToken?: string;
   };
   try {
@@ -57,6 +58,50 @@ export async function POST(request: Request) {
   }
   const db = createSupabaseServerClient();
   try {
+    if (body.action === "retry") {
+      if (typeof body.vehicleId !== "string" || !/^[a-f0-9-]{36}$/i.test(body.vehicleId))
+        return json({ error: "Veículo inválido." }, 400);
+      const current = await db.from("frota_veiculos")
+        .select("id,placa,renavam,status")
+        .eq("id", body.vehicleId).eq("prefeitura_id", companyId).maybeSingle();
+      if (current.error) throw new Error(current.error.message);
+      if (!current.data) return json({ error: "Veículo não encontrado." }, 404);
+      if (current.data.status !== "consult_error")
+        return json({ error: "A nova tentativa só está disponível após uma falha na consulta." }, 409);
+      const vehicle = current.data;
+      const previous = await db.from("frota_debito_consultas")
+        .select("id,status")
+        .eq("veiculo_id", current.data.id).eq("provider", "plexi")
+        .eq("request_payload->>purpose", "registration")
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (previous.error) throw new Error(previous.error.message);
+      if (!previous.data || previous.data.status !== "error")
+        return json({ error: "Não há uma consulta com falha para repetir." }, 409);
+      const inserted = await db.from("frota_debito_consultas").insert({
+        veiculo_id: vehicle.id,
+        prefeitura_id: companyId,
+        provider: "plexi",
+        client_request_id: `registration:${vehicle.id}:${randomUUID()}`,
+        license_plate: vehicle.placa,
+        renavam: vehicle.renavam,
+        state: "SC",
+        status: "pending",
+        request_payload: { purpose: "registration", retryOf: previous.data.id },
+        updated_at: new Date(Date.now() - 60_000).toISOString(),
+      }).select("id").single();
+      if (inserted.error || !inserted.data) throw new Error(inserted.error?.message ?? "Falha ao registrar a nova tentativa.");
+      const updated = await db.from("frota_veiculos")
+        .update({ status: "processing", consulta_raw: null })
+        .eq("id", vehicle.id).eq("prefeitura_id", companyId)
+        .eq("status", "consult_error").select("id").maybeSingle();
+      if (updated.error || !updated.data) {
+        await db.from("frota_debito_consultas").delete().eq("id", inserted.data.id);
+        if (updated.error) throw new Error(updated.error.message);
+        return json({ error: "Outra tentativa já foi iniciada para este veículo." }, 409);
+      }
+      after(() => followVehicleLookup(vehicle.id));
+      return json({ vehicleId: vehicle.id, status: "processing" }, 202);
+    }
     if (syncing) {
       const ids = Array.isArray(body.vehicleIds)
         ? body.vehicleIds
@@ -109,6 +154,10 @@ export async function POST(request: Request) {
       ) {
         if (existingVehicle.status === "processing")
           after(() => followVehicleLookup(existingVehicle.id));
+        if (existingVehicle.status === "consult_error")
+          return json({
+            error: "Esta placa já está cadastrada com falha na consulta. Abra o veículo e use Tentar novamente para iniciar uma nova consulta.",
+          }, 409);
         return json(
           { vehicleId: existingVehicle.id, status: existingVehicle.status },
           202,

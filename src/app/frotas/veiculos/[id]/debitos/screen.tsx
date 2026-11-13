@@ -169,7 +169,7 @@ export default async function VeiculoDebitosPage({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <LatestConsultBadge consulta={debitosData.consultas[0]} />
+                <LatestConsultBadge consulta={debitosData.consultas.find((consulta) => !consulta.arquivada)} />
                 <Badge variant="outline">{totalDebitos} débito(s)</Badge>
               </div>
             </div>
@@ -287,6 +287,33 @@ export default async function VeiculoDebitosPage({
             )}
           </CardContent>
         </Card>
+        {debitosData.consultas.length > 0 ? (
+          <Card>
+            <CardHeader><CardTitle>Histórico de consultas</CardTitle></CardHeader>
+            <CardContent className="space-y-2">
+              {debitosData.consultas.map((consulta) => (
+                <div key={consulta.id} className="flex flex-col gap-1 rounded-lg border p-3 text-sm sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="font-medium">
+                      {new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" }).format(new Date(consulta.created_at))}
+                      {consulta.request_payload?.retryOf ? " · Nova tentativa" : ""}
+                      {consulta.arquivada ? " · Cadastro anterior" : ""}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {consulta.request_payload?.protocolReused
+                        ? "O serviço de consulta reaproveitou um protocolo existente."
+                        : consulta.id_consult ? "Novo protocolo de consulta registrado." : "Sem protocolo de consulta."}
+                    </p>
+                    {consulta.error_message ? <p className="mt-1 text-xs text-destructive">{consulta.error_message}</p> : null}
+                  </div>
+                  <Badge variant={consulta.status === "error" ? "destructive" : "outline"} className="self-start">
+                    {{ success: "Concluída", error: "Erro", pending: "Pendente", processing: "Processando", disabled: "Desativada" }[consulta.status]}
+                  </Badge>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
       </main>
     </FrotasShell>
   );
