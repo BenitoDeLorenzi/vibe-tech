@@ -5,13 +5,17 @@ export function ContractPreview({
   fim,
   valor,
   dia,
+  gratuita = false,
 }: {
   inicio: string;
   fim: string;
   valor: number | null;
   dia: number;
+  gratuita?: boolean;
 }) {
-  const rows = billingSchedule(inicio, fim, valor ?? 0, dia);
+  const rows = !gratuita && (!valor || valor <= 0)
+    ? []
+    : billingSchedule(inicio, fim, gratuita ? 0 : valor ?? 0, dia);
   const money = (n: number) =>
     n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const date = (v: string) => v.split("-").reverse().join("/");
@@ -21,6 +25,15 @@ export function ContractPreview({
         Preencha o período, a mensalidade e o vencimento para visualizar as
         cobranças (até 120 ciclos).
       </p>
+    );
+  if (gratuita)
+    return (
+      <div className="rounded-lg border bg-muted/30 p-3">
+        <p className="text-sm font-medium">Licença gratuita por {rows.length} mês(es)</p>
+        <p className="text-xs text-muted-foreground">
+          O acesso vale de {date(inicio)} a {date(fim)}. Não serão geradas mensalidades nem boletos.
+        </p>
+      </div>
     );
   return (
     <div className="space-y-2 rounded-lg border bg-muted/30 p-3">

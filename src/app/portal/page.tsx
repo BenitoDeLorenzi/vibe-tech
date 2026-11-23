@@ -128,28 +128,31 @@ function ModuleCard({ module }: { module: PortalModulo }) {
         : Car;
   const disabled = module.href === "#";
   const isFrotas = module.slug === "frotas-publicas";
+  const isGestao = module.slug === "gestao-estabelecimentos";
 
   return (
     <Card className={cn(
       "h-full overflow-hidden border-t-2 border-t-foreground/70 bg-muted/20 ring-border",
       isFrotas && "border-t-2 border-t-[#174a8b] bg-[#f7faff] ring-[#cbdff3] dark:border-t-[#8fc0ff] dark:bg-[#142236] dark:ring-[#315171]",
+      isGestao && "border-t-2 border-t-[#176b50] bg-[#f6faf7] ring-[#d2e8d8] dark:border-t-[#8bd8aa] dark:bg-[#14291e] dark:ring-[#30573b]",
       disabled && "opacity-70",
     )}>
       <CardHeader className="flex items-start gap-3">
         <div className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm",
           isFrotas && "bg-[#174a8b] shadow-sm shadow-[#174a8b]/20 dark:bg-[#8fc0ff]",
+          isGestao && "bg-[#176b50] shadow-sm shadow-[#176b50]/20 dark:bg-[#8bd8aa]",
         )}>
-          <Icon className={cn("size-5", isFrotas && "text-white dark:text-[#102440]")} />
+          <Icon className={cn("size-5", isFrotas && "text-white dark:text-[#102440]", isGestao && "text-white dark:text-[#102b1e]")} />
         </div>
         <div className="min-w-0 space-y-1">
-          <CardTitle className={cn("text-lg font-bold tracking-tight", isFrotas && "text-[#133c70] dark:text-[#e8f3ff]")}>{module.label}</CardTitle>
-          <CardDescription className={cn("text-xs leading-relaxed", isFrotas && "text-[#5d7189] dark:text-[#a9bfd7]")}>{module.description}</CardDescription>
+          <CardTitle className={cn("text-lg font-bold tracking-tight", isFrotas && "text-[#133c70] dark:text-[#e8f3ff]", isGestao && "text-[#17543d] dark:text-[#e8f4eb]")}>{module.label}</CardTitle>
+          <CardDescription className={cn("text-xs leading-relaxed", isFrotas && "text-[#5d7189] dark:text-[#a9bfd7]", isGestao && "text-[#60796b] dark:text-[#a5bdab]")}>{module.description}</CardDescription>
         </div>
       </CardHeader>
       <CardContent className="mt-auto">
         {module.highlights.length > 0 && (
-          <p className={cn("text-xs text-muted-foreground", isFrotas && "text-[#58718d] dark:text-[#a9bfd7]")}>
+          <p className={cn("text-xs text-muted-foreground", isFrotas && "text-[#58718d] dark:text-[#a9bfd7]", isGestao && "text-[#60796b] dark:text-[#a5bdab]")}>
             {module.highlights.join(" · ")}
           </p>
         )}
@@ -162,7 +165,7 @@ function ModuleCard({ module }: { module: PortalModulo }) {
         ) : (
           <Link
             href={module.href}
-            className={cn(buttonVariants({ className: "w-full" }), isFrotas && "bg-[#174a8b] text-white hover:bg-[#103d78] dark:bg-[#8fc0ff] dark:text-[#102440] dark:hover:bg-[#b0d5ff]")}
+            className={cn(buttonVariants({ className: "w-full" }), isFrotas && "bg-[#174a8b] text-white hover:bg-[#103d78] dark:bg-[#8fc0ff] dark:text-[#102440] dark:hover:bg-[#b0d5ff]", isGestao && "bg-[#176b50] text-white hover:bg-[#12583f] dark:bg-[#8bd8aa] dark:text-[#102b1e] dark:hover:bg-[#a8e5be]")}
           >
             Acessar
           </Link>

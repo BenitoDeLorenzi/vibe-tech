@@ -1,5 +1,7 @@
 "use client";
 import { useTransition } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { SidebarIdentity } from "@/components/sidebar-identity";
 import type { Empresa, Unidade } from "@/lib/gestao-types";
 import { selecionarUnidade } from "./actions";
@@ -18,8 +20,23 @@ export function GestaoUnidadeContext({
   const unidade = unidades.find((u) => u.id === selectedId);
   const empresa = empresas.find((e) => e.id === unidade?.empresa_id);
   return (
-    <SidebarIdentity
-      moduleName="Vibe Gestão"
+    <div className="space-y-1">
+      <Link
+        href="/gestao"
+        className="flex h-12 items-center gap-2 rounded-lg px-2 group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:p-0"
+      >
+        <Image
+          src="/brand/vibe-tech-icon.png"
+          alt="Vibe Gestão"
+          width={32}
+          height={32}
+          className="size-8 shrink-0 rounded-lg object-contain"
+        />
+        <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">
+          Vibe Gestão
+        </span>
+      </Link>
+      <SidebarIdentity
       name={empresa?.nome_fantasia || empresa?.nome || "Selecione uma empresa"}
       description={unidade?.nome ?? "Estabelecimento"}
       logoUrl={empresa?.logo_url}
@@ -47,6 +64,7 @@ export function GestaoUnidadeContext({
             }
           : undefined
       }
-    />
+      />
+    </div>
   );
 }

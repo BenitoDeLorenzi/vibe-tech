@@ -190,7 +190,7 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                 <AdminMobileList key={`${params.q ?? ""}:${params.status ?? ""}`} items={licencas.map(licenca => <AdminMobileCard key={licenca.id}
                   title={licenca.prefeitura_nome} subtitle={`${licenca.modulo_nome} · ${licenca.prefeitura_cnpj}`}
                   badge={<LicencaStatusBadge status={licenca.status} />}
-                  details={[{ label: "Vigência", value: `${formatDate(licenca.inicio)} a ${formatDate(licenca.fim)}` }, { label: "Mensalidade", value: formatCurrency(licenca.valor_mensal) }, { label: "Situação", value: <LicencaVigenciaBadge diasRestantes={licenca.dias_restantes} status={licenca.vigencia_status} /> }]}
+                  details={[{ label: "Vigência", value: `${formatDate(licenca.inicio)} a ${formatDate(licenca.fim)}` }, { label: "Cobrança", value: Number(licenca.valor_mensal) === 0 ? "Gratuita" : formatCurrency(licenca.valor_mensal) }, { label: "Situação", value: <LicencaVigenciaBadge diasRestantes={licenca.dias_restantes} status={licenca.vigencia_status} /> }]}
                   actions={<LicencaActions licenca={licenca} modulos={formOptions.modulos} prefeituras={formOptions.prefeituras} />} />)} />
                 <div className="hidden overflow-hidden rounded-lg border md:block">
                   <Table>
@@ -238,10 +238,10 @@ export default async function LicencasPage({ searchParams }: PageProps) {
                           </TableCell>
                           <TableCell>
                             <div className="font-medium">
-                              {formatCurrency(licenca.valor_mensal)}/mês
+                              {Number(licenca.valor_mensal) === 0 ? "Gratuita" : `${formatCurrency(licenca.valor_mensal)}/mês`}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Contrato: {formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}
+                              {Number(licenca.valor_mensal) === 0 ? "Sem mensalidades ou boletos" : `Contrato: ${formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}`}
                             </div>
                           </TableCell>
                           <TableCell>

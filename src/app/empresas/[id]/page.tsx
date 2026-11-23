@@ -447,7 +447,7 @@ function LicencasTab({
                     </TableCell>
                     <TableCell data-label="Cobrança">
                       <div className="font-medium">
-                        {formatCurrency(licenca.valor_mensal)}/mês
+                        {Number(licenca.valor_mensal) === 0 ? "Gratuita" : `${formatCurrency(licenca.valor_mensal)}/mês`}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         Mensalidade integral por período contratado

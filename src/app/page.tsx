@@ -1,5 +1,5 @@
+import Link from "next/link";
 import {
-  Activity,
   AlertTriangle,
   Building2,
   CalendarClock,
@@ -10,6 +10,9 @@ import {
   KeyRound,
   LayoutDashboard,
   Users,
+  ArrowRight,
+  Headset,
+  Wallet,
 } from "lucide-react";
 
 import { AdminShell } from "@/components/admin-shell";
@@ -35,12 +38,11 @@ import {
   type PrefeituraStatus,
 } from "@/lib/prefeituras-data";
 import {
-  formatUsuarioRole,
   getUsuarios,
-  type Usuario,
-  type UsuarioRole,
 } from "@/lib/usuarios-data";
 import { cn } from "@/lib/utils";
+import { todayInSaoPaulo } from "@/lib/license-schedule";
+import { createSupabaseServerClient } from "@/lib/supabase-server";
 
 export const dynamic = "force-dynamic";
 
@@ -69,42 +71,32 @@ const prefeituraStatusMeta: Record<
   },
 };
 
-const usuarioRoleMeta: Record<
-  UsuarioRole,
-  {
-    badge: string;
-    label: string;
-  }
-> = {
-  bdl_admin: {
-    badge: "border-sky-200 bg-sky-50 text-sky-700",
-    label: "Master",
-  },
-  municipal_admin: {
-    badge: "border-violet-200 bg-violet-50 text-violet-700",
-    label: "Administradores",
-  },
-  municipal_user: {
-    badge: "border-zinc-200 bg-zinc-50 text-zinc-700",
-    label: "Usuários",
-  },
-};
-
 export default async function Home() {
   const profile = await requireRole(["bdl_admin"]);
-  const [prefeituras, licencas, modulos, usuarios] = await Promise.all([
+  const [prefeituras, licencas, modulos, usuarios, suporte] = await Promise.all([
     getPrefeituras(),
     getLicencas(),
     getModulos(),
     getUsuarios(),
+    createSupabaseServerClient().from("suporte_conversas").select("id", { count: "exact", head: true }).neq("status", "resolved"),
   ]);
+  if (suporte.error) throw new Error("Não foi possível carregar os atendimentos.");
+  const today = todayInSaoPaulo();
+  const month = today.slice(0, 7);
+  const payments = licencas.flatMap((licenca) => licenca.pagamentos.map((payment) => ({ ...payment, licenca })));
+  const currentPayments = payments.filter((payment) => payment.competencia.slice(0, 7) === month && payment.status !== "cancelled");
+  const overduePayments = payments.filter((payment) => payment.status !== "cancelled" && payment.vencimento < today && Number(payment.valor) > Number(payment.valor_pago ?? 0)).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  const overdueBalance = overduePayments.reduce((total, payment) => total + Math.max(0, Number(payment.valor) - Number(payment.valor_pago ?? 0)), 0);
+  const receivedThisMonth = payments.flatMap((payment) => payment.recebimentos ?? []).filter((receipt) => !receipt.estornado_em && receipt.pago_em.slice(0, 7) === month).reduce((total, receipt) => total + Number(receipt.valor), 0);
+  const pendingAccess = usuarios.filter((usuario) => usuario.ativo && !usuario.primeiro_acesso_concluido_em).length;
 
   const activePrefeituras = prefeituras.filter(
     (prefeitura) => prefeitura.status === "active"
   ).length;
   const activeLicencas = licencas.filter(
-    (licenca) => licenca.status === "active"
+    (licenca) => licenca.status === "active" && licenca.dias_restantes >= 0
   );
+  const monthlyRevenue = activeLicencas.reduce((total, licenca) => total + Number(licenca.valor_mensal ?? 0), 0);
   const expiringLicencas = activeLicencas.filter(
     (licenca) => licenca.dias_restantes >= 0 && licenca.dias_restantes <= 30
   );
@@ -113,14 +105,8 @@ export default async function Home() {
       licenca.status === "expired" ||
       (licenca.status === "active" && licenca.dias_restantes < 0)
   );
-  const receitaAnual = activeLicencas.reduce(
-    (total, licenca) => total + licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0),
-    0
-  );
-  const usuariosAtivos = usuarios.filter((usuario) => usuario.ativo).length;
-  const modulosAtivos = modulos.filter((modulo) => modulo.ativo).length;
   const clientesComLicenca = prefeituras.filter(
-    (prefeitura) => prefeitura.licencas_ativas > 0
+    (prefeitura) => prefeitura.status === "active" && activeLicencas.some((licenca) => licenca.prefeitura_id === prefeitura.id)
   ).length;
   const licencasCriticas = licencas
     .filter(
@@ -131,7 +117,7 @@ export default async function Home() {
     .sort((a, b) => a.dias_restantes - b.dias_restantes)
     .slice(0, 5);
   const clientesRecentes = prefeituras.slice(0, 5);
-  const topModulos = [...modulos].sort(
+  const topModulos = modulos.filter((modulo) => modulo.ativo).sort(
     (a, b) => b.clientes_ativos - a.clientes_ativos
   );
 
@@ -142,71 +128,94 @@ export default async function Home() {
       profile={profile}
       title="Visão geral"
     >
-      <main className="flex flex-1 flex-col gap-4 p-4">
-        <Card className="border-foreground/10 bg-gradient-to-r from-card via-card to-muted/40">
-          <CardContent className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-5 md:p-5">
+        <Card className="relative overflow-hidden border-primary/20 bg-primary text-primary-foreground">
+          <div className="pointer-events-none absolute -right-20 -top-32 size-80 rounded-full border border-primary-foreground/10 bg-primary-foreground/5" />
+          <CardContent className="relative flex flex-col gap-5 py-5 lg:flex-row lg:items-end lg:justify-between lg:py-6">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-primary-foreground/65">
                 <BrandMark className="size-6" />
-                Portal administrativo
+                Painel administrativo
               </div>
-              <h2 className="mt-1 truncate text-2xl font-semibold">
-                Vibe Tech
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight md:text-3xl">
+                Visão da operação
               </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Panorama comercial e operacional dos clientes, módulos,
-                licenças e acessos.
+              <p className="mt-2 max-w-xl text-sm text-primary-foreground/70">
+                Acompanhe contratos, recebimentos e situações que precisam de atenção neste mês.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-right">
-              <HeroStat
-                label="Clientes ativos"
-                value={`${activePrefeituras}/${prefeituras.length}`}
-              />
-              <HeroStat label="Módulos ativos" value={`${modulosAtivos}`} />
-              <HeroStat
-                label="Atenções"
-                value={`${expiringLicencas.length + expiredLicencas.length}`}
-              />
+            <div className="flex flex-wrap gap-2">
+              <QuickLink href="/cobrancas" label="Cobranças" />
+              <QuickLink href="/licencas" label="Licenças" />
+              <QuickLink href="/empresas" label="Empresas" />
             </div>
           </CardContent>
         </Card>
 
-        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Indicadores principais">
           <MetricCard
             icon={Building2}
-            label="Empresas"
-            note={`${clientesComLicenca} com licença ativa`}
-            value={prefeituras.length.toString()}
+            label="Clientes com acesso"
+            note={`de ${prefeituras.length} empresas cadastradas`}
+            value={clientesComLicenca.toString()}
+            href="/empresas"
           />
           <MetricCard
             icon={KeyRound}
-            label="Licenças ativas"
-            note={`${expiringLicencas.length} vencendo em 30 dias`}
+            label="Licenças vigentes"
+            note={`${expiringLicencas.length + expiredLicencas.length} exigem atenção`}
             value={activeLicencas.length.toString()}
             variant={expiringLicencas.length ? "warning" : "default"}
+            href="/licencas"
           />
           <MetricCard
             icon={CircleDollarSign}
-            label="Total contratado"
-            note="Contratos atuais das licenças ativas"
-            value={formatCurrency(receitaAnual)}
+            label="Receita mensal prevista"
+            note="licenças pagas vigentes"
+            value={formatCurrency(monthlyRevenue)}
+            href="/licencas"
           />
           <MetricCard
-            icon={Users}
-            label="Usuários ativos"
-            note={`${usuarios.length - usuariosAtivos} inativo(s)`}
-            value={usuariosAtivos.toString()}
-          />
-          <MetricCard
-            icon={ClipboardList}
-            label="Módulos cadastrados"
-            note={`${modulosAtivos} disponível(is)`}
-            value={modulos.length.toString()}
+            icon={AlertTriangle}
+            label="Saldo vencido"
+            note={`${overduePayments.length} mensalidade(s) em atraso`}
+            value={formatCurrency(overdueBalance)}
+            variant={overduePayments.length ? "danger" : "default"}
+            href="/cobrancas"
           />
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1fr_1.25fr]">
+        <section className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>Financeiro do mês</CardTitle>
+                <CardDescription>Competência {month.slice(5)}/{month.slice(0, 4)}</CardDescription>
+              </div>
+              <SectionLink href="/cobrancas" label="Ver cobranças" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <FinancialStat icon={Wallet} label="Cobrado" value={formatCurrency(currentPayments.reduce((total, payment) => total + Number(payment.valor), 0))} />
+                <FinancialStat icon={CheckCircle2} label="Recebido no mês" value={formatCurrency(receivedThisMonth)} />
+                <FinancialStat icon={CalendarClock} label="A receber" value={formatCurrency(currentPayments.reduce((total, payment) => total + Math.max(0, Number(payment.valor) - Number(payment.valor_pago ?? 0)), 0))} />
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">Recebido considera a data do pagamento. A receber considera o saldo desta competência.</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Acompanhamento</CardTitle>
+              <CardDescription>Pendências de acesso e atendimento.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+              <AttentionLink href="/usuarios" icon={Users} label="Primeiro acesso pendente" count={pendingAccess} />
+              <AttentionLink href="/atendimentos" icon={Headset} label="Atendimentos em aberto" count={suporte.count ?? 0} />
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle>Carteira de clientes</CardTitle>
@@ -251,11 +260,14 @@ export default async function Home() {
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
               <CardTitle>Licenças em atenção</CardTitle>
               <CardDescription>
-                Contratos vencidos ou próximos do encerramento anual.
+                Contratos vencidos ou próximos do fim da vigência.
               </CardDescription>
+              </div>
+              <SectionLink href="/licencas" label="Ver todas" />
             </CardHeader>
             <CardContent>
               {licencasCriticas.length ? (
@@ -272,43 +284,49 @@ export default async function Home() {
               )}
             </CardContent>
           </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <div>
+                <CardTitle>Cobranças vencidas</CardTitle>
+                <CardDescription>Saldo em aberto após o vencimento.</CardDescription>
+              </div>
+              <SectionLink href="/cobrancas" label="Abrir cobranças" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {overduePayments.length ? overduePayments.slice(0, 4).map((payment) => (
+                <Link key={payment.id} href={`/cobrancas?mes=${payment.competencia.slice(0, 7)}&status=overdue`} className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{payment.licenca.prefeitura_nome}</p>
+                    <p className="truncate text-xs text-muted-foreground">{payment.licenca.modulo_nome} · {formatDate(payment.vencimento)}</p>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-destructive">{formatCurrency(Math.max(0, Number(payment.valor) - Number(payment.valor_pago ?? 0)))}</span>
+                </Link>
+              )) : <EmptyState icon={CheckCircle2} text="Nenhuma cobrança vencida." />}
+            </CardContent>
+          </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
+        <section className="grid gap-4 xl:grid-cols-2">
           <Card className="xl:col-span-1">
             <CardHeader>
-              <CardTitle>Módulos</CardTitle>
+              <CardTitle>Módulos em operação</CardTitle>
               <CardDescription>
-                Aderência dos módulos por clientes ativos.
+                Clientes e mensalidade prevista por produto.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {topModulos.length ? (
                 <div className="space-y-2">
                   {topModulos.map((modulo) => (
-                    <ModuloRow key={modulo.id} modulo={modulo} />
+                    <ModuloRow key={modulo.id} modulo={modulo} licencas={activeLicencas} />
                   ))}
                 </div>
               ) : (
                 <EmptyState
                   icon={ClipboardList}
-                  text="Nenhum módulo cadastrado."
+                  text="Nenhum módulo ativo."
                 />
               )}
-            </CardContent>
-          </Card>
-
-          <Card className="xl:col-span-1">
-            <CardHeader>
-              <CardTitle>Acessos</CardTitle>
-              <CardDescription>
-                Distribuição dos usuários por perfil de acesso.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <UsuarioRoleRow role="bdl_admin" usuarios={usuarios} />
-              <UsuarioRoleRow role="municipal_admin" usuarios={usuarios} />
-              <UsuarioRoleRow role="municipal_user" usuarios={usuarios} />
             </CardContent>
           </Card>
 
@@ -344,7 +362,8 @@ export default async function Home() {
 }
 
 type MetricCardProps = {
-  icon: typeof Activity;
+  icon: typeof Building2;
+  href: string;
   label: string;
   note: string;
   value: string;
@@ -353,13 +372,15 @@ type MetricCardProps = {
 
 function MetricCard({
   icon: Icon,
+  href,
   label,
   note,
   value,
   variant = "default",
 }: MetricCardProps) {
   return (
-    <Card>
+    <Link href={href} className="group rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+    <Card className="h-full transition-colors group-hover:border-foreground/20 group-hover:bg-muted/20">
       <CardContent className="flex items-center gap-3 py-4">
         <div
           className={cn(
@@ -382,16 +403,24 @@ function MetricCard({
         </div>
       </CardContent>
     </Card>
+    </Link>
   );
 }
 
-function HeroStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border bg-background/80 px-4 py-3">
-      <div className="text-lg font-semibold">{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
-    </div>
-  );
+function QuickLink({ href, label }: { href: string; label: string }) {
+  return <Link href={href} className="inline-flex items-center gap-1 rounded-lg border border-primary-foreground/20 bg-primary-foreground/10 px-3 py-2 text-xs font-medium transition-colors hover:bg-primary-foreground/20">{label}<ArrowRight className="size-3.5" /></Link>;
+}
+
+function SectionLink({ href, label }: { href: string; label: string }) {
+  return <Link href={href} className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground">{label}<ArrowRight className="size-3.5" /></Link>;
+}
+
+function FinancialStat({ icon: Icon, label, value }: { icon: typeof Wallet; label: string; value: string }) {
+  return <div className="rounded-xl border bg-muted/20 p-3"><div className="flex items-center gap-2 text-xs text-muted-foreground"><Icon className="size-4" />{label}</div><p className="mt-2 text-lg font-semibold tabular-nums">{value}</p></div>;
+}
+
+function AttentionLink({ href, icon: Icon, label, count }: { href: string; icon: typeof Users; label: string; count: number }) {
+  return <Link href={href} className="flex items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50"><span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"><Icon className="size-4" /></span><span className="min-w-0 flex-1 truncate text-sm">{label}</span><span className="text-sm font-semibold tabular-nums">{count}</span><ArrowRight className="size-4 text-muted-foreground" /></Link>;
 }
 
 function PrefeituraStatusRow({
@@ -463,7 +492,7 @@ function LicencaRow({ licenca }: { licenca: Licenca }) {
       </div>
       <div className="text-right">
         <div className="text-sm font-semibold">
-          {formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}
+          {Number(licenca.valor_mensal) === 0 ? "Gratuita" : formatCurrency(licenca.pagamentos.filter(p => p.contrato_id === licenca.contrato.id && p.status !== "cancelled").reduce((n,p)=>n+Number(p.valor),0))}
         </div>
         <Badge
           className={
@@ -480,20 +509,23 @@ function LicencaRow({ licenca }: { licenca: Licenca }) {
   );
 }
 
-function ModuloRow({ modulo }: { modulo: Modulo }) {
-  const Icon = modulo.nome.toLowerCase().includes("frota") ? Car : ClipboardList;
+function ModuloRow({ modulo, licencas }: { modulo: Modulo; licencas: Licenca[] }) {
+  const isFrotas = modulo.slug.includes("frota");
+  const Icon = isFrotas ? Car : ClipboardList;
+  const licencasModulo = licencas.filter((licenca) => licenca.modulo_id === modulo.id);
+  const mensalidade = licencasModulo.reduce((total, licenca) => total + Number(licenca.valor_mensal ?? 0), 0);
 
   return (
-    <div className="rounded-lg border bg-background px-3 py-2">
+    <div className={cn("rounded-xl border px-3 py-3", isFrotas ? "border-blue-200 bg-blue-50/50" : "border-emerald-200 bg-emerald-50/50")}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 text-sky-700">
+          <div className={cn("flex size-9 items-center justify-center rounded-lg", isFrotas ? "bg-blue-100 text-blue-700" : "bg-emerald-100 text-emerald-700")}>
             <Icon className="size-4" />
           </div>
           <div className="min-w-0">
             <div className="truncate text-sm font-medium">{modulo.nome}</div>
             <div className="truncate text-xs text-muted-foreground">
-              {modulo.subdominio}
+              {licencasModulo.length} cliente(s) com licença vigente
             </div>
           </div>
         </div>
@@ -508,42 +540,10 @@ function ModuloRow({ modulo }: { modulo: Modulo }) {
           {modulo.ativo ? "Ativo" : "Inativo"}
         </Badge>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-        <SmallStat label="Clientes" value={modulo.clientes_ativos} />
-        <SmallStat
-          label="Receita"
-          value={formatCurrency(modulo.receita_anual)}
-          valueClassName="text-sm"
-        />
+      <div className="mt-3 border-t border-current/10 pt-3 text-sm">
+        <span className="text-xs text-muted-foreground">Receita mensal prevista</span>
+        <p className="text-lg font-semibold tabular-nums">{formatCurrency(mensalidade)}</p>
       </div>
-    </div>
-  );
-}
-
-function UsuarioRoleRow({
-  role,
-  usuarios,
-}: {
-  role: UsuarioRole;
-  usuarios: Usuario[];
-}) {
-  const count = usuarios.filter((usuario) => usuario.role === role).length;
-  const active = usuarios.filter(
-    (usuario) => usuario.role === role && usuario.ativo
-  ).length;
-  const meta = usuarioRoleMeta[role];
-
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border bg-background px-3 py-2">
-      <div className="min-w-0">
-        <Badge className={meta.badge} variant="outline">
-          {formatUsuarioRole(role)}
-        </Badge>
-        <div className="mt-1 truncate text-xs text-muted-foreground">
-          {active} ativo(s)
-        </div>
-      </div>
-      <div className="text-xl font-semibold">{count}</div>
     </div>
   );
 }
@@ -568,23 +568,6 @@ function PrefeituraRow({ prefeitura }: { prefeitura: Prefeitura }) {
           {prefeitura.licencas_ativas} licença(s)
         </div>
       </div>
-    </div>
-  );
-}
-
-function SmallStat({
-  label,
-  value,
-  valueClassName,
-}: {
-  label: string;
-  value: number | string;
-  valueClassName?: string;
-}) {
-  return (
-    <div className="rounded-lg border bg-muted/30 px-3 py-2">
-      <div className={cn("text-lg font-semibold", valueClassName)}>{value}</div>
-      <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
 }

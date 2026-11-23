@@ -36,6 +36,7 @@ import { FormSelect } from "@/components/form-select";
 import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -85,6 +86,7 @@ export type Campos = {
     valor: string;
     conta_id: string;
     pagar_id: string;
+    categoria: string;
   }[];
 };
 const cents = (v: string) => Math.round(Number(v || 0) * 100);
@@ -120,6 +122,7 @@ export function FechamentoForm({
   master = false,
   taxasPadrao = {},
   financeiro,
+  emDialogo = false,
 }: {
   id: string;
   unidadeId: string;
@@ -130,6 +133,7 @@ export function FechamentoForm({
   master?: boolean;
   taxasPadrao?: Record<string, number>;
   financeiro?: FinanceiroData;
+  emDialogo?: boolean;
 }) {
   const router = useRouter();
   const fieldId = useId();
@@ -143,6 +147,14 @@ export function FechamentoForm({
     "Despesas",
     ...(gestor ? ["Equipe do dia"] : []),
     "Observações",
+  ];
+  const descricoesEtapas = [
+    "Defina quando e de onde vieram os dados deste fechamento.",
+    "Registre as quantidades vendidas e os valores dos produtos.",
+    "Distribua o valor das vendas entre as formas de recebimento.",
+    "Informe os gastos pagos neste fechamento.",
+    ...(gestor ? ["Registre o trabalho e os pagamentos da equipe."] : []),
+    "Confira os valores e finalize o fechamento.",
   ];
   const catalogo = produtosDoFechamento(produtos, fechamento);
   const categorias = [...new Set(catalogo.map((p) => p.categoria))];
@@ -246,6 +258,9 @@ export function FechamentoForm({
           financeiro?.contas.find((c) => c.tipo === "caixa")?.id ??
           "",
         pagar_id: fechamento?.financeiro?.despesas?.[index]?.pagar_id ?? "",
+        categoria: fechamento?.financeiro?.despesas?.[index]?.categoria ??
+          financeiro?.pagar.find((p) => p.id === fechamento?.financeiro?.despesas?.[index]?.pagar_id)?.categoria ??
+          "Outras despesas",
         descricao: d.descricao,
         valor: String(d.valor),
       })),
@@ -281,7 +296,10 @@ export function FechamentoForm({
   const totalDespesas = despesas.reduce((s, d) => s + cents(d.valor), 0);
   const recebido = pagamentos.reduce((s, p) => s + cents(p.valor), 0);
   const diferenca = total - recebido;
+  const saldoFinal = recebido - taxas - totalDespesas - totalEquipe;
   const disabled = locked || busy;
+  const produtosNoDialogo = emDialogo && etapa === 1;
+  const Footer = emDialogo ? DialogFooter : "div";
   function revalidarErro(name: FieldPath<Campos>) {
     if (form.getFieldState(name).error) void form.trigger(name);
   }
@@ -388,6 +406,7 @@ export function FechamentoForm({
                 despesas: values.despesas.map((d) => ({
                   conta_id: d.conta_id,
                   pagar_id: d.pagar_id,
+                  categoria: d.categoria,
                 })),
               },
             }
@@ -486,8 +505,10 @@ export function FechamentoForm({
     });
   }
   return (
-    <div className="space-y-4">
+    <div className={produtosNoDialogo ? "flex min-h-0 flex-1 flex-col" : "space-y-4"}>
       <form
+        id={fieldId}
+        data-fechamento-step={produtosNoDialogo ? "produtos" : undefined}
         noValidate
         onSubmit={(event) => {
           if (etapa < ultimaEtapa) {
@@ -506,26 +527,24 @@ export function FechamentoForm({
             else if (e.observacoes) setEtapa(ultimaEtapa);
           })(event);
         }}
-        className="space-y-4"
+        className={produtosNoDialogo ? "flex min-h-0 flex-1 flex-col gap-3 overflow-hidden" : "space-y-4"}
       >
         {fechamento && <Status status={fechamento.status} />}
         <nav aria-label="Etapas do fechamento">
-          <ol
-            className={`grid ${gestor ? "grid-cols-6" : "grid-cols-5"} gap-1 border-b pb-4`}
-          >
+          <ol className="flex gap-2 overflow-x-auto border-b pb-3">
             {etapas.map((label, index) => (
-              <li key={label}>
+              <li key={label} className="shrink-0">
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="h-auto w-full flex-col gap-1.5 px-1 py-1 text-xs"
+                  variant={etapa === index ? "secondary" : "ghost"}
+                  className="h-9 gap-2 rounded-lg px-3 text-xs"
                   aria-current={etapa === index ? "step" : undefined}
                   disabled={busy || index > visitada}
                   onClick={() => setEtapa(index)}
                 >
                   <span
                     className={
-                      "flex size-7 items-center justify-center rounded-full border text-xs " +
+                      "flex size-5 items-center justify-center rounded-full border text-[11px] " +
                       (etapa === index
                         ? "border-primary bg-primary text-primary-foreground"
                         : "border-border text-muted-foreground")
@@ -533,11 +552,7 @@ export function FechamentoForm({
                   >
                     {index + 1}
                   </span>
-                  <span
-                    className={
-                      etapa === index ? "font-medium" : "text-muted-foreground"
-                    }
-                  >
+                  <span className={etapa === index ? "font-semibold" : "text-muted-foreground"}>
                     {label}
                   </span>
                 </Button>
@@ -545,7 +560,34 @@ export function FechamentoForm({
             ))}
           </ol>
         </nav>
-        <section hidden={etapa !== 0} aria-label="Identificação">
+        {etapa >= 1 && <div className="rounded-lg border bg-popover p-2" aria-label="Resumo do fechamento">
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+            {[
+              { label: "Produtos vendidos", value: total, emphasize: false },
+              { label: "Bruto recebido", value: recebido, emphasize: false },
+              { label: "Diferença", value: diferenca, emphasize: diferenca !== 0 },
+              { label: "Saldo final", value: saldoFinal, emphasize: false },
+            ].map((item) => (
+              <div key={item.label} className={`min-w-0 rounded-md border px-2 py-1 ${item.emphasize ? "border-destructive/30 bg-destructive/5" : "bg-popover"}`}>
+                <span className="block truncate text-[10px] text-muted-foreground">{item.label}</span>
+                <strong className={`block truncate text-xs font-semibold tabular-nums sm:text-sm ${item.emphasize ? "text-destructive" : ""}`} title={dinheiro(item.value / 100)}>
+                  {dinheiro(item.value / 100)}
+                </strong>
+              </div>
+            ))}
+          </div>
+          {etapa === ultimaEtapa && <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 px-1 text-[11px] text-muted-foreground">
+            <span>Taxas <strong className="font-medium text-foreground tabular-nums">{dinheiro(taxas / 100)}</strong></span>
+            <span>Líquido recebido <strong className="font-medium text-foreground tabular-nums">{dinheiro((recebido - taxas) / 100)}</strong></span>
+            <span>Despesas <strong className="font-medium text-foreground tabular-nums">{dinheiro(totalDespesas / 100)}</strong></span>
+            {gestor && <span>Equipe <strong className="font-medium text-foreground tabular-nums">{dinheiro(totalEquipe / 100)}</strong></span>}
+          </div>}
+        </div>}
+        <div className="space-y-1 px-0.5">
+          <h2 className="text-base font-semibold tracking-tight">{etapas[etapa]}</h2>
+          <p className="text-sm text-muted-foreground">{descricoesEtapas[etapa]}</p>
+        </div>
+        <section hidden={etapa !== 0} aria-label="Identificação" className="min-w-0 rounded-xl border bg-card p-3 sm:p-4">
           <fieldset
             disabled={disabled}
             className="grid gap-3 sm:grid-cols-[1fr_1fr_1.4fr]"
@@ -616,8 +658,8 @@ export function FechamentoForm({
             </Field>
           </fieldset>
         </section>
-        <section hidden={etapa !== 1} aria-label="Produtos vendidos">
-          <fieldset disabled={disabled} className="space-y-3">
+        <section hidden={etapa !== 1} aria-label="Produtos vendidos" className={`min-w-0 rounded-xl border bg-card p-3 sm:p-4 ${produtosNoDialogo ? "min-h-0 flex-1 overflow-hidden" : ""}`}>
+          <fieldset disabled={disabled} className={produtosNoDialogo ? "flex h-full min-h-0 flex-col gap-3" : "space-y-3"}>
             <div className="grid gap-3 sm:grid-cols-[240px_minmax(0,1fr)]">
               <Field>
                 <FieldLabel htmlFor={fieldId + "categoriaFiltro"}>
@@ -646,7 +688,7 @@ export function FechamentoForm({
                 />
               </Field>
             </div>
-            <div className="rounded-lg border [&>[data-slot=table-container]]:h-[clamp(220px,calc(100dvh-370px),520px)] [&>[data-slot=table-container]]:overflow-auto">
+            <div className={`min-h-0 rounded-lg border ${produtosNoDialogo ? "flex-1 [&>[data-slot=table-container]]:h-full [&>[data-slot=table-container]]:overflow-auto" : "[&>[data-slot=table-container]]:max-h-[52dvh] [&>[data-slot=table-container]]:overflow-auto"}`}>
               <Table className="min-w-[740px] table-fixed">
                 <TableHeader className="sticky top-0 z-10 bg-background">
                   <TableRow>
@@ -684,8 +726,10 @@ export function FechamentoForm({
                               aria-label={`Quantidade de ${produto.nome}`}
                               aria-invalid={Boolean(err?.quantidade)}
                               type="number"
-                              inputMode="decimal"
-                              step="0.001"
+                              inputMode="numeric"
+                              min="0"
+                              max="999999999"
+                              step="1"
                               placeholder="0"
                               {...form.register(`itens.${index}.quantidade`, {
                                 onChange: (e) => {
@@ -709,7 +753,7 @@ export function FechamentoForm({
                                 },
                                 validate: (v) =>
                                   !v ||
-                                  (/^\d+(\.\d{1,3})?$/.test(v) &&
+                                  (/^\d+$/.test(v) &&
                                     Number(v) >= 0 &&
                                     Number(v) <= 999999999) ||
                                   "Informe uma quantidade válida.",
@@ -724,8 +768,10 @@ export function FechamentoForm({
                               aria-label={`Cortesia de ${produto.nome}`}
                               aria-invalid={Boolean(err?.cortesia)}
                               type="number"
-                              inputMode="decimal"
-                              step="0.001"
+                              inputMode="numeric"
+                              min="0"
+                              max="999999999"
+                              step="1"
                               placeholder="0"
                               {...form.register(`itens.${index}.cortesia`, {
                                 onChange: () => {
@@ -734,7 +780,7 @@ export function FechamentoForm({
                                 },
                                 validate: (v) =>
                                   !v ||
-                                  (/^\d+(\.\d{1,3})?$/.test(v) &&
+                                  (/^\d+$/.test(v) &&
                                     Number(v) >= 0 &&
                                     Number(v) <= 999999999) ||
                                   "Informe uma quantidade válida.",
@@ -825,15 +871,12 @@ export function FechamentoForm({
               </Table>
             </div>
             <FieldError errors={[errors.root?.produtos]} />
-            <p className="text-right text-sm">
-              Total vendido:{" "}
-              <strong className="tabular-nums">{dinheiro(total / 100)}</strong>
-            </p>
           </fieldset>
         </section>
         <section
           hidden={etapa !== 2}
           aria-label="Distribuição dos recebimentos"
+          className="min-w-0 rounded-xl border bg-card p-3 sm:p-4"
         >
           <fieldset disabled={disabled} className="space-y-3">
             <p className="text-xs text-muted-foreground">
@@ -963,20 +1006,9 @@ export function FechamentoForm({
                 </TableBody>
               </Table>
             </div>
-            <div className="flex flex-wrap justify-between gap-2 text-sm">
-              <span>
-                Bruto: <strong>{dinheiro(recebido / 100)}</strong>
-              </span>
-              <span>
-                Taxas: <strong>{dinheiro(taxas / 100)}</strong>
-              </span>
-              <span>
-                Líquido: <strong>{dinheiro((recebido - taxas) / 100)}</strong>
-              </span>
-            </div>
           </fieldset>
         </section>
-        <section hidden={etapa !== 3} aria-label="Despesas do fechamento">
+        <section hidden={etapa !== 3} aria-label="Despesas do fechamento" className="min-w-0 rounded-xl border bg-card p-3 sm:p-4">
           <fieldset disabled={disabled} className="space-y-3">
             <p className="text-xs text-muted-foreground">
               Registre os gastos deste fechamento, como compras e comissões.
@@ -1069,6 +1101,7 @@ export function FechamentoForm({
                       financeiro?.contas.find((c) => c.tipo === "caixa")?.id ??
                       "",
                     pagar_id: "",
+                    categoria: "Outras despesas",
                   })
                 }
               >
@@ -1082,7 +1115,7 @@ export function FechamentoForm({
           </fieldset>
         </section>
         {gestor && (
-          <section hidden={etapa !== 4} aria-label="Equipe do dia">
+          <section hidden={etapa !== 4} aria-label="Equipe do dia" className="min-w-0 rounded-xl border bg-card p-3 sm:p-4">
             <FechamentoEquipe
               form={form}
               colaboradores={colaboradores}
@@ -1093,6 +1126,7 @@ export function FechamentoForm({
         <section
           hidden={etapa !== ultimaEtapa}
           aria-label="Observações e conferência"
+          className="min-w-0 rounded-xl border bg-card p-3 sm:p-4"
         >
           {master && financeiro?.inicio && (
             <FechamentoFinanceiro
@@ -1124,81 +1158,14 @@ export function FechamentoForm({
             </Field>
           </div>
         </section>
-        <div className="space-y-3 border-t pt-4">
-          <div
-            className={
-              etapa === ultimaEtapa
-                ? "grid grid-cols-3 gap-3 text-sm"
-                : "hidden"
-            }
-            aria-live="polite"
-          >
-            <div>
-              <span className="text-xs text-muted-foreground">Vendas</span>
-              <strong className="block tabular-nums">
-                {dinheiro(total / 100)}
-              </strong>
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground">
-                Recebimentos
-              </span>
-              <strong className="block tabular-nums">
-                {dinheiro(recebido / 100)}
-              </strong>
-            </div>
-            <div className={diferenca !== 0 ? "text-destructive" : ""}>
-              <span className="text-xs">Diferença</span>
-              <strong className="block tabular-nums">
-                {dinheiro(diferenca / 100)}
-              </strong>
-              {diferenca === 0 && (
-                <span className="text-xs text-muted-foreground">
-                  Valores conferem
-                </span>
-              )}
-            </div>
-          </div>
-          {etapa === ultimaEtapa && (
-            <div
-              className={`grid grid-cols-2 ${gestor ? "sm:grid-cols-4" : "sm:grid-cols-3"} gap-3 rounded-lg bg-muted/50 p-3 text-sm`}
-            >
-              <div>
-                <span className="text-xs text-muted-foreground">Taxas</span>
-                <strong className="block tabular-nums">
-                  {dinheiro(taxas / 100)}
-                </strong>
-              </div>
-              <div>
-                <span className="text-xs text-muted-foreground">Despesas</span>
-                <strong className="block tabular-nums">
-                  {dinheiro(totalDespesas / 100)}
-                </strong>
-              </div>
-              {gestor && (
-                <div>
-                  <span className="text-xs text-muted-foreground">
-                    Pago à equipe
-                  </span>
-                  <strong className="block tabular-nums">
-                    {dinheiro(totalEquipe / 100)}
-                  </strong>
-                </div>
-              )}
-              <div>
-                <span className="text-xs text-muted-foreground">
-                  Saldo após descontos
-                </span>
-                <strong className="block tabular-nums">
-                  {dinheiro(
-                    (recebido - taxas - totalDespesas - totalEquipe) / 100,
-                  )}
-                </strong>
-              </div>
-            </div>
-          )}
+        <Footer className={emDialogo ? "block! bg-popover!" : "space-y-2 border-t pt-4"}>
           <FieldError errors={[errors.root]} />
           <div className="flex flex-wrap items-center gap-2">
+            {emDialogo ? (
+              <DialogClose render={<Button type="button" variant="outline" disabled={busy} />}>Cancelar</DialogClose>
+            ) : (
+              <Button type="button" variant="outline" disabled={busy} onClick={() => router.push("/gestao/fechamentos")}>Cancelar</Button>
+            )}
             {etapa > 0 && (
               <Button
                 type="button"
@@ -1240,7 +1207,7 @@ export function FechamentoForm({
                     Excluir rascunho
                   </Button>
                 )}
-                <Button type="submit" variant="outline" disabled={busy}>
+                <Button type="submit" form={fieldId} variant="outline" disabled={busy}>
                   <Save className="size-4" />
                   {busy ? "Processando…" : "Salvar rascunho"}
                 </Button>
@@ -1282,7 +1249,7 @@ export function FechamentoForm({
                     : "Ao confirmar, as vendas e os lançamentos da equipe serão registrados."}
             </p>
           )}
-        </div>
+        </Footer>
       </form>
       <Dialog
         open={excluindo}

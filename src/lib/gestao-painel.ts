@@ -5,20 +5,38 @@ export const periodosPainel = [
   { value: "7dias", label: "Últimos 7 dias" },
   { value: "mes", label: "Este mês" },
   { value: "30dias", label: "Últimos 30 dias" },
+  { value: "personalizado", label: "Personalizado" },
+  { value: "todo", label: "Todo o período" },
 ];
 
-export function periodoPainel(value?: string, now = new Date()) {
+function dataValida(value?: string) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T12:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+export function intervaloPersonalizadoValido(inicio?: string, fim?: string, hoje?: string) {
+  return dataValida(inicio) && dataValida(fim) && inicio! <= fim! && (!hoje || fim! <= hoje);
+}
+
+export function periodoPainel(value?: string, now = new Date(), inicio?: string, fimEscolhido?: string) {
   const periodo = periodosPainel.some((p) => p.value === value)
     ? value!
     : "mes";
-  const fim = new Intl.DateTimeFormat("en-CA", {
+  const hoje = new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Sao_Paulo",
   }).format(now);
-  const start = new Date(`${fim}T12:00:00Z`);
+  if (periodo === "personalizado") {
+    if (intervaloPersonalizadoValido(inicio, fimEscolhido, hoje))
+      return { periodo, inicio: inicio!, fim: fimEscolhido! };
+    return periodoPainel("mes", now);
+  }
+  if (periodo === "todo") return { periodo, inicio: "0001-01-01", fim: hoje };
+  const start = new Date(`${hoje}T12:00:00Z`);
   if (periodo === "mes") start.setUTCDate(1);
   else if (periodo === "7dias") start.setUTCDate(start.getUTCDate() - 6);
   else if (periodo === "30dias") start.setUTCDate(start.getUTCDate() - 29);
-  return { periodo, inicio: start.toISOString().slice(0, 10), fim };
+  return { periodo, inicio: start.toISOString().slice(0, 10), fim: hoje };
 }
 
 export const centavos = (value: number) => Math.round(Number(value) * 100);

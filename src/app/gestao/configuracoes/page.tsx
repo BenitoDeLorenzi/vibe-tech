@@ -12,8 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import { Empty, Panel, MetricBadge } from "../ui";
-export default async function ConfiguracoesPage() {
+export default async function ConfiguracoesPage({ searchParams }: { searchParams: Promise<{ limite?: string }> }) {
+  const { limite } = await searchParams;
   const { unidade, empresas, unidades, gestor, profile } =
     await getGestaoContext();
   return (
@@ -48,6 +51,7 @@ export default async function ConfiguracoesPage() {
         }
       >
         {unidades.length ? (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -58,7 +62,7 @@ export default async function ConfiguracoesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {unidades.map((u) => (
+                {unidades.slice(0, gestaoListLimit(limite)).map((u) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">
                       {empresas.find((e) => e.id === u.empresa_id)?.nome}
@@ -74,6 +78,8 @@ export default async function ConfiguracoesPage() {
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(limite), unidades.length)} total={unidades.length} />
+          </>
         ) : (
           <Empty
             title="Nenhuma empresa disponível"

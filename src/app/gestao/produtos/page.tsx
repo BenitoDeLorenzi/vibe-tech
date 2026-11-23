@@ -14,6 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import {
   Empty,
   Panel,
@@ -25,12 +27,13 @@ import {
 import { NovoProdutoDialog } from "./novo-produto-dialog";
 import { ProdutoForm } from "./produto-form";
 import { ExcluirProdutoDialog } from "./excluir-produto-dialog";
+import { CategoriaFilter } from "./categoria-filter";
 export default async function ProdutosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; categoria?: string; limite?: string }>;
 }) {
-  const [{ unidade, gestor }, produtos, categorias, { q }] = await Promise.all([
+  const [{ unidade, gestor }, produtos, categorias, { q, categoria, limite }] = await Promise.all([
     getGestaoContext(),
     getProdutos(),
     getCategorias(),
@@ -38,11 +41,12 @@ export default async function ProdutosPage({
   ]);
   const filtrados = produtos.filter(
     (p) =>
-      !q ||
-      [p.nome, p.categoria, codigoProduto(p.codigo)]
-        .join(" ")
-        .toLocaleLowerCase("pt-BR")
-        .includes(q.trim().toLocaleLowerCase("pt-BR")),
+      (!categoria || p.categoria_id === categoria) &&
+      (!q ||
+        [p.nome, p.categoria, codigoProduto(p.codigo)]
+          .join(" ")
+          .toLocaleLowerCase("pt-BR")
+          .includes(q.trim().toLocaleLowerCase("pt-BR"))),
   );
   return (
     <GestaoShell
@@ -52,8 +56,14 @@ export default async function ProdutosPage({
         <SearchToolbar
           placeholder="Buscar nome, código ou categoria"
           query={q}
-          clearHref="/gestao/produtos"
+          clearHref={
+            categoria
+              ? `/gestao/produtos?categoria=${encodeURIComponent(categoria)}`
+              : "/gestao/produtos"
+          }
+          hidden={categoria ? { categoria } : undefined}
         >
+          <CategoriaFilter categorias={categorias} value={categoria} />
           {gestor && unidade && (
             <NovoProdutoDialog unidadeId={unidade.id} categorias={categorias} />
           )}
@@ -88,6 +98,7 @@ export default async function ProdutosPage({
             action="Configurar"
           />
         ) : filtrados.length ? (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -105,7 +116,7 @@ export default async function ProdutosPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((p) => (
+                {filtrados.slice(0, gestaoListLimit(limite)).map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
                       <div className="min-w-[180px] font-medium">{p.nome}</div>
@@ -153,14 +164,16 @@ export default async function ProdutosPage({
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(limite), filtrados.length)} total={filtrados.length} />
+          </>
         ) : (
           <Empty
             title={
-              q ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"
+              q || categoria ? "Nenhum produto encontrado" : "Nenhum produto cadastrado"
             }
             description={
-              q
-                ? "Ajuste os termos da busca."
+              q || categoria
+                ? "Ajuste a busca ou selecione outra categoria."
                 : "Use Novo produto para iniciar o catálogo."
             }
           />

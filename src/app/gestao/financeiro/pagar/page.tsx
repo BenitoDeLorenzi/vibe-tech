@@ -19,26 +19,52 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { GestaoShell } from "../../gestao-shell";
+import { GestaoShowMore } from "../../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import { Panel, ListBadge, Empty, MetricBadge, SearchToolbar } from "../../ui";
 import { FinanceiroForm } from "../financeiro-form";
 import { ContaActions } from "./conta-actions";
+import { PeriodoPagarFilter } from "./periodo-filter";
 export default async function PagarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; cartao?: string; categoria?: string; mes?: string; ano?: string; limite?: string }>;
 }) {
   const { profile } = await getGestaoContext();
   if (profile.role !== "bdl_admin") forbidden();
   const [fin, params] = await Promise.all([getFinanceiroData(), searchParams]);
   const hoje = hojeFinanceiro();
-  const rows = fin.pagar
+  const mesAtual = Number(hoje.slice(5, 7));
+  const anoAtual = Number(hoje.slice(0, 4));
+  const mes = /^(?:[1-9]|1[0-2])$/.test(params.mes ?? "") ? Number(params.mes) : mesAtual;
+  const ano = /^\d{4}$/.test(params.ano ?? "") && Number(params.ano) >= 2000 && Number(params.ano) <= 2100
+    ? Number(params.ano) : anoAtual;
+  const anosEncontrados = fin.pagar.map((p) => Number(p.vencimento.slice(0, 4)));
+  const primeiroAno = Math.min(anoAtual, ano, ...anosEncontrados);
+  const ultimoAno = Math.max(anoAtual + 1, ano, ...anosEncontrados);
+  const anos = Array.from({ length: ultimoAno - primeiroAno + 1 }, (_, index) => ultimoAno - index);
+  const periodo = `${ano}-${String(mes).padStart(2, "0")}`;
+  const categorias = [...new Set([...fin.categorias.filter((c) => c.nome !== "Fechamento").map((c) => c.nome), ...fin.pagar.map((p) => p.categoria)])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const categoria = categorias.includes(params.categoria ?? "") ? params.categoria : undefined;
+  const contasDoMes = fin.pagar.filter((p) =>
+    p.vencimento.startsWith(periodo) && (!params.cartao || p.cartao_id === params.cartao),
+  );
+  const parcelasPorGrupo = new Map<string, typeof fin.pagar>();
+  for (const conta of fin.pagar) {
+    if (!conta.parcelamento_id) continue;
+    const grupo = parcelasPorGrupo.get(conta.parcelamento_id) ?? [];
+    grupo.push(conta);
+    parcelasPorGrupo.set(conta.parcelamento_id, grupo);
+  }
+  const rows = contasDoMes
     .filter(
       (p) =>
         (!params.q ||
-          [p.descricao, p.fornecedor, p.categoria]
+          [p.descricao, p.fornecedor, p.categoria, fin.cartoes.find((c) => c.id === p.cartao_id)?.nome ?? ""]
             .join(" ")
             .toLocaleLowerCase("pt-BR")
             .includes(params.q.toLocaleLowerCase("pt-BR"))) &&
+        (!categoria || p.categoria === categoria) &&
         (!params.status ||
           (params.status === "pendentes"
             ? pendentePagar(p) > 0
@@ -56,8 +82,8 @@ export default async function PagarPage({
           <SearchToolbar
             placeholder="Buscar descrição ou fornecedor"
             query={params.q}
-            clearHref="/gestao/financeiro/pagar"
-            hidden={params.status ? { status: params.status } : undefined}
+            clearHref={`/gestao/financeiro/pagar?${new URLSearchParams({ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}) })}`}
+            hidden={{ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}) }}
           >
             <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
               {[
@@ -72,6 +98,10 @@ export default async function PagarPage({
                     "/gestao/financeiro/pagar?" +
                     new URLSearchParams({
                       ...(params.q ? { q: params.q } : {}),
+                      ...(params.cartao ? { cartao: params.cartao } : {}),
+                      ...(categoria ? { categoria } : {}),
+                      mes: String(mes),
+                      ano: String(ano),
                       ...(status ? { status } : {}),
                     })
                   }
@@ -86,7 +116,7 @@ export default async function PagarPage({
                 </Link>
               ))}
             </div>
-            <FinanceiroForm acao="pagar_cadastrar" label="Nova conta a pagar" />
+            <FinanceiroForm acao="pagar_cadastrar" label="Nova conta a pagar" cartoes={fin.cartoes} categorias={fin.categorias} />
           </SearchToolbar>
         ) : null
       }
@@ -108,7 +138,7 @@ export default async function PagarPage({
               <MetricBadge
                 label="em aberto"
                 value={dinheiro(
-                  fin.pagar.reduce(
+                  contasDoMes.reduce(
                     (s, p) => s + Math.round(pendentePagar(p) * 100),
                     0,
                   ) / 100,
@@ -119,7 +149,7 @@ export default async function PagarPage({
               <MetricBadge
                 label="vencidas"
                 value={
-                  fin.pagar.filter(
+                  contasDoMes.filter(
                     (p) => p.vencimento < hoje && pendentePagar(p) > 0,
                   ).length
                 }
@@ -129,11 +159,17 @@ export default async function PagarPage({
             </>
           }
         >
+          <PeriodoPagarFilter mes={mes} ano={ano} anos={anos} categorias={categorias} categoria={categoria} />
+          {params.cartao && <div className="mb-3 flex items-center justify-between gap-2 text-sm">
+            <span>Cartão: {fin.cartoes.find((c) => c.id === params.cartao)?.nome ?? "Cartão selecionado"}</span>
+            <Link className="text-primary hover:underline" href={`/gestao/financeiro/pagar?mes=${mes}&ano=${ano}`}>Ver todas</Link>
+          </div>}
           <div className="overflow-hidden rounded-lg border">
             <Table>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead>Descrição</TableHead>
+                <TableHead>Categoria</TableHead>
                 <TableHead>Vencimento</TableHead>
                 <TableHead>Situação</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -143,7 +179,7 @@ export default async function PagarPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.map((p) => {
+              {rows.slice(0, gestaoListLimit(params.limite)).map((p) => {
                 const saldo = pendentePagar(p);
                 const solicitado = valorReservado(
                   fin.solicitacoes,
@@ -156,10 +192,11 @@ export default async function PagarPage({
                   <TableRow key={p.id}>
                     <TableCell>
                       <div className="font-medium">{p.descricao}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {p.categoria}
-                        {p.fornecedor && ` · ${p.fornecedor}`}
-                      </div>
+                      {p.fornecedor && <div className="text-xs text-muted-foreground">{p.fornecedor}</div>}
+                      {p.parcelamento_id && <div className="text-xs text-muted-foreground">
+                        Parcela {p.parcela_numero}/{p.parcelas_total}
+                        {p.cartao_id && ` · ${fin.cartoes.find((c) => c.id === p.cartao_id)?.nome ?? "Cartão de crédito"}`}
+                      </div>}
                       {p.observacoes && (
                         <p
                           className="max-w-xs truncate text-xs text-muted-foreground"
@@ -177,6 +214,7 @@ export default async function PagarPage({
                         </Link>
                       )}
                     </TableCell>
+                    <TableCell>{p.categoria}</TableCell>
                     <TableCell>{dataBR(p.vencimento)}</TableCell>
                     <TableCell>
                       <ListBadge
@@ -233,6 +271,13 @@ export default async function PagarPage({
                         contas={fin.contas}
                         livre={livre}
                         solicitado={solicitado}
+                        categorias={fin.categorias}
+                        parcelas={p.parcelamento_id ? (parcelasPorGrupo.get(p.parcelamento_id) ?? [p]) : [p]}
+                        podeEditarTodas={Boolean(p.parcelamento_id &&
+                          (parcelasPorGrupo.get(p.parcelamento_id)?.length ?? 0) === p.parcelas_total &&
+                          parcelasPorGrupo.get(p.parcelamento_id)?.every((parcela) =>
+                            !parcela.cancelada && !parcela.fechamento_id && Number(parcela.pago) === 0 &&
+                            !fin.solicitacoes.some((solicitacao) => solicitacao.pagar_id === parcela.id)))}
                       />
                     </TableCell>
                   </TableRow>
@@ -241,7 +286,7 @@ export default async function PagarPage({
               {!rows.length && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="py-8 text-center text-muted-foreground"
                   >
                     Nenhuma conta encontrada.
@@ -251,6 +296,7 @@ export default async function PagarPage({
             </TableBody>
           </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(params.limite), rows.length)} total={rows.length} />
           <p className="mt-4 text-xs text-muted-foreground">
             Consulte os pagamentos e estorne lançamentos em{" "}
             <Link className="underline" href="/gestao/financeiro/extratos">

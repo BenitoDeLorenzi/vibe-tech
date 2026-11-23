@@ -28,13 +28,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { GestaoShell } from "../../gestao-shell";
+import { GestaoShowMore } from "../../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import { Empty, Panel, MetricBadge, ListBadge, SearchToolbar } from "../../ui";
 export default async function MovimentacoesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; limite?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, limite } = await searchParams;
   const [movimentos, produtos, { unidade, gestor }] = await Promise.all([
     getMovimentos(),
     getProdutos(),
@@ -91,6 +93,7 @@ export default async function MovimentacoesPage({
             description="Registre o estoque inicial ou ajuste os termos da busca."
           />
         ) : (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -128,7 +131,7 @@ export default async function MovimentacoesPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((m) => (
+                {filtrados.slice(0, gestaoListLimit(limite)).map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>
                       {dataBR(m.created_at)}
@@ -244,6 +247,8 @@ export default async function MovimentacoesPage({
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(limite), filtrados.length)} total={filtrados.length} />
+          </>
         )}
       </Panel>
     </GestaoShell>

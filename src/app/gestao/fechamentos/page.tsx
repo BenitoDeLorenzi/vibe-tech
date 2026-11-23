@@ -33,6 +33,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import { FechamentoForm } from "./fechamento-form";
 import { ExcluirFechamentoButton } from "./excluir-rascunho-button";
 import {
@@ -46,7 +48,7 @@ import {
 export default async function FechamentosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; novo?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; novo?: string; limite?: string }>;
 }) {
   const params = await searchParams;
   const [{ unidade, gestor, profile }, fechamentos, produtos, taxas] =
@@ -79,6 +81,7 @@ export default async function FechamentosPage({
       defaultOpen={params.novo === "1"}
     >
       <FechamentoForm
+        emDialogo
         id={randomUUID()}
         unidadeId={unidade.id}
         financeiro={financeiro}
@@ -169,6 +172,7 @@ export default async function FechamentosPage({
             action="Cadastrar produtos"
           />
         ) : (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -186,7 +190,7 @@ export default async function FechamentosPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((f) => {
+                {filtrados.slice(0, gestaoListLimit(params.limite)).map((f) => {
                   const recebido = f.pagamentos.reduce(
                     (s, p) => s + Math.round(Number(p.valor) * 100),
                     0,
@@ -305,6 +309,8 @@ export default async function FechamentosPage({
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(params.limite), filtrados.length)} total={filtrados.length} />
+          </>
         )}
       </Panel>
     </GestaoShell>

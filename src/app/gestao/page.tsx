@@ -66,8 +66,8 @@ function BlocoPainel({
   children: ReactNode;
 }) {
   return (
-    <Card className="h-full gap-4">
-      <CardHeader className="gap-3">
+    <Card className="gap-3">
+      <CardHeader className="gap-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/50">
@@ -87,7 +87,7 @@ function BlocoPainel({
 export default async function GestaoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periodo?: string }>;
+  searchParams: Promise<{ periodo?: string; inicio?: string; fim?: string }>;
 }) {
   const [{ unidade, empresa, gestor, profile }, query] = await Promise.all([
     getGestaoContext(),
@@ -106,7 +106,7 @@ export default async function GestaoPage({
         </Panel>
       </GestaoShell>
     );
-  const periodo = periodoPainel(query.periodo);
+  const periodo = periodoPainel(query.periodo, new Date(), query.inicio, query.fim);
   const [{ fechamentos, produtos }, equipe, contas] = await Promise.all([
     getPainelData(periodo.fim),
     getEquipeData(),
@@ -178,25 +178,24 @@ export default async function GestaoPage({
         </>
       }
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 py-1">
-        <div className="flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-xl border bg-card">
-            <Store className="size-5 text-muted-foreground" />
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-gradient-to-br from-primary/[0.07] via-card to-card px-4 py-4 sm:px-5">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-primary/15 bg-card shadow-sm">
+            <Store className="size-5 text-primary" />
           </span>
-          <div>
-            <h2 className="text-lg font-semibold">
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-muted-foreground">Painel do estabelecimento</p>
+            <h2 className="truncate text-lg font-semibold tracking-tight">
               {empresa?.nome ?? unidade.nome}
             </h2>
-            <p className="text-sm text-muted-foreground">
-              {unidade.nome} · Acompanhe os resultados e a operação
-            </p>
+            <p className="truncate text-xs text-muted-foreground">{unidade.nome}</p>
           </div>
         </div>
-        <div className="ml-auto flex flex-col items-end gap-1.5">
-          <PeriodoPainel value={periodo.periodo} />
-          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex flex-col gap-1.5 sm:items-end">
+          <PeriodoPainel value={periodo.periodo} inicio={periodo.inicio} fim={periodo.fim} />
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-xs text-muted-foreground">
             <CalendarDays className="size-3.5" />
-            {dataBR(periodo.inicio)} a {dataBR(periodo.fim)}
+            {periodo.periodo === "todo" ? `Todo o histórico até ${dataBR(periodo.fim)}` : `${dataBR(periodo.inicio)} a ${dataBR(periodo.fim)}`}
           </span>
         </div>
       </div>
@@ -207,7 +206,7 @@ export default async function GestaoPage({
         />
       )}
       <section
-        className="grid gap-4 lg:grid-cols-2"
+        className="space-y-3"
         aria-label="Posição financeira"
       >
         {!contas?.inicio && (
@@ -249,9 +248,14 @@ export default async function GestaoPage({
         <BlocoPainel
           title="Movimentação dos fechamentos"
           icon={ArrowDownRight}
-          description="Recebimentos e saídas dos fechamentos nas datas selecionadas. Consulte o extrato para os demais movimentos financeiros."
+          description="Entradas e saídas dos fechamentos no período selecionado."
+          metrics={contas?.inicio ? (
+            <Link href="/gestao/financeiro/extratos" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+              Ver extrato <ArrowUpRight className="size-4" />
+            </Link>
+          ) : undefined}
         >
-          <dl className="space-y-2.5 text-sm">
+          <dl className={`grid gap-2 sm:grid-cols-2 ${gestor ? "lg:grid-cols-5" : "lg:grid-cols-4"}`}>
             {[
               ["Recebimentos brutos", movimento.bruto],
               ["Taxas", -movimento.taxas],
@@ -260,19 +264,19 @@ export default async function GestaoPage({
                 ? [["Pagamentos à equipe", -movimento.equipePaga]]
                 : []),
             ].map(([label, value]) => (
-              <div key={String(label)} className="flex justify-between gap-3">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="tabular-nums">
+              <div key={String(label)} className="rounded-lg border bg-muted/25 px-3 py-2.5">
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd className="mt-1 text-base font-semibold tabular-nums">
                   {dinheiro((Number(value) || 0) / 100)}
                 </dd>
               </div>
             ))}
-            <div className="flex justify-between gap-3 border-t pt-3 font-semibold">
-              <dt>
+            <div className="rounded-lg border border-primary/15 bg-primary/[0.06] px-3 py-2.5">
+              <dt className="text-xs font-medium text-muted-foreground">
                 {gestor ? "Saldo gerado no período" : "Saldo antes da equipe"}
               </dt>
               <dd
-                className={`tabular-nums ${movimento.saldo < 0 ? "text-destructive" : ""}`}
+                className={`mt-1 text-base font-semibold tabular-nums ${movimento.saldo < 0 ? "text-destructive" : ""}`}
               >
                 {dinheiro(movimento.saldo / 100)}
               </dd>
@@ -303,9 +307,9 @@ export default async function GestaoPage({
           </Card>
         ))}
       </section>
-      <section className="space-y-3" aria-label="Resultados do período">
-        <h3 className="text-sm font-semibold">Resultados do período</h3>
-        <div className="grid items-stretch gap-4 lg:grid-cols-2">
+      <section className="grid items-start gap-4 lg:grid-cols-2" aria-label="Resultados e atenção do estabelecimento">
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold">Financeiro e fechamentos</h3>
           <BlocoPainel
             title="Formas de recebimento"
             icon={Wallet}
@@ -346,46 +350,11 @@ export default async function GestaoPage({
                 })}
               </div>
             ) : (
-              <p className="py-6 text-sm text-muted-foreground">
+              <p className="rounded-lg bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
                 Nenhum recebimento conferido neste período.
               </p>
             )}
           </BlocoPainel>
-          <BlocoPainel
-            title="Destaques de vendas"
-            icon={Trophy}
-            description="Produtos com maior valor vendido no período."
-          >
-            {resumo.produtos.length ? (
-              <div className="divide-y">
-                {resumo.produtos.map((p, index) => (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
-                  >
-                    <span className="text-xs text-muted-foreground">
-                      {index + 1}
-                    </span>
-                    <span className="min-w-0 flex-1 text-sm font-medium">
-                      {p.nome}
-                    </span>
-                    <span className="text-sm tabular-nums">
-                      {dinheiro(p.total / 100)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="py-6 text-sm text-muted-foreground">
-                Ainda não há vendas confirmadas neste período.
-              </p>
-            )}
-          </BlocoPainel>
-        </div>
-      </section>
-      <section className="space-y-3" aria-label="Atenção na operação">
-        <h3 className="text-sm font-semibold">Atenção na operação</h3>
-        <div className="grid items-stretch gap-4 lg:grid-cols-2">
           <BlocoPainel
             title="Fechamentos pendentes"
             icon={ClipboardCheck}
@@ -438,7 +407,7 @@ export default async function GestaoPage({
                 </Table>
               </div>
             ) : (
-              <p className="py-6 text-sm text-muted-foreground">
+              <p className="rounded-lg bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
                 Nenhum rascunho pendente neste período.
               </p>
             )}
@@ -446,6 +415,39 @@ export default async function GestaoPage({
               <p className="mt-2 text-xs text-muted-foreground">
                 Exibindo 5 de {pendentes.length}. Divergências aparecem
                 primeiro.
+              </p>
+            )}
+          </BlocoPainel>
+        </div>
+        <div className="space-y-4">
+          <h3 className="text-sm font-semibold">Vendas e operação</h3>
+          <BlocoPainel
+            title="Destaques de vendas"
+            icon={Trophy}
+            description="Produtos com maior valor vendido no período."
+          >
+            {resumo.produtos.length ? (
+              <div className="divide-y">
+                {resumo.produtos.map((p, index) => (
+                  <div
+                    key={p.id}
+                    className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {index + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm font-medium">
+                      {p.nome}
+                    </span>
+                    <span className="text-sm tabular-nums">
+                      {dinheiro(p.total / 100)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-lg bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
+                Ainda não há vendas confirmadas neste período.
               </p>
             )}
           </BlocoPainel>
@@ -501,7 +503,7 @@ export default async function GestaoPage({
                 </Table>
               </div>
             ) : (
-              <p className="py-6 text-sm text-muted-foreground">
+              <p className="rounded-lg bg-muted/30 px-3 py-4 text-sm text-muted-foreground">
                 {produtos.length
                   ? "Nenhum produto próximo ou abaixo do estoque mínimo."
                   : "Nenhum produto ativo com controle de estoque."}

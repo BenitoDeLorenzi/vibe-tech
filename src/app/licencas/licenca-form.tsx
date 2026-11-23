@@ -48,6 +48,7 @@ type LicencaFormProps = {
 };
 
 type LicencaFormValues = {
+  gratuita: boolean;
   fim: string;
   inicio: string;
   modulo_id: string | null;
@@ -80,6 +81,7 @@ export function LicencaForm({
   );
   const form = useForm<LicencaFormValues>({
     defaultValues: {
+      gratuita: licenca?.contrato.valor_mensal === 0,
       fim: licenca?.contrato.fim ?? defaultFim ?? "",
       inicio: licenca?.contrato.inicio ?? defaultInicio ?? "",
       modulo_id: licenca?.modulo_id ?? null,
@@ -104,6 +106,7 @@ export function LicencaForm({
     control: form.control,
     name: "valor_mensal",
   });
+  const gratuita = useWatch({ control: form.control, name: "gratuita" });
   const inicioPreview = useWatch({ control: form.control, name: "inicio" });
   const fimPreview = useWatch({ control: form.control, name: "fim" });
   const diaPreview = useWatch({ control: form.control, name: "dia_vencimento" });
@@ -117,6 +120,7 @@ export function LicencaForm({
 
       if (!isEditing) {
         form.reset({
+          gratuita: false,
           fim: defaultFim ?? "",
           inicio: defaultInicio ?? "",
           modulo_id: null,
@@ -152,6 +156,7 @@ export function LicencaForm({
     formData.set("fim", values.fim);
     formData.set("dia_vencimento", String(values.dia_vencimento));
     formData.set("valor_mensal", String(values.valor_mensal ?? ""));
+    formData.set("gratuita", String(values.gratuita));
     formData.set("status", values.status ?? "");
 
     startTransition(() => {
@@ -284,13 +289,38 @@ export function LicencaForm({
             />
           </div>
 
+          {!isEditing && (
+            <Controller
+              control={form.control}
+              name="gratuita"
+              render={({ field }) => (
+                <Field>
+                  <FieldLabel>Tipo de licença</FieldLabel>
+                  <FormSelect
+                    aria-label="Tipo de licença"
+                    value={field.value ? "gratuita" : "paga"}
+                    onValueChange={(value) => {
+                      field.onChange(value === "gratuita");
+                      if (value === "gratuita") form.setValue("valor_mensal", 0);
+                      else form.setValue("valor_mensal", null);
+                    }}
+                    options={[
+                      { value: "paga", label: "Paga" },
+                      { value: "gratuita", label: "Gratuita" },
+                    ]}
+                  />
+                </Field>
+              )}
+            />
+          )}
           <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
+            {!gratuita && (
             <Controller
               control={form.control}
               name="valor_mensal"
               rules={{
                 validate: (value) =>
-                  value !== null && value > 0
+                  gratuita || (value !== null && value > 0)
                     ? true
                     : "Informe o valor mensal.",
               }}
@@ -312,6 +342,7 @@ export function LicencaForm({
                 </Field>
               )}
             />
+            )}
 
             <Controller
               control={form.control}
@@ -351,8 +382,8 @@ export function LicencaForm({
               )}
             />
           </div>
-          <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending || isEditing} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />
-          {!isEditing && <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={valorMensal} dia={diaPreview} />}
+          {!gratuita && <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending || isEditing} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />}
+          {!isEditing && <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={gratuita ? 0 : valorMensal} dia={diaPreview} gratuita={gratuita} />}
         </FieldGroup>
       </fieldset>
 

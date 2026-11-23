@@ -57,6 +57,11 @@ const groups = [
         icon: Receipt,
       },
       {
+        href: "/gestao/financeiro/categorias",
+        label: "Categorias de despesas",
+        icon: Tags,
+      },
+      {
         href: "/gestao/financeiro/extratos",
         label: "Extratos",
         icon: ArrowLeftRight,

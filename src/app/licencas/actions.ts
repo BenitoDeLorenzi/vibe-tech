@@ -19,12 +19,13 @@ async function save(
   const actor = await requireRole(["bdl_admin"]);
   const inicio = value(data, "inicio"),
     fim = value(data, "fim");
-  const mensal = Number(value(data, "valor_mensal")),
+  const gratuita = value(data, "gratuita") === "true";
+  const mensal = gratuita ? 0 : Number(value(data, "valor_mensal")),
     dia = Number(value(data, "dia_vencimento"));
-  if (!billingSchedule(inicio, fim, mensal, dia).length)
+  if ((!gratuita && mensal <= 0) || !billingSchedule(inicio, fim, mensal, dia).length)
     return {
       error:
-        "Informe período válido (até 120 mensalidades), valor mensal e dia de vencimento de 1 a 31.",
+        "Informe período válido (até 120 meses), valor mensal para licenças pagas e dia de vencimento de 1 a 31.",
     };
   if (mode !== "create" && !value(data, "id"))
     return { error: "Licença não encontrada." };

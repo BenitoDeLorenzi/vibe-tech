@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { Users, CircleCheck, CircleMinus, Wallet } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { getEquipeData } from "@/lib/gestao-equipe-data";
 import { saldoColaborador } from "@/lib/gestao-equipe";
 import { dinheiro } from "@/lib/gestao-types";
-import { buttonVariants } from "@/components/ui/button";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import {
   Table,
   TableBody,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { ExtratoColaborador } from "./extrato-colaborador";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
 import {
   Panel,
   Empty,
@@ -29,7 +29,7 @@ export async function EquipePage({
   query,
 }: {
   tipo?: "colaboradores";
-  query: { q?: string; p?: string };
+  query: { q?: string; limite?: string };
 }) {
   const ctx = await getGestaoContext();
   if (!ctx.gestor || !ctx.unidade)
@@ -49,19 +49,11 @@ export async function EquipePage({
       .toLocaleLowerCase("pt-BR")
       .includes(q),
   );
-  const paginas = Math.max(1, Math.ceil(pessoas.length / 20));
-  const pagina = Math.min(
-    paginas,
-    Math.max(1, Number.parseInt(query.p ?? "1", 10) || 1),
-  );
   const saldos = new Map(
     colaboradores.map((c) => [c.id, saldoColaborador(extrato, c.id)]),
   );
   const totalPendente =
     [...saldos.values()].reduce((s, v) => s + Math.round(v * 100), 0) / 100;
-  const paginar = (p: number) =>
-    "/gestao/equipe?" +
-    new URLSearchParams({ ...(query.q ? { q: query.q } : {}), p: String(p) });
   return (
     <GestaoShell
       title="Colaboradores"
@@ -115,7 +107,7 @@ export async function EquipePage({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pessoas.slice((pagina - 1) * 20, pagina * 20).map((c) => {
+                  {pessoas.slice(0, gestaoListLimit(query.limite)).map((c) => {
                     const historico = extrato
                       .filter((i) => i.colaborador_id === c.id)
                       .sort(
@@ -170,35 +162,7 @@ export async function EquipePage({
                 </TableBody>
               </Table>
             </div>
-            <div className="mt-4 flex items-center justify-between gap-3">
-              <p className="text-xs text-muted-foreground">
-                {pessoas.length} colaborador(es) · Página {pagina} de {paginas}
-              </p>
-              <div className="flex gap-2">
-                {pagina > 1 && (
-                  <Link
-                    href={paginar(pagina - 1)}
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                    })}
-                  >
-                    Anterior
-                  </Link>
-                )}
-                {pagina < paginas && (
-                  <Link
-                    href={paginar(pagina + 1)}
-                    className={buttonVariants({
-                      variant: "outline",
-                      size: "sm",
-                    })}
-                  >
-                    Próxima
-                  </Link>
-                )}
-              </div>
-            </div>
+            <GestaoShowMore shown={Math.min(gestaoListLimit(query.limite), pessoas.length)} total={pessoas.length} />
           </>
         ) : (
           <Empty

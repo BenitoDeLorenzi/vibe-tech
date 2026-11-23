@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar";
 import { GestaoNav } from "./gestao-nav";
 import { GestaoUnidadeContext } from "./gestao-unidade-context";
+import { MobileBrandBar } from "@/components/mobile-brand-bar";
 
 // Same composition and dimensions as FrotasShell; domain navigation differs.
 export async function GestaoShell({
@@ -33,7 +34,7 @@ export async function GestaoShell({
   const { profile, empresas, unidades, unidade, gestor } =
     await getGestaoContext();
   return (
-    <SidebarProvider className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
+    <SidebarProvider data-vibe-gestao="" className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
       <Sidebar collapsible="icon" variant="inset">
         <SidebarHeader>
           <GestaoUnidadeContext
@@ -58,12 +59,13 @@ export async function GestaoShell({
         <SidebarRail />
       </Sidebar>
       <SidebarInset className="min-h-0 overflow-hidden print:m-0 print:block print:min-h-0 print:w-full print:overflow-visible print:rounded-none print:bg-white print:shadow-none">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b px-4 print:hidden">
+        <MobileBrandBar section="Gestão" />
+        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-card/85 px-4 print:hidden">
           <SidebarTrigger className="-ml-1" />
           <HeaderSeparator />
-          <div className="flex min-w-0 shrink-0 items-center gap-2">
-            {Icon && <Icon className="size-5 text-muted-foreground" />}
-            <h1 className="truncate text-xl font-semibold tracking-normal">
+          <div className="flex min-w-0 items-center gap-2 md:shrink-0">
+            {Icon && <Icon className="size-5 text-primary" />}
+            <h1 className="truncate text-base font-semibold tracking-normal md:text-xl">
               {title}
             </h1>
           </div>

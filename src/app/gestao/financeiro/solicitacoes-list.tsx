@@ -18,6 +18,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import { Panel, ListBadge, MetricBadge } from "../ui";
+import { GestaoShowMore } from "../gestao-show-more";
 import { FinanceiroForm } from "./financeiro-form";
 
 const estados = {
@@ -29,8 +30,10 @@ const estados = {
 
 export function SolicitacoesList({
   financeiro: fin,
+  limite = 10,
 }: {
   financeiro: FinanceiroData;
+  limite?: number;
 }) {
   const contas = new Map(fin.contas.map((c) => [c.id, c.nome]));
   const pagar = new Map(fin.pagar.map((p) => [p.id, p.descricao]));
@@ -80,7 +83,7 @@ export function SolicitacoesList({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((s) => {
+          {rows.slice(0, limite).map((s) => {
             const estado = estados[s.status];
             const destino =
               s.tipo === "repasse"
@@ -171,6 +174,7 @@ export function SolicitacoesList({
         </TableBody>
       </Table>
           </div>
+      <GestaoShowMore shown={Math.min(limite, rows.length)} total={rows.length} param="solicitacoes" />
     </Panel>
   );
 }

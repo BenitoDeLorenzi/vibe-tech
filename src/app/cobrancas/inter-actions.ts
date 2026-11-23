@@ -27,6 +27,7 @@ export async function issueInterBillingAction(
     .eq("id", id)
     .single();
   if (paymentError || !payment) return { error: "Mensalidade não encontrada." };
+  if (Number(payment.valor) <= 0) return { error: "Licenças gratuitas não geram boleto." };
   if (payment.status !== "open" || Number(payment.valor_pago ?? 0) !== 0)
     return { error: "Somente mensalidades em aberto e sem recebimentos podem ser emitidas." };
   if (payment.vencimento < todayInSaoPaulo())

@@ -26,7 +26,7 @@ export function billingSchedule(
     !validDate(fim) ||
     fim < inicio ||
     !Number.isFinite(mensalidade) ||
-    mensalidade <= 0 ||
+    mensalidade < 0 ||
     mensalidade > 9999999999.99 ||
     !Number.isInteger(dia) ||
     dia < 1 ||

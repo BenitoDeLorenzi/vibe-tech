@@ -1,7 +1,7 @@
 "use client";
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form";
 import { FormSelect } from "@/components/form-select";
-import { Field, FieldLabel } from "@/components/ui/field";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { type FinanceiroData, pendentePagar } from "@/lib/gestao-contas";
 import { dinheiro } from "@/lib/gestao-types";
 import type { Campos } from "./fechamento-form";
@@ -31,8 +31,13 @@ export function FechamentoFinanceiro({
     .filter((c) => c.ativo)
     .map((c) => ({ value: c.id, label: c.nome }));
   return (
-    <div className="mb-5 space-y-3 rounded-lg border p-3">
-      <h3 className="text-sm font-semibold">Contas do fechamento</h3>
+    <div className="mb-5 space-y-5 rounded-lg border p-4">
+      <div>
+        <h3 className="text-sm font-semibold">Movimentação financeira</h3>
+        <p className="text-xs text-muted-foreground">Escolha onde registrar os recebimentos e pagamentos deste fechamento.</p>
+      </div>
+      <div className="space-y-3">
+      <h4 className="text-sm font-medium">Recebimentos</h4>
       {pagamentos.map(
         (p, i) =>
           Number(p.valor) > 0 && (
@@ -71,8 +76,10 @@ export function FechamentoFinanceiro({
         Dinheiro entra no caixa. Os demais recebimentos ficam no sistema de
         cobrança, já descontadas as taxas.
       </p>
+      </div>
+      {despesas.length > 0 && <div className="space-y-3 border-t pt-4"><h4 className="text-sm font-medium">Despesas</h4>
       {despesas.map((d, i) => (
-        <div key={i} className="space-y-2 border-t pt-3">
+        <div key={i} className="space-y-3 rounded-lg border p-3">
           <p className="text-sm font-medium">
             {d.descricao || `Despesa ${i + 1}`}
           </p>
@@ -93,37 +100,63 @@ export function FechamentoFinanceiro({
                 )}
               />
             </Field>
-            <Field>
-              <FieldLabel>Vincular compromisso</FieldLabel>
+            <Field data-invalid={Boolean(form.formState.errors.despesas?.[i]?.categoria)}>
+              <FieldLabel>Categoria</FieldLabel>
               <Controller
-                name={`despesas.${i}.pagar_id`}
+                name={`despesas.${i}.categoria`}
                 control={form.control}
+                rules={{ required: "Escolha a categoria da despesa." }}
                 render={({ field }) => (
                   <FormSelect
-                    aria-label={`Compromisso da despesa ${i + 1}`}
-                    value={field.value || "nova"}
-                    onValueChange={(v) => field.onChange(v === "nova" ? "" : v)}
-                    disabled={disabled}
-                    options={[
-                      { value: "nova", label: "Nova despesa paga" },
-                      ...financeiro.pagar
-                        .filter(
-                          (p) => pendentePagar(p) > 0 || p.id === field.value,
-                        )
-                        .map((p) => ({
-                          value: p.id,
-                          label: `${p.descricao} · ${dinheiro(pendentePagar(p))}`,
-                        })),
-                    ]}
+                    aria-label={`Categoria da despesa ${i + 1}`}
+                    value={field.value}
+                    onValueChange={field.onChange}
+                    disabled={disabled || Boolean(d.pagar_id)}
+                    options={financeiro.categorias.filter((c) => c.ativo && c.nome !== "Fechamento").map((c) => ({ value: c.nome, label: c.nome }))}
                   />
                 )}
               />
+              <FieldError errors={[form.formState.errors.despesas?.[i]?.categoria]} />
             </Field>
           </div>
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted-foreground">Usar conta a pagar já cadastrada (opcional)</summary>
+            <div className="mt-3">
+              <Field>
+                <FieldLabel>Conta a pagar</FieldLabel>
+                <Controller
+                  name={`despesas.${i}.pagar_id`}
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormSelect
+                      aria-label={`Conta a pagar da despesa ${i + 1}`}
+                      value={field.value || "nova"}
+                      onValueChange={(value) => {
+                        field.onChange(value === "nova" ? "" : value);
+                        if (value !== "nova") {
+                          const conta = financeiro.pagar.find((p) => p.id === value);
+                          if (conta) form.setValue(`despesas.${i}.categoria`, conta.categoria);
+                        }
+                      }}
+                      disabled={disabled}
+                      options={[
+                        { value: "nova", label: "Criar nova despesa paga" },
+                        ...financeiro.pagar.filter((p) => pendentePagar(p) > 0 || p.id === field.value)
+                          .map((p) => ({ value: p.id, label: `${p.descricao} · ${dinheiro(pendentePagar(p))}` })),
+                      ]}
+                    />
+                  )}
+                />
+              </Field>
+            </div>
+          </details>
         </div>
       ))}
+      </div>}
       {equipe.some((c) => c.pagar && Number(c.valor_pago) > 0) && (
-        <Field className="border-t pt-3">
+        <div className="space-y-3 border-t pt-4">
+          <div><h4 className="text-sm font-medium">Equipe</h4><p className="text-xs text-muted-foreground">Os pagamentos serão classificados como Pessoal.</p></div>
+        <Field>
           <FieldLabel>Conta para pagamento da equipe</FieldLabel>
           <Controller
             name="equipe_conta_id"
@@ -139,11 +172,8 @@ export function FechamentoFinanceiro({
             )}
           />
         </Field>
+        </div>
       )}
-      <p className="text-xs text-muted-foreground">
-        Os lançamentos serão gerados ao confirmar. Vincule contas já cadastradas
-        para evitar despesas duplicadas.
-      </p>
     </div>
   );
 }

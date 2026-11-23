@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/table";
 import { CadastroForm } from "../cadastro-form";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import {
   Empty,
   Field,
@@ -83,9 +85,9 @@ function CategoriaForm({
 export default async function CategoriasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; limite?: string }>;
 }) {
-  const [{ unidade, gestor }, categorias, { q }] = await Promise.all([
+  const [{ unidade, gestor }, categorias, { q, limite }] = await Promise.all([
     getGestaoContext(),
     getCategorias(),
     searchParams,
@@ -140,6 +142,7 @@ export default async function CategoriasPage({
         }
       >
         {filtradas.length ? (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -155,7 +158,7 @@ export default async function CategoriasPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtradas.map((c) => (
+                {filtradas.slice(0, gestaoListLimit(limite)).map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.nome}</TableCell>
                     <TableCell className="max-w-md whitespace-normal text-muted-foreground">
@@ -186,6 +189,8 @@ export default async function CategoriasPage({
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(limite), filtradas.length)} total={filtradas.length} />
+          </>
         ) : (
           <Empty
             title="Nenhuma categoria encontrada"

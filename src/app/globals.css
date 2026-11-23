@@ -8,6 +8,20 @@ body {
   position: relative;
 }
 
+/* Only the product step needs a constrained modal; the list owns its scroll. */
+[data-slot="dialog-content"]:has(form[data-fechamento-step="produtos"]) {
+  display: flex;
+  flex-direction: column;
+  height: min(85dvh, 800px);
+  overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  [data-slot="dialog-content"]:has(form[data-fechamento-step="produtos"]) {
+    height: calc(100dvh - 16rem);
+  }
+}
+
 @media (max-width: 639px) {
   .company-detail-table {
     display: block;
@@ -433,6 +447,74 @@ body:has([data-vibe-frotas]) {
   --sidebar-accent-foreground: #e5f2ff;
   --sidebar-border: #29435d;
   --sidebar-ring: #8fc0ff;
+}
+
+/* Vibe Gestão follows the Frotas theme structure with a calm green identity.
+   The body scope also reaches dialogs and drawers rendered in portals. */
+body:has([data-vibe-gestao]) {
+  --background: #f6faf7;
+  --foreground: #19382d;
+  --card: #ffffff;
+  --card-foreground: #19382d;
+  --popover: #ffffff;
+  --popover-foreground: #19382d;
+  --primary: #176b50;
+  --primary-foreground: #ffffff;
+  --secondary: #e8f4ec;
+  --secondary-foreground: #205b43;
+  --muted: #eff6f0;
+  --muted-foreground: #60796b;
+  --accent: #e5f2e9;
+  --accent-foreground: #175d45;
+  --border: #dce9df;
+  --input: #d5e5da;
+  --ring: #4b9a72;
+  --chart-1: #176b50;
+  --chart-2: #319267;
+  --chart-3: #62ad81;
+  --chart-4: #99c9a6;
+  --chart-5: #c9e3cc;
+  --sidebar: #edf6ef;
+  --sidebar-foreground: #234734;
+  --sidebar-primary: #176b50;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dceee1;
+  --sidebar-accent-foreground: #17543d;
+  --sidebar-border: #d5e5d9;
+  --sidebar-ring: #4b9a72;
+}
+
+.dark body:has([data-vibe-gestao]) {
+  --background: #0d1d16;
+  --foreground: #e8f4eb;
+  --card: #14291e;
+  --card-foreground: #e8f4eb;
+  --popover: #193023;
+  --popover-foreground: #e8f4eb;
+  --primary: #8bd8aa;
+  --primary-foreground: #102b1e;
+  --secondary: #1d3a29;
+  --secondary-foreground: #d8efdf;
+  --muted: #1a3425;
+  --muted-foreground: #a5bdab;
+  --accent: #25503a;
+  --accent-foreground: #e7f7eb;
+  --border: #2d4b36;
+  --input: #375a42;
+  --ring: #8bd8aa;
+  --chart-1: #8bd8aa;
+  --chart-2: #64bd8e;
+  --chart-3: #439b71;
+  --chart-4: #307c59;
+  --chart-5: #205e43;
+  --sidebar: #11251a;
+  --sidebar-foreground: #dceee0;
+  --sidebar-primary: #8bd8aa;
+  --sidebar-primary-foreground: #102b1e;
+  --sidebar-accent: #1d412d;
+  --sidebar-accent-foreground: #e4f4e8;
+  --sidebar-border: #2b4a35;
+  --sidebar-ring: #8bd8aa;
 }
 
 @layer base {

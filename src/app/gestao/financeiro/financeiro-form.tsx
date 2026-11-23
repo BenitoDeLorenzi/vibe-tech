@@ -1,6 +1,7 @@
 "use client";
 import { useId, useState, type RefObject } from "react";
-import { Controller, useForm } from "react-hook-form";
+import Link from "next/link";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,13 @@ import { Input } from "@/components/ui/input";
 import { FormSelect } from "@/components/form-select";
 import { CurrencyInput } from "../currency-input";
 import { operarFinanceiro } from "./actions";
-import { hojeFinanceiro, type ContaFinanceira } from "@/lib/gestao-contas";
+import { hojeFinanceiro, type ContaFinanceira, type CartaoCredito, type CategoriaFinanceira } from "@/lib/gestao-contas";
 type Props = {
   acao: string;
   label: string;
   contas?: ContaFinanceira[];
+  cartoes?: CartaoCredito[];
+  categorias?: CategoriaFinanceira[];
   defaults?: Record<string, string>;
   description?: string;
   compact?: boolean;
@@ -31,20 +34,12 @@ type Props = {
 };
 const positive = (v: string) =>
   /^\d+(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) < 1e9;
-const categorias = [
-  "Fornecedores",
-  "Aluguel",
-  "Energia e água",
-  "Internet e telefone",
-  "Manutenção",
-  "Serviços",
-  "Impostos",
-  "Outras despesas",
-];
 export function FinanceiroForm({
   acao,
   label,
   contas = [],
+  cartoes = [],
+  categorias = [],
   defaults = {},
   description,
   compact,
@@ -89,6 +84,8 @@ export function FinanceiroForm({
           <FormBody
             acao={acao}
             contas={contas}
+            cartoes={cartoes}
+            categorias={categorias}
             defaults={defaults}
             onPending={setPending}
             done={() => setOpen(false)}
@@ -101,12 +98,16 @@ export function FinanceiroForm({
 function FormBody({
   acao,
   contas,
+  cartoes,
+  categorias,
   defaults,
   done,
   onPending,
 }: {
   acao: string;
   contas: ContaFinanceira[];
+  cartoes: CartaoCredito[];
+  categorias: CategoriaFinanceira[];
   defaults: Record<string, string>;
   done: () => void;
   onPending: (pending: boolean) => void;
@@ -119,14 +120,19 @@ function FormBody({
       data: hojeFinanceiro(),
       vencimento: hojeFinanceiro(),
       tipo: "banco",
-      categoria: "Outras despesas",
+      categoria: categorias.find((c) => c.ativo && c.nome === "Outras despesas")?.nome ?? categorias.find((c) => c.ativo && !c.sistema)?.nome ?? "",
       caixa: "0",
       banco: "0",
       sistema: "0",
+      modo: "unico",
+      parcelas: "2",
+      forma_prevista: "cartao",
       ...defaults,
     },
   });
   const { errors, isSubmitting } = form.formState;
+  const modo = useWatch({ control: form.control, name: "modo" });
+  const forma = useWatch({ control: form.control, name: "forma_prevista" });
   function input(name: string, label: string, type = "text", required = true) {
     return (
       <Field data-invalid={!!errors[name]}>
@@ -227,10 +233,15 @@ function FormBody({
       noValidate
       className="space-y-4"
       onSubmit={form.handleSubmit(async (values) => {
+        if (acao === "pagar_cadastrar" && values.modo === "parcelado" && values.forma_prevista === "cartao" && !cartoes.some((c) => c.id === values.cartao_id && c.ativo)) {
+          form.setError("root", { message: "Cadastre e selecione um cartão ativo." });
+          return;
+        }
         onPending(true);
         try {
-          const result = await operarFinanceiro(acao, {
+          const result = await operarFinanceiro(acao === "pagar_cadastrar" && values.modo === "parcelado" ? "pagar_parcelado" : acao, {
             ...values,
+            ...(values.forma_prevista === "outro" ? { cartao_id: "" } : {}),
             requisicao: request,
           });
           if (result.error) {
@@ -279,19 +290,55 @@ function FormBody({
           </p>
         </>
       )}
+      {acao === "cartao_cadastrar" && (
+        <>
+          {input("descricao", "Nome do cartão")}
+          <div className="grid grid-cols-2 gap-3">
+            {input("fechamento_dia", "Dia do fechamento", "number", false)}
+            {input("vencimento_dia", "Dia do vencimento", "number", false)}
+          </div>
+          <p className="text-xs text-muted-foreground">Os dias identificam a fatura. Ao lançar parcelas, informe a data do primeiro vencimento.</p>
+        </>
+      )}
       {acao === "pagar_cadastrar" && (
         <>
           {input("descricao", "Descrição")}
+          {select("modo", "Pagamento", [
+            { value: "unico", label: "Pagamento único" },
+            { value: "parcelado", label: "Cartão de crédito ou parcelado" },
+          ])}
           <div className="grid gap-3 sm:grid-cols-2">
             {select(
               "categoria",
               "Categoria",
-              categorias.map((v) => ({ value: v, label: v })),
+              categorias.filter((c) => c.ativo && c.nome !== "Fechamento").map((c) => ({ value: c.nome, label: c.nome })),
             )}
             {input("fornecedor", "Fornecedor (opcional)", "text", false)}
-            {money("valor", "Valor")}
-            {input("vencimento", "Vencimento", "date")}
+            {money("valor", modo === "parcelado" ? "Valor total" : "Valor")}
+            {input("vencimento", modo === "parcelado" ? "Primeiro vencimento" : "Vencimento", "date")}
           </div>
+          <Link href="/gestao/financeiro/categorias" className="inline-block text-xs text-primary hover:underline">Gerenciar categorias de despesas</Link>
+          {modo === "parcelado" && (
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field data-invalid={!!errors.parcelas}>
+                  <FieldLabel htmlFor={uid + "parcelas"}>Número de parcelas</FieldLabel>
+                  <Input id={uid + "parcelas"} type="number" min={1} max={60} step={1} disabled={isSubmitting} aria-invalid={!!errors.parcelas}
+                    {...form.register("parcelas", { validate: (v) => /^\d+$/.test(v) && Number(v) >= 1 && Number(v) <= 60 || "Informe de 1 a 60 parcelas." })} />
+                  <FieldError errors={[errors.parcelas]} />
+                </Field>
+                {select("forma_prevista", "Forma prevista", [
+                  { value: "cartao", label: "Cartão de crédito" },
+                  { value: "outro", label: "Outro parcelamento" },
+                ])}
+              </div>
+              {forma === "cartao" && (
+                cartoes.some((c) => c.ativo) ? select("cartao_id", "Cartão", cartoes.filter((c) => c.ativo).map((c) => ({ value: c.id, label: c.nome })))
+                  : <p className="text-sm text-destructive">Cadastre um cartão em Contas e saldos antes de lançar as parcelas.</p>
+              )}
+              <p className="text-xs text-muted-foreground">Cada parcela vira uma conta a pagar. O saldo de Caixa ou Banco muda somente quando você registra o pagamento da parcela.</p>
+            </>
+          )}
           {input("observacoes", "Observação (opcional)", "text", false)}
         </>
       )}
@@ -343,15 +390,20 @@ function FormBody({
       )}
       {acao === "concluir_solicitacao" &&
         input("data", "Data em que foi executado", "date")}
+      {acao === "pagar_excluir" && (
+        <p className="text-sm text-muted-foreground">
+          Confirme a exclusão da conta cancelada. Ela deixará de aparecer nas contas a pagar.
+        </p>
+      )}
       {["cancelar", "estornar", "cancelar_solicitacao"].includes(acao) &&
         input("descricao", "Justificativa")}
       <FieldError errors={[errors.root]} />
       <div className="flex justify-end gap-2">
-        <Button variant="outline" disabled={isSubmitting} onClick={done}>
+        <Button type="button" variant="outline" disabled={isSubmitting} onClick={done}>
           Voltar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Registrando…" : "Confirmar"}
+        <Button type="submit" variant={acao === "pagar_excluir" ? "destructive" : "default"} disabled={isSubmitting}>
+          {isSubmitting ? "Registrando…" : acao === "pagar_excluir" ? "Excluir conta" : "Confirmar"}
         </Button>
       </div>
     </form>

@@ -25,15 +25,17 @@ import {
 } from "@/components/ui/table";
 import { MovimentoForm } from "./movimento-form";
 import { GestaoShell } from "../gestao-shell";
+import { GestaoShowMore } from "../gestao-show-more";
+import { gestaoListLimit } from "@/lib/gestao-list-limit";
 import { Empty, Panel, GestaoDialog, MetricBadge, SearchToolbar } from "../ui";
 
 export default async function EstoquePage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; limite?: string }>;
 }) {
   const { unidade, gestor } = await getGestaoContext();
-  const { q } = await searchParams;
+  const { q, limite } = await searchParams;
   const produtos = (await getProdutos()).filter((p) => p.controlar_estoque);
   const filtrados = produtos
     .filter(
@@ -112,6 +114,7 @@ export default async function EstoquePage({
         }
       >
         {filtrados.length ? (
+          <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
               <TableHeader>
@@ -123,7 +126,7 @@ export default async function EstoquePage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtrados.map((p) => (
+                {filtrados.slice(0, gestaoListLimit(limite)).map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>
                       <div className="min-w-[220px] font-medium">{p.nome}</div>
@@ -150,6 +153,8 @@ export default async function EstoquePage({
               </TableBody>
             </Table>
           </div>
+          <GestaoShowMore shown={Math.min(gestaoListLimit(limite), filtrados.length)} total={filtrados.length} />
+          </>
         ) : (
           <Empty
             title={q ? "Nenhum produto encontrado" : "Prepare seu estoque"}

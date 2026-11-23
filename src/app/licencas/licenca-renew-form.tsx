@@ -24,6 +24,7 @@ type LicencaRenewFormProps = {
 };
 
 type LicencaRenewFormValues = {
+  gratuita: boolean;
   fim: string;
   inicio: string;
   dia_vencimento: number;
@@ -38,6 +39,7 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
   const defaultFim = addOneYearIsoDate(defaultInicio);
   const form = useForm<LicencaRenewFormValues>({
     defaultValues: {
+      gratuita: licenca.contrato.valor_mensal === 0,
       fim: defaultFim,
       inicio: defaultInicio,
       dia_vencimento: licenca.dia_vencimento,
@@ -48,6 +50,7 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
     control: form.control,
     name: "valor_mensal",
   });
+  const gratuita = useWatch({ control: form.control, name: "gratuita" });
   const inicioPreview = useWatch({ control: form.control, name: "inicio" });
   const fimPreview = useWatch({ control: form.control, name: "fim" });
   const diaPreview = useWatch({ control: form.control, name: "dia_vencimento" });
@@ -68,6 +71,7 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
     formData.set("fim", values.fim);
     formData.set("dia_vencimento", String(values.dia_vencimento));
     formData.set("valor_mensal", String(values.valor_mensal ?? ""));
+    formData.set("gratuita", String(values.gratuita));
 
     startTransition(() => {
       formAction(formData);
@@ -137,10 +141,32 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
 
           <Controller
             control={form.control}
+            name="gratuita"
+            render={({ field }) => (
+              <Field>
+                <FieldLabel>Tipo de licença</FieldLabel>
+                <FormSelect
+                  aria-label="Tipo de licença na renovação"
+                  value={field.value ? "gratuita" : "paga"}
+                  onValueChange={(value) => {
+                    field.onChange(value === "gratuita");
+                    if (value === "gratuita") form.setValue("valor_mensal", 0);
+                    else form.setValue("valor_mensal", null);
+                  }}
+                  options={[
+                    { value: "paga", label: "Paga" },
+                    { value: "gratuita", label: "Gratuita" },
+                  ]}
+                />
+              </Field>
+            )}
+          />
+          {!gratuita && <Controller
+            control={form.control}
             name="valor_mensal"
             rules={{
               validate: (value) =>
-                value !== null && value > 0
+                gratuita || (value !== null && value > 0)
                   ? true
                   : "Informe o valor mensal.",
             }}
@@ -161,9 +187,9 @@ export function LicencaRenewForm({ licenca }: LicencaRenewFormProps) {
                 <FieldError errors={[fieldState.error]} />
               </Field>
             )}
-          />
-          <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />
-          <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={valorMensal} dia={diaPreview} />
+          />}
+          {!gratuita && <Controller control={form.control} name="dia_vencimento" render={({field}) => <Field><FieldLabel>Dia de vencimento</FieldLabel><FormSelect aria-label="Dia de vencimento" value={String(field.value)} onValueChange={v=>field.onChange(Number(v))} disabled={actionPending} options={Array.from({length:31},(_,i)=>({value:String(i+1),label:'Dia '+(i+1)}))} /></Field>} />}
+          <ContractPreview inicio={inicioPreview} fim={fimPreview} valor={gratuita ? 0 : valorMensal} dia={diaPreview} gratuita={gratuita} />
         </FieldGroup>
       </fieldset>
 

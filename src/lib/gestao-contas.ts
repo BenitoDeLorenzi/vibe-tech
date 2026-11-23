@@ -5,6 +5,19 @@ export type ContaFinanceira = {
   ativo: boolean;
   saldo: number;
 };
+export type CartaoCredito = {
+  id: string;
+  nome: string;
+  fechamento_dia: number | null;
+  vencimento_dia: number | null;
+  ativo: boolean;
+};
+export type CategoriaFinanceira = {
+  id: string;
+  nome: string;
+  ativo: boolean;
+  sistema: boolean;
+};
 export type ContaPagar = {
   id: string;
   descricao: string;
@@ -16,6 +29,11 @@ export type ContaPagar = {
   pago: number;
   cancelada: boolean;
   fechamento_id: string | null;
+  parcelamento_id: string | null;
+  parcela_numero: number | null;
+  parcelas_total: number | null;
+  forma_prevista: "cartao" | "outro" | null;
+  cartao_id: string | null;
 };
 export type ContaReceber = {
   id: string;
@@ -41,15 +59,18 @@ export type MovimentoFinanceiro = {
   receber_id: string | null;
   estornado: boolean;
   motivo_estorno: string | null;
+  categoria?: string | null;
 };
 export type FinanceiroFechamento = {
   recebimentos?: { conta_id: string }[];
-  despesas?: { conta_id: string; pagar_id: string }[];
+  despesas?: { conta_id: string; pagar_id: string; categoria?: string }[];
   equipe_conta_id?: string;
 };
 export type FinanceiroData = {
   inicio: string | null;
   contas: ContaFinanceira[];
+  cartoes: CartaoCredito[];
+  categorias: CategoriaFinanceira[];
   pagar: ContaPagar[];
   solicitacoes: SolicitacaoFinanceira[];
 };
