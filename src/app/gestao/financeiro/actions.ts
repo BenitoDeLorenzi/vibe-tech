@@ -37,7 +37,7 @@ export async function operarFinanceiro(
     : acao === "cartao_cadastrar"
       ? await db.rpc("gestao_fin_criar_cartao", { p_ator: profile.id, p_unidade: unidade.id, p_dados: dados })
       : acao === "pagar_excluir"
-        ? await db.rpc("gestao_fin_excluir_conta_pagar", { p_ator: profile.id, p_unidade: unidade.id, p_conta: dados.id })
+        ? await db.rpc("gestao_fin_excluir_conta_pagar", { p_ator: profile.id, p_unidade: unidade.id, p_conta: dados.id, p_demais: dados.demais === "true" })
       : await db.rpc("gestao_fin_operar", { p_ator: profile.id, p_unidade: unidade.id, p_acao: acao, p_dados: dados });
   if (error)
     return {
@@ -49,5 +49,5 @@ export async function operarFinanceiro(
             : "Não foi possível registrar. Confira os dados e tente novamente.",
     };
   revalidatePath("/gestao", "layout");
-  return { success: acao === "pagar_excluir" ? "Conta excluída da lista." : acao === "pagar_parcelado" ? "Parcelas criadas." : acao === "cartao_cadastrar" ? "Cartão cadastrado." : "Lançamento registrado." };
+  return { success: acao === "pagar_excluir" ? dados.demais === "true" ? "Conta excluída e parcelas seguintes canceladas." : "Conta excluída da lista." : acao === "pagar_parcelado" ? "Parcelas criadas." : acao === "cartao_cadastrar" ? "Cartão cadastrado." : "Lançamento registrado." };
 }

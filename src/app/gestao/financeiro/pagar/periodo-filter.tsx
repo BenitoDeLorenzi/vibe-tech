@@ -27,6 +27,7 @@ export function PeriodoPagarFilter({ mes, ano, anos, categorias, categoria }: {
     if (chave === "periodo" && valor instanceof Date) {
       params.set("mes", String(valor.getMonth() + 1));
       params.set("ano", String(valor.getFullYear()));
+      params.delete("dia");
       setOpen(false);
     } else if (chave === "categoria" && typeof valor === "string") {
       if (valor === "todas") params.delete("categoria");

@@ -17,6 +17,7 @@ import { Field, FieldLabel, FieldError } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { FormSelect } from "@/components/form-select";
 import { CurrencyInput } from "../currency-input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { operarFinanceiro } from "./actions";
 import { hojeFinanceiro, type ContaFinanceira, type CartaoCredito, type CategoriaFinanceira } from "@/lib/gestao-contas";
 type Props = {
@@ -31,6 +32,7 @@ type Props = {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   returnFocus?: RefObject<HTMLButtonElement | null>;
+  demaisParcelas?: number;
 };
 const positive = (v: string) =>
   /^\d+(\.\d{1,2})?$/.test(v) && Number(v) > 0 && Number(v) < 1e9;
@@ -46,6 +48,7 @@ export function FinanceiroForm({
   open: controlledOpen,
   onOpenChange,
   returnFocus,
+  demaisParcelas = 0,
 }: Props) {
   const [internalOpen, setInternalOpen] = useState(false);
   const open = controlledOpen ?? internalOpen;
@@ -87,6 +90,7 @@ export function FinanceiroForm({
             cartoes={cartoes}
             categorias={categorias}
             defaults={defaults}
+            demaisParcelas={demaisParcelas}
             onPending={setPending}
             done={() => setOpen(false)}
           />
@@ -101,6 +105,7 @@ function FormBody({
   cartoes,
   categorias,
   defaults,
+  demaisParcelas,
   done,
   onPending,
 }: {
@@ -109,6 +114,7 @@ function FormBody({
   cartoes: CartaoCredito[];
   categorias: CategoriaFinanceira[];
   defaults: Record<string, string>;
+  demaisParcelas: number;
   done: () => void;
   onPending: (pending: boolean) => void;
 }) {
@@ -127,6 +133,7 @@ function FormBody({
       modo: "unico",
       parcelas: "2",
       forma_prevista: "cartao",
+      demais: "false",
       ...defaults,
     },
   });
@@ -391,9 +398,15 @@ function FormBody({
       {acao === "concluir_solicitacao" &&
         input("data", "Data em que foi executado", "date")}
       {acao === "pagar_excluir" && (
-        <p className="text-sm text-muted-foreground">
-          Confirme a exclusão da conta cancelada. Ela deixará de aparecer nas contas a pagar.
-        </p>
+        <>
+          <p className="text-sm text-muted-foreground">A conta sairá da lista. Pagamentos já registrados permanecem no extrato e não serão estornados.</p>
+          {demaisParcelas > 0 && <div className="flex items-start gap-3 rounded-lg border p-3">
+            <Controller control={form.control} name="demais" render={({ field }) =>
+              <Checkbox id={uid + "demais"} checked={field.value === "true"} onCheckedChange={(checked) => field.onChange(checked === true ? "true" : "false")} disabled={isSubmitting} />
+            } />
+            <label htmlFor={uid + "demais"} className="cursor-pointer text-sm">Cancelar também as {demaisParcelas} parcela(s) seguintes ainda não pagas. Elas continuarão visíveis como canceladas.</label>
+          </div>}
+        </>
       )}
       {["cancelar", "estornar", "cancelar_solicitacao"].includes(acao) &&
         input("descricao", "Justificativa")}

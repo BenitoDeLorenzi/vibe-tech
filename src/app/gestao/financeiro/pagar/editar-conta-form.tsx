@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type RefObject } from "react";
+import { useEffect, useId, useState, type RefObject } from "react";
 import { useRouter } from "next/navigation";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
@@ -10,8 +10,11 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { FormSelect } from "@/components/form-select";
 import { CurrencyInput } from "../../currency-input";
-import type { CategoriaFinanceira, ContaPagar } from "@/lib/gestao-contas";
-import { editarContaPagar } from "./editar-actions";
+import type { CategoriaFinanceira, ContaFinanceira, ContaPagar } from "@/lib/gestao-contas";
+import { dinheiro, dataBR } from "@/lib/gestao-types";
+import { editarContaPagar, listarPagamentosContaPagar } from "./editar-actions";
+
+type Pagamento = { id: string; conta_id: string; valor: number; data: string };
 
 type Valores = {
   escopo: "uma" | "todas";
@@ -23,8 +26,9 @@ type Valores = {
   vencimento: string;
 };
 
-export function EditarContaPagar({ conta, parcelas, categorias, podeEditarTodas, open, onOpenChange, returnFocus }: {
+export function EditarContaPagar({ conta, contas, parcelas, categorias, podeEditarTodas, open, onOpenChange, returnFocus }: {
   conta: ContaPagar;
+  contas: ContaFinanceira[];
   parcelas: ContaPagar[];
   categorias: CategoriaFinanceira[];
   podeEditarTodas: boolean;
@@ -34,6 +38,29 @@ export function EditarContaPagar({ conta, parcelas, categorias, podeEditarTodas,
 }) {
   const router = useRouter();
   const uid = useId();
+  const paga = Number(conta.pago) > 0;
+  const [pagamentos, setPagamentos] = useState<Pagamento[]>([]);
+  const [origens, setOrigens] = useState<Record<string, string>>({});
+  const [carregando, setCarregando] = useState(paga);
+  const [erroPagamentos, setErroPagamentos] = useState("");
+  useEffect(() => {
+    if (!paga) return;
+    let ativo = true;
+    listarPagamentosContaPagar(conta.id).then((resultado) => {
+      if (!ativo) return;
+      if (resultado.error) setErroPagamentos(resultado.error);
+      else {
+        const itens = resultado.pagamentos as Pagamento[];
+        setPagamentos(itens);
+        setOrigens(Object.fromEntries(itens.map((item) => [item.id, item.conta_id])));
+        if (!itens.length) setErroPagamentos("Nenhum pagamento ativo foi encontrado para esta conta.");
+      }
+      setCarregando(false);
+    }).catch(() => {
+      if (ativo) { setErroPagamentos("Não foi possível carregar os pagamentos."); setCarregando(false); }
+    });
+    return () => { ativo = false; };
+  }, [conta.id, paga]);
   const ordenadas = [...parcelas].sort((a, b) => (a.parcela_numero ?? 0) - (b.parcela_numero ?? 0));
   const total = (ordenadas.reduce((s, p) => s + Math.round(Number(p.valor) * 100), 0) / 100).toFixed(2);
   const ativas = categorias.filter((c) => c.ativo && c.nome !== "Fechamento");
@@ -50,14 +77,16 @@ export function EditarContaPagar({ conta, parcelas, categorias, podeEditarTodas,
   const { errors, isSubmitting } = form.formState;
 
   return <Dialog open={open} onOpenChange={(next) => { if (!isSubmitting) onOpenChange(next); }}>
-    <DialogContent finalFocus={returnFocus} className="sm:max-w-lg">
+    <DialogContent finalFocus={returnFocus} className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>Editar despesa</DialogTitle>
-        <DialogDescription>Altere os dados antes de registrar pagamentos ou solicitações.</DialogDescription>
+        <DialogDescription>{paga ? "Corrija os dados da despesa e a origem dos pagamentos registrados." : "Altere os dados antes de registrar pagamentos ou solicitações."}</DialogDescription>
       </DialogHeader>
       <form noValidate className="space-y-4" onSubmit={form.handleSubmit(async (values) => {
         try {
-          const result = await editarContaPagar({ id: conta.id, ...values });
+          if (paga && (carregando || erroPagamentos || pagamentos.some((item) => !origens[item.id]))) return;
+          const result = await editarContaPagar({ id: conta.id, ...values, paga,
+            origens: paga ? pagamentos.map((item) => ({ id: item.id, conta_id: origens[item.id] })) : undefined });
           if (result.error) { form.setError("root", { message: result.error }); return; }
           toast.success(result.success);
           onOpenChange(false);
@@ -98,7 +127,7 @@ export function EditarContaPagar({ conta, parcelas, categorias, podeEditarTodas,
           </Field>
           <Field data-invalid={!!errors.valor}>
             <FieldLabel htmlFor={`${uid}-valor`}>{escopo === "todas" ? "Valor total do parcelamento" : "Valor da conta"}</FieldLabel>
-            <Controller name="valor" control={form.control} rules={{ validate: (value) => /^\d+(\.\d{1,2})?$/.test(value) && Number(value) > 0 && Number(value) < 1e9 || "Informe um valor válido." }} render={({ field }) =>
+            <Controller name="valor" control={form.control} rules={{ validate: (value) => /^\d+(\.\d{1,2})?$/.test(value) && Number(value) > 0 && Number(value) < 1e9 && (!paga || Number(value) >= Number(conta.pago)) || "O valor deve ser válido e não pode ser menor que o total já pago." }} render={({ field }) =>
               <CurrencyInput id={`${uid}-valor`} value={field.value ?? ""} onValueChange={field.onChange} onBlur={field.onBlur} ref={field.ref} disabled={isSubmitting} aria-invalid={!!errors.valor} />
             } />
             <FieldError errors={[errors.valor]} />
@@ -113,11 +142,25 @@ export function EditarContaPagar({ conta, parcelas, categorias, podeEditarTodas,
           <FieldLabel htmlFor={`${uid}-observacoes`}>Observações (opcional)</FieldLabel>
           <Input id={`${uid}-observacoes`} maxLength={2000} disabled={isSubmitting} {...form.register("observacoes")} />
         </Field>
+        {paga && <div className="space-y-3 rounded-lg border p-3">
+          <p className="text-sm font-medium">Origem dos pagamentos</p>
+          {carregando && <p className="text-xs text-muted-foreground">Carregando pagamentos…</p>}
+          {pagamentos.map((pagamento) => <Field key={pagamento.id}>
+            <FieldLabel htmlFor={`${uid}-${pagamento.id}`}>{dataBR(pagamento.data)} · {dinheiro(Math.abs(Number(pagamento.valor)))}</FieldLabel>
+            <FormSelect id={`${uid}-${pagamento.id}`} value={origens[pagamento.id] ?? ""}
+              options={contas.filter((item) => item.ativo && (!conta.cartao_id || item.tipo !== "cobranca"))
+                .map((item) => ({ value: item.id, label: item.nome }))}
+              onValueChange={(valor) => setOrigens((atual) => ({ ...atual, [pagamento.id]: valor }))}
+              disabled={isSubmitting} />
+          </Field>)}
+          {erroPagamentos && <p role="alert" className="text-xs text-destructive">{erroPagamentos}</p>}
+          <p className="text-xs text-muted-foreground">A troca da origem ajusta o saldo das contas. O valor pago e a data do pagamento permanecem iguais.</p>
+        </div>}
         {escopo === "todas" && <p className="text-xs text-muted-foreground">O valor total será repartido entre as parcelas. Os vencimentos seguirão mensalmente a partir da data informada.</p>}
         <FieldError errors={[errors.root]} />
         <DialogFooter>
           <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Salvando…" : "Salvar alterações"}</Button>
+          <Button type="submit" disabled={isSubmitting || (paga && (carregando || !!erroPagamentos || pagamentos.some((item) => !origens[item.id])))}>{isSubmitting ? "Salvando…" : "Salvar alterações"}</Button>
         </DialogFooter>
       </form>
     </DialogContent>

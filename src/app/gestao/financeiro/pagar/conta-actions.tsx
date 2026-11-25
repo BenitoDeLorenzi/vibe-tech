@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
-import { MoreHorizontal, History, Wallet, Send, Ban, Trash2, Pencil } from "lucide-react";
+import { MoreHorizontal, History, Wallet, Send, Trash2, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,7 +14,6 @@ import {
 import type { ContaFinanceira, ContaPagar, CategoriaFinanceira } from "@/lib/gestao-contas";
 import { FinanceiroForm } from "../financeiro-form";
 import { EditarContaPagar } from "./editar-conta-form";
-import { EditarCategoriaContaPaga } from "./editar-categoria-conta-paga";
 
 export function ContaActions({
   conta,
@@ -24,6 +23,8 @@ export function ContaActions({
   parcelas,
   categorias,
   podeEditarTodas,
+  calendarLabel,
+  calendarClassName,
 }: {
   conta: ContaPagar;
   contas: ContaFinanceira[];
@@ -32,20 +33,20 @@ export function ContaActions({
   parcelas: ContaPagar[];
   categorias: CategoriaFinanceira[];
   podeEditarTodas: boolean;
+  calendarLabel?: string;
+  calendarClassName?: string;
 }) {
   const [acao, setAcao] = useState<
-    "pagar" | "solicitar_pagamento" | "cancelar" | "pagar_excluir" | "editar" | null
+    "pagar" | "solicitar_pagamento" | "pagar_excluir" | "editar" | null
   >(null);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const sistema = conta.cartao_id ? undefined : contas.find((c) => c.ativo && c.tipo === "cobranca");
-  const podeCancelar =
-    !conta.cancelada &&
-    !conta.fechamento_id &&
-    solicitado === 0 &&
-    Number(conta.pago) === 0;
-  const edicaoSomenteCategoria = Number(conta.pago) > 0;
-  const podeEditar = !conta.cancelada && !conta.fechamento_id && (edicaoSomenteCategoria || solicitado === 0);
+  const podeExcluir = !conta.fechamento_id && solicitado === 0;
+  const demaisParcelas = parcelas.filter((parcela) =>
+    (parcela.parcela_numero ?? 0) > (conta.parcela_numero ?? 0) &&
+    !parcela.cancelada && Number(parcela.pago) === 0).length;
+  const podeEditar = !conta.cancelada && !conta.fechamento_id && (Number(conta.pago) > 0 || solicitado === 0);
   function abrir(value: NonNullable<typeof acao>) {
     setAcao(value);
     setOpen(true);
@@ -58,16 +59,17 @@ export function ContaActions({
             <Button
               ref={trigger}
               variant="ghost"
-              size="icon-sm"
+              size={calendarLabel ? "sm" : "icon-sm"}
+              className={calendarClassName}
               aria-label={`Ações de ${conta.descricao}`}
             />
           }
         >
-          <MoreHorizontal className="size-4" />
+          {calendarLabel ? calendarLabel : <MoreHorizontal className="size-4" />}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           {podeEditar && <DropdownMenuItem onClick={() => abrir("editar")}>
-            <Pencil />{edicaoSomenteCategoria ? "Alterar categoria" : "Editar despesa"}
+            <Pencil />Editar despesa
           </DropdownMenuItem>}
           <DropdownMenuItem
             render={
@@ -89,19 +91,7 @@ export function ContaActions({
               Solicitar ao sistema
             </DropdownMenuItem>
           )}
-          {podeCancelar && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="destructive"
-                onClick={() => abrir("cancelar")}
-              >
-                <Ban />
-                Cancelar conta
-              </DropdownMenuItem>
-            </>
-          )}
-          {conta.cancelada && (
+          {podeExcluir && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem variant="destructive" onClick={() => abrir("pagar_excluir")}>
@@ -112,18 +102,9 @@ export function ContaActions({
           )}
         </DropdownMenuContent>
       </DropdownMenu>
-      {acao === "editar" && (edicaoSomenteCategoria ? <EditarCategoriaContaPaga
+      {acao === "editar" && <EditarContaPagar
         conta={conta}
-        categorias={categorias}
-        parcelas={parcelas}
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setAcao(null);
-        }}
-        returnFocus={trigger}
-      /> : <EditarContaPagar
-        conta={conta}
+        contas={contas}
         parcelas={parcelas}
         categorias={categorias}
         podeEditarTodas={podeEditarTodas}
@@ -133,7 +114,7 @@ export function ContaActions({
           if (!next) setAcao(null);
         }}
         returnFocus={trigger}
-      />)}
+      />}
       {acao && acao !== "editar" && (
         <FinanceiroForm
           acao={acao}
@@ -142,9 +123,7 @@ export function ContaActions({
               ? "Registrar pagamento"
               : acao === "solicitar_pagamento"
                 ? "Solicitar ao sistema"
-                : acao === "pagar_excluir"
-                  ? "Excluir conta"
-                  : "Cancelar conta"
+                : "Excluir conta"
           }
           contas={conta.cartao_id ? contas.filter((c) => c.tipo === "caixa" || c.tipo === "banco") : contas}
           defaults={{
@@ -156,14 +135,13 @@ export function ContaActions({
           }}
           description={
             acao === "pagar_excluir"
-              ? "A conta cancelada sairá da lista. Pagamentos e solicitações anteriores permanecerão no histórico financeiro."
-              : acao === "cancelar"
-              ? "A conta será cancelada e permanecerá no histórico."
+              ? "Revise a exclusão. A conta sairá da lista, mas o histórico financeiro será preservado."
               : acao === "pagar"
                 ? `${conta.descricao}. Registre apenas pagamentos já executados. Selecione o sistema de cobrança quando ele pagou diretamente.`
                 : conta.descricao
           }
           open={open}
+          demaisParcelas={demaisParcelas}
           onOpenChange={setOpen}
           returnFocus={trigger}
         />

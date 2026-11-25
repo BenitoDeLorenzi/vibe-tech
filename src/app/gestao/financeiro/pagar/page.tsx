@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { forbidden } from "next/navigation";
-import { Receipt, Clock, CheckCheck, CircleAlert, Ban } from "lucide-react";
+import { Receipt, Clock, CheckCheck, CircleAlert, Ban, CalendarDays, List } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { getFinanceiroData } from "@/lib/gestao-contas-data";
 import {
@@ -25,10 +25,11 @@ import { Panel, ListBadge, Empty, MetricBadge, SearchToolbar } from "../../ui";
 import { FinanceiroForm } from "../financeiro-form";
 import { ContaActions } from "./conta-actions";
 import { PeriodoPagarFilter } from "./periodo-filter";
+import { CalendarioContas } from "./calendario-contas";
 export default async function PagarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; cartao?: string; categoria?: string; mes?: string; ano?: string; limite?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; cartao?: string; categoria?: string; mes?: string; ano?: string; limite?: string; visualizacao?: string; dia?: string }>;
 }) {
   const { profile } = await getGestaoContext();
   if (profile.role !== "bdl_admin") forbidden();
@@ -44,6 +45,8 @@ export default async function PagarPage({
   const ultimoAno = Math.max(anoAtual + 1, ano, ...anosEncontrados);
   const anos = Array.from({ length: ultimoAno - primeiroAno + 1 }, (_, index) => ultimoAno - index);
   const periodo = `${ano}-${String(mes).padStart(2, "0")}`;
+  const calendario = params.visualizacao !== "lista";
+  const dia = /^\d{4}-\d{2}-\d{2}$/.test(params.dia ?? "") && params.dia?.startsWith(`${periodo}-`) ? params.dia : undefined;
   const categorias = [...new Set([...fin.categorias.filter((c) => c.nome !== "Fechamento").map((c) => c.nome), ...fin.pagar.map((p) => p.categoria)])].sort((a, b) => a.localeCompare(b, "pt-BR"));
   const categoria = categorias.includes(params.categoria ?? "") ? params.categoria : undefined;
   const contasDoMes = fin.pagar.filter((p) =>
@@ -73,6 +76,14 @@ export default async function PagarPage({
               : p.cancelada)),
     )
     .sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+  const lista = dia && !calendario ? rows.filter((p) => p.vencimento === dia) : rows;
+  const queryBase = new URLSearchParams({
+    mes: String(mes), ano: String(ano),
+    ...(params.q ? { q: params.q } : {}),
+    ...(params.status ? { status: params.status } : {}),
+    ...(params.cartao ? { cartao: params.cartao } : {}),
+    ...(categoria ? { categoria } : {}),
+  });
   return (
     <GestaoShell
       title="Contas a pagar"
@@ -82,8 +93,8 @@ export default async function PagarPage({
           <SearchToolbar
             placeholder="Buscar descrição ou fornecedor"
             query={params.q}
-            clearHref={`/gestao/financeiro/pagar?${new URLSearchParams({ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}) })}`}
-            hidden={{ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}) }}
+            clearHref={`/gestao/financeiro/pagar?${new URLSearchParams({ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}), ...(!calendario ? { visualizacao: "lista" } : {}), ...(dia && !calendario ? { dia } : {}) })}`}
+            hidden={{ mes: String(mes), ano: String(ano), ...(params.status ? { status: params.status } : {}), ...(params.cartao ? { cartao: params.cartao } : {}), ...(categoria ? { categoria } : {}), ...(!calendario ? { visualizacao: "lista" } : {}), ...(dia && !calendario ? { dia } : {}) }}
           >
             <div className="hidden shrink-0 gap-1 rounded-lg bg-muted p-1 lg:flex">
               {[
@@ -103,6 +114,8 @@ export default async function PagarPage({
                       mes: String(mes),
                       ano: String(ano),
                       ...(status ? { status } : {}),
+                      ...(!calendario ? { visualizacao: "lista" } : {}),
+                      ...(dia && !calendario ? { dia } : {}),
                     })
                   }
                   className={buttonVariants({
@@ -159,11 +172,19 @@ export default async function PagarPage({
             </>
           }
         >
-          <PeriodoPagarFilter mes={mes} ano={ano} anos={anos} categorias={categorias} categoria={categoria} />
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <PeriodoPagarFilter mes={mes} ano={ano} anos={anos} categorias={categorias} categoria={categoria} />
+            <div className="mb-4 ml-auto flex shrink-0 gap-1 rounded-lg bg-muted p-1" aria-label="Visualização das contas">
+              <Link href={`/gestao/financeiro/pagar?${queryBase}`} className={buttonVariants({ variant: calendario ? "default" : "ghost", size: "sm", className: "h-8 gap-1.5 px-2.5" })} aria-current={calendario ? "page" : undefined}><CalendarDays className="size-4" />Calendário</Link>
+              <Link href={`/gestao/financeiro/pagar?${queryBase}&visualizacao=lista`} className={buttonVariants({ variant: calendario ? "ghost" : "default", size: "sm", className: "h-8 gap-1.5 px-2.5" })} aria-current={!calendario ? "page" : undefined}><List className="size-4" />Lista</Link>
+            </div>
+          </div>
           {params.cartao && <div className="mb-3 flex items-center justify-between gap-2 text-sm">
             <span>Cartão: {fin.cartoes.find((c) => c.id === params.cartao)?.nome ?? "Cartão selecionado"}</span>
             <Link className="text-primary hover:underline" href={`/gestao/financeiro/pagar?mes=${mes}&ano=${ano}`}>Ver todas</Link>
           </div>}
+          {dia && !calendario && <div className="mb-3 flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2 text-sm"><span>Vencimento em {dataBR(dia)}</span><Link className="text-primary hover:underline" href={`/gestao/financeiro/pagar?${queryBase}`}>Ver o mês inteiro</Link></div>}
+          {calendario ? <CalendarioContas ano={ano} mes={mes} contas={rows} hoje={hoje} fin={fin} parcelasPorGrupo={parcelasPorGrupo} /> : <>
           <div className="overflow-hidden rounded-lg border">
             <Table>
             <TableHeader>
@@ -179,7 +200,7 @@ export default async function PagarPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {rows.slice(0, gestaoListLimit(params.limite)).map((p) => {
+              {lista.slice(0, gestaoListLimit(params.limite)).map((p) => {
                 const saldo = pendentePagar(p);
                 const solicitado = valorReservado(
                   fin.solicitacoes,
@@ -283,7 +304,7 @@ export default async function PagarPage({
                   </TableRow>
                 );
               })}
-              {!rows.length && (
+              {!lista.length && (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -296,7 +317,8 @@ export default async function PagarPage({
             </TableBody>
           </Table>
           </div>
-          <GestaoShowMore shown={Math.min(gestaoListLimit(params.limite), rows.length)} total={rows.length} />
+          <GestaoShowMore shown={Math.min(gestaoListLimit(params.limite), lista.length)} total={lista.length} />
+          </>}
           <p className="mt-4 text-xs text-muted-foreground">
             Consulte os pagamentos e estorne lançamentos em{" "}
             <Link className="underline" href="/gestao/financeiro/extratos">

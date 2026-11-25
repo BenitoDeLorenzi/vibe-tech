@@ -4,6 +4,22 @@ import { revalidatePath } from "next/cache";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 
+export async function listarPagamentosContaPagar(id: string) {
+  const { profile, unidade } = await getGestaoContext();
+  if (profile.role !== "bdl_admin" || !unidade || !/^[0-9a-f-]{36}$/i.test(id))
+    return { error: "Conta inválida.", pagamentos: [] };
+  const { data, error } = await createSupabaseServerClient()
+    .from("gestao_fin_movimentos")
+    .select("id,conta_id,valor,data,tipo,fechamento_id")
+    .eq("unidade_id", unidade.id)
+    .eq("pagar_id", id)
+    .eq("estornado", false)
+    .order("data")
+    .order("id");
+  if (error) return { error: "Não foi possível carregar os pagamentos.", pagamentos: [] };
+  return { pagamentos: data ?? [] };
+}
+
 export async function editarContaPagar(dados: {
   id: string;
   escopo: "uma" | "todas";
@@ -13,6 +29,8 @@ export async function editarContaPagar(dados: {
   observacoes: string;
   valor: string;
   vencimento: string;
+  paga?: boolean;
+  origens?: { id: string; conta_id: string }[];
 }) {
   const { profile, unidade } = await getGestaoContext();
   if (profile.role !== "bdl_admin" || !unidade)
@@ -22,7 +40,7 @@ export async function editarContaPagar(dados: {
   if (JSON.stringify(dados).length > 5000)
     return { error: "Dados da conta muito longos." };
 
-  const { error } = await createSupabaseServerClient().rpc("gestao_fin_editar_conta_pagar", {
+  const { error } = await createSupabaseServerClient().rpc(dados.paga ? "gestao_fin_editar_conta_paga" : "gestao_fin_editar_conta_pagar", {
     p_ator: profile.id,
     p_unidade: unidade.id,
     p_conta: dados.id,
