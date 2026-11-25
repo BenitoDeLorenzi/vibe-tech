@@ -9,7 +9,6 @@ import {
   Tags,
   Percent,
   Warehouse,
-  Settings,
   ArrowLeftRight,
   Users,
   Wallet,
@@ -79,12 +78,6 @@ const groups = [
   {
     label: "Equipe",
     items: [{ href: "/gestao/equipe", label: "Colaboradores", icon: Users }],
-  },
-  {
-    label: "Administração",
-    items: [
-      { href: "/gestao/configuracoes", label: "Configurações", icon: Settings },
-    ],
   },
 ];
 export function GestaoNav({

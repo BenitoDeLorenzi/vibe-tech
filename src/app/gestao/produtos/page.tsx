@@ -94,8 +94,6 @@ export default async function ProdutosPage({
           <Empty
             title="Selecione um estabelecimento"
             description="Vincule uma empresa com licença vigente para começar."
-            href="/gestao/configuracoes"
-            action="Configurar"
           />
         ) : filtrados.length ? (
           <>

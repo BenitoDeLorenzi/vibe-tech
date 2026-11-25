@@ -100,8 +100,6 @@ export default async function GestaoPage({
           <Empty
             title="Vamos preparar seu estabelecimento"
             description="Cadastre a empresa no painel central e libere uma licença do Vibe Gestão. A primeira unidade será criada automaticamente."
-            href="/gestao/configuracoes"
-            action="Configurar estabelecimento"
           />
         </Panel>
       </GestaoShell>

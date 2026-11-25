@@ -17,7 +17,7 @@ import { editarContaPagar, listarPagamentosContaPagar } from "./editar-actions";
 type Pagamento = { id: string; conta_id: string; valor: number; data: string };
 
 type Valores = {
-  escopo: "uma" | "todas";
+  escopo: "" | "uma" | "todas";
   descricao: string;
   categoria: string;
   fornecedor: string;
@@ -62,10 +62,11 @@ export function EditarContaPagar({ conta, contas, parcelas, categorias, podeEdit
     return () => { ativo = false; };
   }, [conta.id, paga]);
   const ordenadas = [...parcelas].sort((a, b) => (a.parcela_numero ?? 0) - (b.parcela_numero ?? 0));
+  const parcelada = Boolean(conta.parcelamento_id && (conta.parcelas_total ?? 0) > 1);
   const total = (ordenadas.reduce((s, p) => s + Math.round(Number(p.valor) * 100), 0) / 100).toFixed(2);
   const ativas = categorias.filter((c) => c.ativo && c.nome !== "Fechamento");
   const form = useForm<Valores>({ defaultValues: {
-    escopo: "uma",
+    escopo: parcelada ? "" : "uma",
     descricao: conta.descricao,
     categoria: ativas.some((c) => c.nome === conta.categoria) ? conta.categoria : "Outras despesas",
     fornecedor: conta.fornecedor ?? "",
@@ -84,8 +85,9 @@ export function EditarContaPagar({ conta, contas, parcelas, categorias, podeEdit
       </DialogHeader>
       <form noValidate className="space-y-4" onSubmit={form.handleSubmit(async (values) => {
         try {
+          if (!values.escopo) { form.setError("escopo", { message: "Escolha quais parcelas deseja editar." }); return; }
           if (paga && (carregando || erroPagamentos || pagamentos.some((item) => !origens[item.id]))) return;
-          const result = await editarContaPagar({ id: conta.id, ...values, paga,
+          const result = await editarContaPagar({ id: conta.id, ...values, escopo: values.escopo, paga,
             origens: paga ? pagamentos.map((item) => ({ id: item.id, conta_id: origens[item.id] })) : undefined });
           if (result.error) { form.setError("root", { message: result.error }); return; }
           toast.success(result.success);
@@ -95,17 +97,26 @@ export function EditarContaPagar({ conta, contas, parcelas, categorias, podeEdit
           form.setError("root", { message: "Não foi possível editar a despesa. Tente novamente." });
         }
       })}>
-        {conta.parcelamento_id && (conta.parcelas_total ?? 0) > 1 && <Field>
-          <FieldLabel htmlFor={`${uid}-escopo`}>Aplicar alterações em</FieldLabel>
-          <FormSelect id={`${uid}-escopo`} value={escopo} options={[
-            { value: "uma", label: `Somente parcela ${conta.parcela_numero}/${conta.parcelas_total}` },
-            { value: "todas", label: `Todas as ${conta.parcelas_total} parcelas`, disabled: !podeEditarTodas },
-          ]} onValueChange={(value) => {
-            form.setValue("escopo", value as Valores["escopo"]);
-            form.setValue("valor", value === "todas" ? total : Number(conta.valor).toFixed(2));
-            form.setValue("vencimento", value === "todas" ? ordenadas[0].vencimento : conta.vencimento);
-            form.clearErrors();
-          }} disabled={isSubmitting} />
+        {parcelada && <Field data-invalid={!!errors.escopo}>
+          <FieldLabel>Quais parcelas deseja editar?</FieldLabel>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {([
+              { value: "uma", label: `Somente esta parcela`, detail: `${conta.parcela_numero}/${conta.parcelas_total}`, disabled: false },
+              { value: "todas", label: "Todas as parcelas", detail: `${conta.parcelas_total} parcelas`, disabled: !podeEditarTodas },
+            ] as const).map((opcao) => <button key={opcao.value} type="button" aria-pressed={escopo === opcao.value}
+              disabled={isSubmitting || opcao.disabled}
+              className="rounded-lg border px-3 py-3 text-left transition-colors hover:bg-muted/50 aria-pressed:border-primary aria-pressed:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                form.setValue("escopo", opcao.value, { shouldValidate: true });
+                form.setValue("valor", opcao.value === "todas" ? total : Number(conta.valor).toFixed(2));
+                form.setValue("vencimento", opcao.value === "todas" ? ordenadas[0].vencimento : conta.vencimento);
+                form.clearErrors();
+              }}>
+              <span className="block text-sm font-medium">{opcao.label}</span>
+              <span className="text-xs text-muted-foreground">{opcao.detail}</span>
+            </button>)}
+          </div>
+          <FieldError errors={[errors.escopo]} />
           {!podeEditarTodas && <p className="text-xs text-muted-foreground">A edição conjunta exige que todas as parcelas estejam abertas e sem movimentações.</p>}
         </Field>}
         <Field data-invalid={!!errors.descricao}>
