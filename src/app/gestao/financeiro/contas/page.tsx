@@ -1,5 +1,5 @@
 import { forbidden } from "next/navigation";
-import { Wallet, Landmark, CreditCard, Clock, TrendingUp, TrendingDown } from "lucide-react";
+import { Wallet, Landmark, CreditCard, Clock, TrendingUp, TrendingDown, Receipt } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
 import { createSupabaseServerClient } from "@/lib/supabase-server";
 import { getFinanceiroData } from "@/lib/gestao-contas-data";
@@ -31,6 +31,8 @@ export default async function ContasPage({ searchParams }: { searchParams: Promi
     .reduce((s, p) => s + centavosFin(p.valor), 0) / 100;
   const despesas = (centavosFin(contasLancadas) + centavosFin(equipePaga)) / 100;
   const totalDevido = fin.pagar.reduce((s, p) => s + centavosFin(pendentePagar(p)), 0) / 100;
+  const vencido = fin.pagar.filter((p) => p.vencimento < hojeFinanceiro())
+    .reduce((s, p) => s + centavosFin(pendentePagar(p)), 0) / 100;
   const saldoTotal = (centavosFin(resumo.disponivel) + centavosFin(resumo.retido) - centavosFin(totalDevido)) / 100;
   return (
     <GestaoShell
@@ -54,7 +56,7 @@ export default async function ContasPage({ searchParams }: { searchParams: Promi
         </Panel>
       ) : (
         <>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {[
               {
                 title: "Receitas",
@@ -71,30 +73,37 @@ export default async function ContasPage({ searchParams }: { searchParams: Promi
                 tone: despesas > 0 ? "text-destructive" : "text-muted-foreground",
               },
               {
+                title: "A pagar em aberto",
+                value: totalDevido > 0 ? -totalDevido : 0,
+                icon: Receipt,
+                detail: "Parcelas e contas ainda não quitadas",
+                tone: totalDevido > 0 ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground",
+              },
+              {
+                title: "Vencido",
+                value: vencido > 0 ? -vencido : 0,
+                icon: Clock,
+                detail: "Contas com vencimento anterior a hoje",
+                tone: vencido > 0 ? "text-destructive" : "text-muted-foreground",
+              },
+              {
                 title: "Saldo total",
                 value: saldoTotal,
                 icon: Wallet,
                 detail: "Caixa, bancos e cobrança − todas as contas em aberto",
                 tone: saldoTotal < 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-400",
               },
-              {
-                title: "Vence em 7 dias ou atrasado",
-                value: resumo.pagar7 > 0 ? -resumo.pagar7 : 0,
-                icon: Clock,
-                detail: "Contas em aberto, incluindo vencidas",
-                tone: resumo.pagar7 > 0 ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground",
-              },
             ].map(({ title, value, icon: Icon, detail, tone }) => (
-              <Card key={title} className="gap-3">
+              <Card key={title} size="sm" className="min-w-0 gap-2">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Icon className={`size-4 ${tone}`} />
+                  <CardTitle className="flex min-w-0 items-center gap-2 text-xs font-medium">
+                    <Icon className={`size-3.5 shrink-0 ${tone}`} />
                     {title}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className={`text-2xl font-semibold tabular-nums ${tone}`}>{dinheiro(value)}</div>
-                  <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+                  <div className={`text-xl font-semibold tabular-nums ${tone}`}>{dinheiro(value)}</div>
+                  <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{detail}</p>
                 </CardContent>
               </Card>
             ))}

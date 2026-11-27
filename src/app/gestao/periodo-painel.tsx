@@ -1,19 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { useState, useTransition } from "react";
+import { CalendarDays, Check, ChevronDown, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { FormSelect } from "@/components/form-select";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { DatePickerInput } from "@/app/licencas/date-picker-input";
 import { intervaloPersonalizadoValido, periodosPainel } from "@/lib/gestao-painel";
+import { dataBR } from "@/lib/gestao-types";
 
 export function PeriodoPainel({ value, inicio, fim }: { value: string; inicio: string; fim: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
   const [de, setDe] = useState(inicio);
   const [ate, setAte] = useState(fim);
   const [erro, setErro] = useState("");
@@ -32,35 +35,40 @@ export function PeriodoPainel({ value, inicio, fim }: { value: string; inicio: s
       return;
     }
     setOpen(false);
-    router.replace(`/gestao?${new URLSearchParams({ periodo: "personalizado", inicio: de, fim: ate })}`, { scroll: false });
+    startTransition(() => router.replace(`/gestao?${new URLSearchParams({ periodo: "personalizado", inicio: de, fim: ate })}`, { scroll: false }));
   }
+
+  function selecionar(periodo: string) {
+    setMenuOpen(false);
+    if (periodo === "personalizado") abrir();
+    else startTransition(() => router.replace(`/gestao?periodo=${periodo}`, { scroll: false }));
+  }
+
+  const nome = periodosPainel.find((item) => item.value === value)?.label ?? "Este mês";
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        <div className="w-40 sm:w-44">
-          <FormSelect
-            aria-label="Período do painel"
-            value={value}
-            options={periodosPainel}
-            groupLabel="Período"
-            onValueChange={(periodo) => {
-              if (periodo === "personalizado") abrir();
-              else router.replace(`/gestao?periodo=${periodo}`, { scroll: false });
-            }}
-          />
-        </div>
-        {value === "personalizado" && (
-          <Button type="button" variant="outline" size="icon" aria-label="Alterar datas personalizadas" onClick={abrir}>
-            <CalendarDays className="size-4" />
-          </Button>
-        )}
-      </div>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+        <PopoverTrigger render={<Button type="button" variant="outline" className="h-9 gap-2" aria-label="Selecionar período dos resultados" disabled={pending} />}>
+          {pending ? <LoaderCircle className="size-4 animate-spin" /> : <CalendarDays className="size-4" />}
+          <span>{value === "personalizado" ? `${dataBR(inicio)} – ${dataBR(fim)}` : nome}</span>
+          <ChevronDown className="size-3.5 text-muted-foreground" />
+        </PopoverTrigger>
+        <PopoverContent align="end" className="w-56 gap-1 p-1.5">
+          <PopoverTitle className="px-2 py-1 text-xs text-muted-foreground">Período dos resultados</PopoverTitle>
+          {periodosPainel.map((item) => <button key={item.value} type="button"
+            className="flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-sm hover:bg-muted data-[selected=true]:bg-muted"
+            data-selected={value === item.value}
+            onClick={() => selecionar(item.value)}>
+            {item.label}{value === item.value && <Check className="size-4 text-primary" />}
+          </button>)}
+        </PopoverContent>
+      </Popover>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Período personalizado</DialogTitle>
-            <DialogDescription>Escolha as datas para analisar os resultados do estabelecimento.</DialogDescription>
+          <DialogDescription className="sr-only">Escolha as datas para analisar os resultados do estabelecimento.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <DatePickerInput key={`inicio-${open}`} id="painel-inicio" name="inicio" label="De" defaultValue={de} onValueChange={setDe} />

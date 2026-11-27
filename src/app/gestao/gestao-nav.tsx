@@ -20,6 +20,7 @@ import {
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
+  SidebarMenuBadge,
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
@@ -83,9 +84,11 @@ const groups = [
 export function GestaoNav({
   gestor = false,
   master = false,
+  venceHoje = 0,
 }: {
   gestor?: boolean;
   master?: boolean;
+  venceHoje?: number;
 }) {
   const path = usePathname();
   return (
@@ -129,6 +132,11 @@ export function GestaoNav({
                         <Icon />
                         <span>{label}</span>
                       </SidebarMenuButton>
+                      {href === "/gestao/financeiro/pagar" && venceHoje > 0 && (
+                        <SidebarMenuBadge className="bg-amber-500/15 text-amber-800 dark:text-amber-300" aria-label={`${venceHoje} conta${venceHoje === 1 ? "" : "s"} vence${venceHoje === 1 ? "" : "m"} hoje`}>
+                          {venceHoje > 99 ? "99+" : venceHoje}
+                        </SidebarMenuBadge>
+                      )}
                     </SidebarMenuItem>
                   ))}
                 </SidebarMenu>

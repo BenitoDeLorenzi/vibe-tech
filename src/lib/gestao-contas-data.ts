@@ -2,6 +2,25 @@ import "server-only";
 import { cache } from "react";
 import { getGestaoContext } from "./gestao-data";
 import type { FinanceiroData, MovimentoFinanceiro } from "./gestao-contas";
+import { centavosFin, hojeFinanceiro } from "./gestao-contas";
+
+export const getContasVencendoHojeCount = cache(async (): Promise<number> => {
+  const { db, unidade, profile } = await getGestaoContext();
+  if (!unidade || profile.role !== "bdl_admin") return 0;
+  let total = 0;
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await db.from("gestao_pagar_saldos")
+      .select("valor,pago")
+      .eq("unidade_id", unidade.id)
+      .eq("vencimento", hojeFinanceiro())
+      .eq("cancelada", false)
+      .order("id")
+      .range(offset, offset + 499);
+    if (error) throw new Error("Não foi possível consultar os vencimentos de hoje.");
+    total += data.filter((conta) => centavosFin(conta.valor) > centavosFin(conta.pago)).length;
+    if (data.length < 500) return total;
+  }
+});
 
 export const getFinanceiroData = cache(async (): Promise<FinanceiroData> => {
   const { db, unidade, profile } = await getGestaoContext();

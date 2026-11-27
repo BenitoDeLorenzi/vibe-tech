@@ -2,6 +2,7 @@ import { sidebarFooterClass } from "@/components/sidebar-styles";
 import type { ReactNode } from "react";
 import { type LucideIcon } from "lucide-react";
 import { getGestaoContext } from "@/lib/gestao-data";
+import { getContasVencendoHojeCount } from "@/lib/gestao-contas-data";
 import { SidebarUserMenu } from "@/components/sidebar-user-menu";
 import { HeaderSeparator } from "@/components/header-separator";
 import {
@@ -33,6 +34,9 @@ export async function GestaoShell({
 }) {
   const { profile, empresas, unidades, unidade, gestor } =
     await getGestaoContext();
+  const venceHoje = profile.role === "bdl_admin" && unidade
+    ? await getContasVencendoHojeCount()
+    : 0;
   return (
     <SidebarProvider data-vibe-gestao="" className="h-screen min-h-0 overflow-hidden print:block print:h-auto print:min-h-0 print:overflow-visible print:bg-white">
       <Sidebar collapsible="icon" variant="inset">
@@ -45,7 +49,7 @@ export async function GestaoShell({
           />
         </SidebarHeader>
         <SidebarContent>
-          <GestaoNav gestor={gestor} master={profile.role === "bdl_admin"} />
+          <GestaoNav gestor={gestor} master={profile.role === "bdl_admin"} venceHoje={venceHoje} />
         </SidebarContent>
         <SidebarFooter className={sidebarFooterClass}>
           <SidebarMenu>
